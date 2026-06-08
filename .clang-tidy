@@ -1,0 +1,118 @@
+# Melosyne PhyCenter clang-tidy configuration, adapted for Render2D.
+# Naming summary:
+# - namespaces/types/enums/enum values: UpperCamelCase
+# - functions/methods: lowerCamelCase
+# - variables/members/globals/statics/locals: lower_snake_case
+# - function parameters: lower_snake_case_ suffix
+# - constants/constexpr/static constants: k + UpperCamelCase
+# - template parameters: UpperCamelCase
+# - macros: UPPER_SNAKE_CASE
+
+Checks: >
+  -*,
+  readability-identifier-naming,
+  bugprone-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-throwing-static-initialization,
+  -modernize-avoid-c-arrays,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -modernize-use-std-print,
+  -portability-avoid-pragma-once
+
+HeaderFilterRegex: '(include/Render2D/(?!detail/).*)'
+
+WarningsAsErrors: >
+  readability-identifier-naming
+
+FormatStyle: file
+
+CheckOptions:
+  - key:   readability-identifier-naming.NamespaceCase
+    value: CamelCase
+  - key:   readability-identifier-naming.NamespaceIgnoredRegexp
+    value: '^detail$'
+
+  - key:   readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key:   readability-identifier-naming.StructCase
+    value: CamelCase
+  - key:   readability-identifier-naming.UnionCase
+    value: CamelCase
+  - key:   readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key:   readability-identifier-naming.TypedefCase
+    value: CamelCase
+  - key:   readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+
+  - key:   readability-identifier-naming.TypeAliasIgnoredRegexp
+    value: '^(value_type|size_type|difference_type|reference|const_reference|pointer|const_pointer|iterator|const_iterator|reverse_iterator|const_reverse_iterator|allocator_type|element_type|key_type|mapped_type)$'
+  - key:   readability-identifier-naming.TypedefIgnoredRegexp
+    value: '^(value_type|size_type|difference_type|reference|const_reference|pointer|const_pointer|iterator|const_iterator|reverse_iterator|const_reverse_iterator|allocator_type|element_type|key_type|mapped_type)$'
+
+  - key:   readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key:   readability-identifier-naming.MethodCase
+    value: camelBack
+  - key:   readability-identifier-naming.ClassMethodCase
+    value: camelBack
+  - key:   readability-identifier-naming.FunctionIgnoredRegexp
+    value: '^(_mm_|_mm256_).*'
+
+  - key:   readability-identifier-naming.VariableCase
+    value: lower_case
+  - key:   readability-identifier-naming.MemberCase
+    value: lower_case
+  - key:   readability-identifier-naming.PublicMemberCase
+    value: lower_case
+  - key:   readability-identifier-naming.ProtectedMemberCase
+    value: lower_case
+  - key:   readability-identifier-naming.PrivateMemberCase
+    value: lower_case
+  - key:   readability-identifier-naming.GlobalVariableCase
+    value: lower_case
+  - key:   readability-identifier-naming.StaticVariableCase
+    value: lower_case
+  - key:   readability-identifier-naming.LocalVariableCase
+    value: lower_case
+
+  - key:   readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key:   readability-identifier-naming.ParameterSuffix
+    value: _
+
+  - key:   readability-identifier-naming.ConstexprVariableCase
+    value: CamelCase
+  - key:   readability-identifier-naming.ConstexprVariablePrefix
+    value: k
+  - key:   readability-identifier-naming.GlobalConstantCase
+    value: CamelCase
+  - key:   readability-identifier-naming.GlobalConstantPrefix
+    value: k
+  - key:   readability-identifier-naming.StaticConstantCase
+    value: CamelCase
+  - key:   readability-identifier-naming.StaticConstantPrefix
+    value: k
+  - key:   readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+
+  - key:   readability-identifier-naming.TemplateParameterCase
+    value: CamelCase
+  - key:   readability-identifier-naming.TypeTemplateParameterCase
+    value: CamelCase
+  - key:   readability-identifier-naming.ValueTemplateParameterCase
+    value: CamelCase
+  - key:   readability-identifier-naming.TemplateTemplateParameterCase
+    value: CamelCase
+
+  - key:   readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+
+  - key:   modernize-use-default-member-init.UseAssignment
+    value: 'true'
+  - key:   performance-move-const-arg.CheckTriviallyCopyableMove
+    value: 'false'

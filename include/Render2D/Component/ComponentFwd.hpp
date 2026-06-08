@@ -1,0 +1,77 @@
+#pragma once
+
+namespace Render2D {
+
+template<class Provider, class Dim>
+struct Transform;
+
+template<class Provider, class Dim>
+struct WorldTransform;
+
+template<class Provider, class Dim>
+struct Sprite;
+
+template<class Provider, class Dim>
+struct Text;
+
+template<class Provider, class Dim>
+struct Camera;
+
+template<class Provider, class Dim>
+struct LocalBounds;
+
+template<class Provider, class Dim>
+struct WorldBounds;
+
+template<class Provider, class Dim>
+struct VisibilityMask;
+
+template<class Provider, class Dim>
+struct RenderLayer;
+
+template<class Provider, class Dim>
+struct MaterialRef;
+
+template<class Provider, class Dim>
+struct TextureRef;
+
+template<class Provider, class Dim>
+struct FontRef;
+
+template<class Provider, class Dim>
+struct VisibleItem;
+
+template<class Provider, class Dim>
+struct SortedItem;
+
+template<class Provider, class Dim>
+struct DrawCommand;
+
+template<class Provider, class Dim>
+struct BatchCommand;
+
+template<class Provider, class Dim>
+struct UploadCommand;
+
+template<class Provider, class Dim>
+struct NativeSubmitCommand;
+
+template<class Provider, class Dim>
+struct FrameIndex;
+
+template<class Provider, class Dim>
+struct FrameArenaState;
+
+template<class Provider, class Dim>
+struct CommandBuffer;
+
+template<class Provider, class Dim>
+struct UploadRingSlice;
+
+template<class Provider, class Dim>
+struct DescriptorSlice;
+
+template<class Provider, class Dim>
+struct FenceState;
+
+} // namespace Render2D

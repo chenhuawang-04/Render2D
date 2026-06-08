@@ -1,0 +1,38 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 25,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "clang-ninja-debug",
+      "displayName": "Clang Ninja Debug",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "RENDER2D_BUILD_TESTS": "ON",
+        "RENDER2D_BUILD_BENCHMARKS": "OFF",
+        "RENDER2D_REQUIRE_VULKAN": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "clang-ninja-debug",
+      "configurePreset": "clang-ninja-debug"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "clang-ninja-debug",
+      "configurePreset": "clang-ninja-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}
