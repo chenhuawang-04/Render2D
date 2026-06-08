@@ -1,6 +1,6 @@
 # Native Runtime Contract
 
-Native Runtime owns backend slot lifetimes. ECS owns only POD references such as `DeviceHandle`, `BufferRef`, `ImageRef`, `PipelineRef`, `DescriptorSlice`, and `SwapchainState`.
+Native Runtime owns backend slot lifetimes. ECS owns only POD references such as `DeviceHandle`, `BufferRef`, `ImageRef`, `PipelineRef`, `DescriptorSlice`, `SwapchainState`, and `NativeCommandBufferRef`.
 
 ## Type contracts
 
@@ -42,9 +42,10 @@ PipelineRef::pipeline_id + PipelineRef::generation
 ImageRef::image_id + ImageRef::generation
 BufferRef::buffer_id + BufferRef::generation
 DescriptorSlice::descriptor_set_id + DescriptorSlice::generation
+NativeCommandBufferRef::command_buffer_id + NativeCommandBufferRef::generation
 ```
 
-## Stage 7 CPU-side runtime skeletons
+## CPU-side runtime skeletons
 
 Implemented runtime skeletons:
 
@@ -54,18 +55,29 @@ Implemented runtime skeletons:
 - `NativePipelineRuntime<Provider, Dim>` - reserves, creates, resolves, releases, and reuses `PipelineRef` slots.
 - `NativeDescriptorRuntime<Provider, Dim>` - reserves, allocates, resolves, releases, and reuses `DescriptorSlice` slots.
 - `NativeSwapchainRuntime<Provider, Dim>` - reserves, creates, resolves, resizes, releases, and reuses `SwapchainState` slots.
+- `NativeCommandRuntime<Provider, Dim>` - reserves, creates, resolves, releases, and reuses `NativeCommandBufferRef` slots.
 
 All slot-backed runtimes validate generation values and return `NativeStatusCode::StaleReference` for stale ECS references.
 
+## Stage 8A CPU-side encode/submit contract
+
+Implemented system contracts:
+
+- `EncodeSystem<Provider, Dim>` validates `CommandBuffer` batch/upload ranges and allocates a `NativeCommandBufferRef` through `NativeCommandRuntime`.
+- `SubmitSystem<Provider, Dim>` converts `NativeCommandBufferRef[]` plus `FrameSync` into `NativeSubmitCommand[]`.
+
+This stage only produces ECS-visible POD descriptors. It does not call `vkBeginCommandBuffer`, `vkCmd*`, or `vkQueueSubmit`.
+
 ## Non-goals in this stage
 
-Stage 7 does not implement:
+Current CPU-only native stages do not implement:
 
 - Vulkan object creation or destruction
 - descriptor pool/set allocation
 - swapchain creation or image acquisition
-- fences, semaphores, or command pools
+- real fences, semaphores, or command pools
+- real command buffer allocation/recording
 - MemoryCenter Vulkan allocation
 - deferred destroy queues
 
-The current runtime skeletons are CPU-only contracts that prepare the API boundary for later Vulkan-backed implementation.
+The current runtime and encode/submit skeletons are CPU-only contracts that prepare the API boundary for later Vulkan-backed implementation.

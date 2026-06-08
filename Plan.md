@@ -1578,6 +1578,8 @@
 
   ## 阶段 8：Vulkan Native Encoder
 
+  8A status (done): CPU-side NativeCommandBufferRef, NativeCommandRuntime, EncodeSystem, and SubmitSystem are complete. CommandBuffer + BatchCommand[] + UploadCommand[] now produce NativeCommandBufferRef, then NativeSubmitCommand, with id + generation validation and no Vulkan API calls.
+
 
 
   目标：把 BatchCommand 编码为 Vulkan command buffer。

@@ -53,11 +53,13 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/CommandBuildSystem.hpp` - Builds `DrawCommand[]` from visible items and sprites.
 - `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands.
 - `include/Render2D/System/CommandBufferSystem.hpp` - Builds and clears POD `CommandBuffer` range descriptors.
+- `include/Render2D/System/EncodeSystem.hpp` - CPU-only encode contract from `CommandBuffer` ranges to `NativeCommandBufferRef`.
+- `include/Render2D/System/SubmitSystem.hpp` - CPU-only submit contract from native command refs and `FrameSync` to `NativeSubmitCommand`.
 
 ### Native
 
 - `include/Render2D/Native/NativeFwd.hpp` - Forward declarations for native components and runtime types.
-- `include/Render2D/Native/NativeComponents.hpp` - Native POD ECS components such as `BufferRef`, `ImageRef`, `PipelineRef`, `DeviceHandle`, and `SwapchainState`.
+- `include/Render2D/Native/NativeComponents.hpp` - Native POD ECS components such as `BufferRef`, `ImageRef`, `PipelineRef`, `NativeCommandBufferRef`, `DeviceHandle`, and `SwapchainState`.
 - `include/Render2D/Native/NativeTypes.hpp` - Native runtime POD type contracts: status codes, object kinds, memory domains, IDs, generations, handles, and byte ranges.
 - `include/Render2D/Native/NativeResult.hpp` - POD result records for native runtime APIs.
 - `include/Render2D/Native/FrameRuntime.hpp` - CPU-side frame-in-flight runtime skeleton.
@@ -66,6 +68,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/PipelineRuntime.hpp` - CPU-side pipeline reference slot runtime.
 - `include/Render2D/Native/DescriptorRuntime.hpp` - CPU-side descriptor slice slot runtime.
 - `include/Render2D/Native/SwapchainRuntime.hpp` - CPU-side swapchain state slot runtime.
+- `include/Render2D/Native/CommandRuntime.hpp` - CPU-side native command buffer ref slot runtime.
 
 ### Memory and Storage
 
@@ -82,6 +85,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/native_runtime_contract_test.cpp` - Native runtime type/result POD contract checks.
 - `tests/native_resource_runtime_test.cpp` - Buffer/image native slot table stale-reference and generation reuse checks.
 - `tests/native_runtime_skeleton_test.cpp` - Frame/device/queue/pipeline/descriptor/swapchain runtime skeleton lifecycle checks.
+- `tests/native_command_runtime_test.cpp` - Native command buffer ref slot lifecycle, stale-reference, and reuse checks.
+- `tests/encode_submit_system_test.cpp` - CPU-only EncodeSystem and SubmitSystem contract checks.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
 - `tests/expect_compile_failure.cmake` - CMake script that validates negative compile tests.

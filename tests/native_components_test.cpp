@@ -24,6 +24,7 @@ int main()
     requireNativeComponent<R2D::QueueHandle<Provider, Dim>>();
     requireNativeComponent<R2D::SwapchainState<Provider, Dim>>();
     requireNativeComponent<R2D::FrameSync<Provider, Dim>>();
+    requireNativeComponent<R2D::NativeCommandBufferRef<Provider, Dim>>();
     requireNativeComponent<R2D::PipelineRef<Provider, Dim>>();
     requireNativeComponent<R2D::ImageRef<Provider, Dim>>();
     requireNativeComponent<R2D::BufferRef<Provider, Dim>>();

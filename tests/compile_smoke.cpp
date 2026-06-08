@@ -57,6 +57,7 @@ static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::DrawCommand<Prov
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::BatchCommand<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::UploadCommand<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::NativeSubmitCommand<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::NativeCommandBufferRef<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::FrameIndex<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::FrameArenaState<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::CommandBuffer<Provider, Dim>>);

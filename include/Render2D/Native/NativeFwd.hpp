@@ -15,6 +15,9 @@ template<class Provider, class Dim>
 struct FrameSync;
 
 template<class Provider, class Dim>
+struct NativeCommandBufferRef;
+
+template<class Provider, class Dim>
 struct DescriptorSlice;
 
 template<class Provider, class Dim>
@@ -52,6 +55,9 @@ class NativeDeviceRuntime;
 
 template<class Provider, class Dim>
 class NativeSwapchainRuntime;
+
+template<class Provider, class Dim>
+class NativeCommandRuntime;
 
 template<class Provider, class Dim>
 class DescriptorStorage;

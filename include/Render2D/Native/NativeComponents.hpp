@@ -45,6 +45,18 @@ struct FrameSync {
 };
 
 template<class Provider, class Dim>
+struct NativeCommandBufferRef {
+    U32 command_buffer_id;
+    U32 generation;
+    U32 frame_index;
+    U32 batch_first;
+    U32 batch_count;
+    U32 upload_first;
+    U32 upload_count;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
 struct PipelineRef {
     U64 handle;
     U64 layout_handle;
@@ -112,6 +124,13 @@ struct ComponentTraits<Provider, Dim, FrameSync<Provider, Dim>> {
     static constexpr bool kSupported =
         SupportedRenderDomain<Provider, Dim> &&
         StrictPodComponent<FrameSync<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, NativeCommandBufferRef<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<NativeCommandBufferRef<Provider, Dim>>;
 };
 
 template<class Provider, class Dim>

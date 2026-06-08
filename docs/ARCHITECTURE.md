@@ -21,9 +21,13 @@ Transform[] / Sprite[] / Text[] / Camera[]
     -> BatchSystem
     -> CommandBufferBuildSystem
     -> CommandBuffer[]
+    -> EncodeSystem
+    -> NativeCommandBufferRef[]
+    -> SubmitSystem
+    -> NativeSubmitCommand[]
 ```
 
-The current pipeline is CPU-only. It does not encode Vulkan command buffers or create GPU objects.
+The current pipeline is CPU-only. It builds encode/submit descriptors but does not call Vulkan or create GPU objects.
 
 ## Component layer
 
@@ -33,7 +37,7 @@ The component layer defines Strict POD ECS records:
 - Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`.
 - Command components: `DrawCommand`, `BatchCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
-- Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `PipelineRef`, `ImageRef`, `BufferRef`, `UploadSlice`.
+- Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `BufferRef`, `UploadSlice`.
 
 Every supported component is registered through `ComponentTraits` and checked by `SupportedRenderComponent`.
 
@@ -72,6 +76,7 @@ PipelineRef::pipeline_id + PipelineRef::generation
 ImageRef::image_id + ImageRef::generation
 BufferRef::buffer_id + BufferRef::generation
 DescriptorSlice::descriptor_set_id + DescriptorSlice::generation
+NativeCommandBufferRef::command_buffer_id + NativeCommandBufferRef::generation
 ```
 
 Implemented CPU-side runtime skeletons:
@@ -82,6 +87,7 @@ Implemented CPU-side runtime skeletons:
 - `NativePipelineRuntime` - pipeline reference slot table.
 - `NativeDescriptorRuntime` - descriptor slice slot table.
 - `NativeSwapchainRuntime` - swapchain state slot table and resize generation bump.
+- `NativeCommandRuntime` - native command buffer reference slot table.
 
 These runtime classes are not ECS storage. They own backend slot lifecycle metadata, validate generations, reject stale references, and reuse slots. They still do not call Vulkan and do not allocate real GPU resources.
 
@@ -109,6 +115,7 @@ Implemented:
 - Native POD components
 - Native runtime POD type/result contracts
 - CPU-side Stage 7 native runtime skeletons for frame, device, queue, buffer, image, pipeline, descriptor, and swapchain records
+- Stage 8A CPU-side encode/submit contract through `NativeCommandBufferRef`, `NativeCommandRuntime`, `EncodeSystem`, and `SubmitSystem`
 
 Not implemented yet:
 
@@ -117,5 +124,5 @@ Not implemented yet:
 - deferred destroy queues
 - real descriptor pool/set allocation
 - upload ring implementation
-- command encoding/runtime
-- Vulkan encoder and submit systems
+- real Vulkan command buffer allocation/recording
+- real Vulkan queue submit/present

@@ -28,6 +28,7 @@ Examples:
 - `ImageRef::image_id + ImageRef::generation`
 - `PipelineRef::pipeline_id + PipelineRef::generation`
 - `DescriptorSlice::descriptor_set_id + DescriptorSlice::generation`
+- `NativeCommandBufferRef::command_buffer_id + NativeCommandBufferRef::generation`
 
 Reason:
 
@@ -39,7 +40,7 @@ Native runtime owns actual Vulkan objects later. ECS components only store POD r
 
 ## 3. Native runtime is not ECS storage
 
-Stage 7 runtime classes are backend runtime owner-table skeletons, not an ECS component manager.
+Stage 7/8A runtime classes are backend runtime owner-table skeletons, not an ECS component manager.
 
 Current runtime classes:
 
@@ -49,6 +50,7 @@ Current runtime classes:
 - `NativePipelineRuntime`
 - `NativeDescriptorRuntime`
 - `NativeSwapchainRuntime`
+- `NativeCommandRuntime`
 
 During host-engine merge:
 
@@ -56,8 +58,18 @@ During host-engine merge:
 - keep native slot lifetime, generation validation, and stale-reference rejection in Render2D native runtime;
 - do not replace native runtime tables with scene ECS storage.
 
-## 4. Stage 7 remains CPU-only
+## 4. Native runtime stages remain CPU-only
 
-The current native runtime skeleton does not call Vulkan. It only validates the component/runtime boundary and slot lifecycle semantics.
+The current native runtime and encode/submit skeletons do not call Vulkan. It only validates the component/runtime boundary and slot lifecycle semantics.
 
 Later Vulkan stages must attach real handles, MemoryCenter allocations, descriptor pools, swapchain creation, sync objects, and deferred destruction behind the existing `id + generation` contracts.
+
+
+## 5. Stage 8A is an encode/submit contract only
+
+`EncodeSystem` and `SubmitSystem` currently produce POD descriptors only:
+
+- `CommandBuffer` plus batch/upload ranges -> `NativeCommandBufferRef`
+- `NativeCommandBufferRef[]` plus `FrameSync` -> `NativeSubmitCommand`
+
+They do not call Vulkan and should remain replaceable by the host engine ECS stream wiring during merge.
