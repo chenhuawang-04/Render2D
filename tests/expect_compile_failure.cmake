@@ -11,8 +11,17 @@ if(NOT DEFINED INCLUDE_DIR)
     message(FATAL_ERROR "INCLUDE_DIR is required.")
 endif()
 
+set(extra_include_args)
+if(DEFINED EXTRA_INCLUDE_DIRS)
+    foreach(extra_include_dir IN LISTS EXTRA_INCLUDE_DIRS)
+        if(NOT extra_include_dir STREQUAL "")
+            list(APPEND extra_include_args -I "${extra_include_dir}")
+        endif()
+    endforeach()
+endif()
+
 execute_process(
-    COMMAND "${CXX_COMPILER}" -std=c++23 -I "${INCLUDE_DIR}" -c "${SOURCE_FILE}" -o "${OUTPUT_FILE}"
+    COMMAND "${CXX_COMPILER}" -std=c++23 -I "${INCLUDE_DIR}" ${extra_include_args} -c "${SOURCE_FILE}" -o "${OUTPUT_FILE}"
     RESULT_VARIABLE compile_result
     OUTPUT_VARIABLE compile_stdout
     ERROR_VARIABLE compile_stderr

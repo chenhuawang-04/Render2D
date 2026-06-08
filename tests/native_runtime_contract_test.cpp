@@ -22,6 +22,7 @@ int main()
     requireNativePodContract<R2D::NativeByteRange>();
     requireNativePodContract<R2D::NativeResult>();
     requireNativePodContract<R2D::NativeCapacityResult>();
+    requireNativePodContract<R2D::VulkanCommandRuntimeConfig>();
 
     static_assert(std::is_enum_v<R2D::NativeStatusCode>);
     static_assert(std::is_enum_v<R2D::NativeObjectKind>);

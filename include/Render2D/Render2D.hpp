@@ -29,6 +29,7 @@
 #include "Render2D/Native/PipelineRuntime.hpp"
 #include "Render2D/Native/ResourceRuntime.hpp"
 #include "Render2D/Native/SwapchainRuntime.hpp"
+#include "Render2D/Native/VulkanCommandRuntime.hpp"
 #include "Render2D/Storage/StorageFwd.hpp"
 #include "Render2D/System/BatchSystem.hpp"
 #include "Render2D/System/BoundsSystem.hpp"

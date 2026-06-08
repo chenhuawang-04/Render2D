@@ -55,7 +55,8 @@ Implemented runtime skeletons:
 - `NativePipelineRuntime<Provider, Dim>` - reserves, creates, resolves, releases, and reuses `PipelineRef` slots.
 - `NativeDescriptorRuntime<Provider, Dim>` - reserves, allocates, resolves, releases, and reuses `DescriptorSlice` slots.
 - `NativeSwapchainRuntime<Provider, Dim>` - reserves, creates, resolves, resizes, releases, and reuses `SwapchainState` slots.
-- `NativeCommandRuntime<Provider, Dim>` - reserves, creates, resolves, releases, and reuses `NativeCommandBufferRef` slots.
+- `NativeCommandRuntime<Provider, Dim>` - reserves, creates, resolves, releases, and reuses CPU-only `NativeCommandBufferRef` slots.
+- `VulkanCommandRuntime<Provider, Dim>` - creates/destroys `VkCommandPool`, allocates/resolves/begins/ends/resets/releases `VkCommandBuffer` objects behind `NativeCommandBufferRef`.
 
 All slot-backed runtimes validate generation values and return `NativeStatusCode::StaleReference` for stale ECS references.
 
@@ -68,6 +69,17 @@ Implemented system contracts:
 
 This stage only produces ECS-visible POD descriptors. It does not call `vkBeginCommandBuffer`, `vkCmd*`, or `vkQueueSubmit`.
 
+## Stage 8B Vulkan command lifecycle
+
+`VulkanCommandRuntime<Provider, Dim>` owns the first real Vulkan runtime lifecycle in Render2D:
+
+- `vkCreateCommandPool` / `vkDestroyCommandPool`
+- `vkAllocateCommandBuffers` / `vkFreeCommandBuffers`
+- `vkBeginCommandBuffer` / `vkEndCommandBuffer`
+- `vkResetCommandBuffer` / `vkResetCommandPool`
+
+It still exposes only `NativeCommandBufferRef` to ECS. Real `VkCommandBuffer` handles stay inside the native runtime.
+
 ## Non-goals in this stage
 
 Current CPU-only native stages do not implement:
@@ -76,7 +88,7 @@ Current CPU-only native stages do not implement:
 - descriptor pool/set allocation
 - swapchain creation or image acquisition
 - real fences, semaphores, or command pools
-- real command buffer allocation/recording
+- draw command recording with `vkCmd*`
 - MemoryCenter Vulkan allocation
 - deferred destroy queues
 

@@ -2,6 +2,8 @@
 
 namespace Render2D {
 
+struct VulkanCommandRuntimeConfig;
+
 template<class Provider, class Dim>
 struct DeviceHandle;
 
@@ -58,6 +60,9 @@ class NativeSwapchainRuntime;
 
 template<class Provider, class Dim>
 class NativeCommandRuntime;
+
+template<class Provider, class Dim>
+class VulkanCommandRuntime;
 
 template<class Provider, class Dim>
 class DescriptorStorage;

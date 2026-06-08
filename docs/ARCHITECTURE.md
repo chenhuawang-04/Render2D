@@ -27,7 +27,7 @@ Transform[] / Sprite[] / Text[] / Camera[]
     -> NativeSubmitCommand[]
 ```
 
-The current pipeline is CPU-only. It builds encode/submit descriptors but does not call Vulkan or create GPU objects.
+The component pipeline remains CPU-driven. Stage 8A builds encode/submit descriptors, and Stage 8B adds real Vulkan command pool / command buffer lifecycle behind `NativeCommandBufferRef`. No draw commands or queue submit are recorded yet.
 
 ## Component layer
 
@@ -87,7 +87,8 @@ Implemented CPU-side runtime skeletons:
 - `NativePipelineRuntime` - pipeline reference slot table.
 - `NativeDescriptorRuntime` - descriptor slice slot table.
 - `NativeSwapchainRuntime` - swapchain state slot table and resize generation bump.
-- `NativeCommandRuntime` - native command buffer reference slot table.
+- `NativeCommandRuntime` - CPU-only native command buffer reference slot table.
+- `VulkanCommandRuntime` - Vulkan command pool and command buffer lifecycle owner behind `NativeCommandBufferRef`.
 
 These runtime classes are not ECS storage. They own backend slot lifecycle metadata, validate generations, reject stale references, and reuse slots. They still do not call Vulkan and do not allocate real GPU resources.
 
@@ -116,6 +117,7 @@ Implemented:
 - Native runtime POD type/result contracts
 - CPU-side Stage 7 native runtime skeletons for frame, device, queue, buffer, image, pipeline, descriptor, and swapchain records
 - Stage 8A CPU-side encode/submit contract through `NativeCommandBufferRef`, `NativeCommandRuntime`, `EncodeSystem`, and `SubmitSystem`
+- Stage 8B Vulkan command pool / command buffer lifecycle through `VulkanCommandRuntime`
 
 Not implemented yet:
 
@@ -124,5 +126,5 @@ Not implemented yet:
 - deferred destroy queues
 - real descriptor pool/set allocation
 - upload ring implementation
-- real Vulkan command buffer allocation/recording
+- real Vulkan draw command recording
 - real Vulkan queue submit/present

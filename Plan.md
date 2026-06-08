@@ -1580,6 +1580,8 @@
 
   8A status (done): CPU-side NativeCommandBufferRef, NativeCommandRuntime, EncodeSystem, and SubmitSystem are complete. CommandBuffer + BatchCommand[] + UploadCommand[] now produce NativeCommandBufferRef, then NativeSubmitCommand, with id + generation validation and no Vulkan API calls.
 
+  8B status (done): VulkanCommandRuntime is complete for real VkCommandPool and VkCommandBuffer lifecycle. It creates/destroys command pools, allocates/resolves/begins/ends/resets/releases command buffers behind NativeCommandBufferRef, keeps id + generation validation, and still does not record draw commands or submit queues.
+
 
 
   目标：把 BatchCommand 编码为 Vulkan command buffer。

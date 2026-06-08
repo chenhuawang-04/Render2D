@@ -88,6 +88,16 @@ render2d_apply_strict_warnings(render2d_encode_submit_system_test)
 
 add_test(NAME render2d.encode_submit_system COMMAND render2d_encode_submit_system_test)
 
+add_executable(render2d_vulkan_command_runtime_test
+    vulkan_command_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_command_runtime_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_command_runtime_test)
+
+add_test(NAME render2d.vulkan_command_runtime COMMAND render2d_vulkan_command_runtime_test)
+
 add_executable(render2d_temporary_ecs_storage_test
     temporary_ecs_storage_test.cpp
 )
@@ -107,5 +117,6 @@ add_test(NAME render2d.negative_non_pod_component
         -D SOURCE_FILE=${CMAKE_CURRENT_SOURCE_DIR}/negative_non_pod_component.cpp
         -D OUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/negative_non_pod_component.obj
         -D INCLUDE_DIR=${PROJECT_SOURCE_DIR}/include
+        -D EXTRA_INCLUDE_DIRS=${Vulkan_INCLUDE_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_compile_failure.cmake
 )

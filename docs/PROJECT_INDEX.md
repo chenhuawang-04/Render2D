@@ -69,6 +69,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/DescriptorRuntime.hpp` - CPU-side descriptor slice slot runtime.
 - `include/Render2D/Native/SwapchainRuntime.hpp` - CPU-side swapchain state slot runtime.
 - `include/Render2D/Native/CommandRuntime.hpp` - CPU-side native command buffer ref slot runtime.
+- `include/Render2D/Native/VulkanCommandRuntime.hpp` - Vulkan command pool and command buffer lifecycle runtime behind `NativeCommandBufferRef`.
 
 ### Memory and Storage
 
@@ -87,6 +88,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/native_runtime_skeleton_test.cpp` - Frame/device/queue/pipeline/descriptor/swapchain runtime skeleton lifecycle checks.
 - `tests/native_command_runtime_test.cpp` - Native command buffer ref slot lifecycle, stale-reference, and reuse checks.
 - `tests/encode_submit_system_test.cpp` - CPU-only EncodeSystem and SubmitSystem contract checks.
+- `tests/vulkan_command_runtime_test.cpp` - Optional Vulkan command pool / command buffer lifecycle smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
 - `tests/expect_compile_failure.cmake` - CMake script that validates negative compile tests.

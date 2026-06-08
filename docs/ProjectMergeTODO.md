@@ -51,6 +51,7 @@ Current runtime classes:
 - `NativeDescriptorRuntime`
 - `NativeSwapchainRuntime`
 - `NativeCommandRuntime`
+- `VulkanCommandRuntime`
 
 During host-engine merge:
 
@@ -62,7 +63,7 @@ During host-engine merge:
 
 The current native runtime and encode/submit skeletons do not call Vulkan. It only validates the component/runtime boundary and slot lifecycle semantics.
 
-Later Vulkan stages must attach real handles, MemoryCenter allocations, descriptor pools, swapchain creation, sync objects, and deferred destruction behind the existing `id + generation` contracts.
+Stage 8B already attaches real Vulkan command pool / command buffer lifetime behind `NativeCommandBufferRef`. Later Vulkan stages must still attach MemoryCenter allocations, descriptor pools, swapchain creation, sync objects, draw recording, queue submit, and deferred destruction behind the existing `id + generation` contracts.
 
 
 ## 5. Stage 8A is an encode/submit contract only
@@ -73,3 +74,14 @@ Later Vulkan stages must attach real handles, MemoryCenter allocations, descript
 - `NativeCommandBufferRef[]` plus `FrameSync` -> `NativeSubmitCommand`
 
 They do not call Vulkan and should remain replaceable by the host engine ECS stream wiring during merge.
+
+
+## 6. Stage 8B owns Vulkan command objects only
+
+`VulkanCommandRuntime` owns real `VkCommandPool` and `VkCommandBuffer` lifetimes. These Vulkan handles must not move into ECS components.
+
+During host-engine merge:
+
+- keep `NativeCommandBufferRef` in the host ECS;
+- keep `VkCommandPool` / `VkCommandBuffer` ownership in Render2D native runtime;
+- wire the host ECS streams into `EncodeSystem`, `SubmitSystem`, and later Vulkan recording systems.
