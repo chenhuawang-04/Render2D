@@ -1,4 +1,4 @@
-组件可以脱离实体存在。
+﻿组件可以脱离实体存在。
 
   ECS = component data streams + systems。
 
@@ -1303,11 +1303,13 @@
 
 
 
-  ## 阶段 4：基础系统链路
+  ## 阶段 4：基础系统链路（已完成）
 
 
 
   目标：实现纯 CPU component -> component 转换。
+
+  当前状态：TransformSystem、BoundsSystem、CullingSystem、CommandBuildSystem、BatchSystem 已完成；system 使用 std::span 作为非 owning 输入/输出边界，不依赖临时 Storage。
 
 
 
@@ -2010,6 +2012,7 @@
   9. Vulkan RAII 生命周期由 storage/runtime/system 处理。
 
   10. 性能先通过 Null CPU pipeline benchmark 验证，再进入 Vulkan。
+
 
 
 

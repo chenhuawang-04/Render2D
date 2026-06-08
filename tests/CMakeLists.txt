@@ -8,6 +8,16 @@ render2d_apply_strict_warnings(render2d_compile_smoke)
 
 add_test(NAME render2d.compile_smoke COMMAND render2d_compile_smoke)
 
+add_executable(render2d_cpu_system_pipeline_test
+    cpu_system_pipeline_test.cpp
+)
+target_link_libraries(render2d_cpu_system_pipeline_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_cpu_system_pipeline_test)
+
+add_test(NAME render2d.cpu_system_pipeline COMMAND render2d_cpu_system_pipeline_test)
+
 add_executable(render2d_temporary_ecs_storage_test
     temporary_ecs_storage_test.cpp
 )

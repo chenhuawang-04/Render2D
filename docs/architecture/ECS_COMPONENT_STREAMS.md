@@ -1,4 +1,4 @@
-# ECS Component Streams
+﻿# ECS Component Streams
 
 Render2D ?? component data streams + systems?Entity ???? identity/index??? component ??????
 
@@ -35,3 +35,8 @@ NativeSubmitCommand[]
 - System?? component stream ? component stream ??????
 
 `CommandBuffer<Provider, Dim>` ? ECS component????? POD descriptor???? frame/index/range??? command ??????? test-only temporary ECS storage???????? ECS ???
+
+## System 调用边界
+
+生产 System 使用 std::span 接收输入和输出 component stream。std::span 只作为函数参数边界，不允许作为 component 字段。这样 system 不依赖临时 Storage，也不依赖具体 ECS 实现。
+
