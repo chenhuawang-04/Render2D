@@ -38,6 +38,16 @@ render2d_apply_strict_warnings(render2d_native_components_test)
 
 add_test(NAME render2d.native_components COMMAND render2d_native_components_test)
 
+add_executable(render2d_native_runtime_contract_test
+    native_runtime_contract_test.cpp
+)
+target_link_libraries(render2d_native_runtime_contract_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_native_runtime_contract_test)
+
+add_test(NAME render2d.native_runtime_contract COMMAND render2d_native_runtime_contract_test)
+
 add_executable(render2d_temporary_ecs_storage_test
     temporary_ecs_storage_test.cpp
 )

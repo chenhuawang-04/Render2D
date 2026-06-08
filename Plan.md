@@ -1512,6 +1512,8 @@
 
   7A 当前状态：NativeComponents.hpp 和 native_components 测试已完成；仅定义 POD ECS component，不做 Vulkan runtime/storage/RAII。
 
+  7B-1 status: NativeTypes.hpp, NativeResult.hpp, and native_runtime_contract test are complete; this only defines runtime POD contracts and does not implement Vulkan resource tables.
+
 
 
   目标：建立 Vulkan 资源 POD component 与 runtime storage。
