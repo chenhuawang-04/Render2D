@@ -1365,11 +1365,13 @@
 
 
 
-  ## 阶段 5：CommandBuffer ECS 化
+  ## 阶段 5：CommandBuffer ECS 化（已完成）
 
 
 
   目标：把 CommandBuffer 定义成 POD component descriptor。
+
+  当前状态：CommandBufferBuildSystem、CommandBufferClearSystem、command_buffer_descriptor 测试已完成。
 
 
 
@@ -2012,6 +2014,7 @@
   9. Vulkan RAII 生命周期由 storage/runtime/system 处理。
 
   10. 性能先通过 Null CPU pipeline benchmark 验证，再进入 Vulkan。
+
 
 
 

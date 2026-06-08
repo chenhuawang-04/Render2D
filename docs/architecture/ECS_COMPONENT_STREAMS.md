@@ -40,3 +40,8 @@ NativeSubmitCommand[]
 
 生产 System 使用 std::span 接收输入和输出 component stream。std::span 只作为函数参数边界，不允许作为 component 字段。这样 system 不依赖临时 Storage，也不依赖具体 ECS 实现。
 
+
+## CommandBuffer descriptor
+
+CommandBuffer<Provider, Dim> 是 ECS component，但只保存 draw / batch / upload / native submit 的 offset/count range。它不拥有真实 command arrays。当前通过 CommandBufferBuildSystem 生成，通过 CommandBufferClearSystem 清零 descriptor。
+

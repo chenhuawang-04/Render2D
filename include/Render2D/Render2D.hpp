@@ -22,6 +22,7 @@
 #include "Render2D/Storage/StorageFwd.hpp"
 #include "Render2D/System/BatchSystem.hpp"
 #include "Render2D/System/BoundsSystem.hpp"
+#include "Render2D/System/CommandBufferSystem.hpp"
 #include "Render2D/System/CommandBuildSystem.hpp"
 #include "Render2D/System/CullingSystem.hpp"
 #include "Render2D/System/SystemFwd.hpp"

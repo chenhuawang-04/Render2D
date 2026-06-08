@@ -15,6 +15,12 @@ template<class Provider, class Dim>
 struct CommandBuildSystem;
 
 template<class Provider, class Dim>
+struct CommandBufferBuildSystem;
+
+template<class Provider, class Dim>
+struct CommandBufferClearSystem;
+
+template<class Provider, class Dim>
 struct BatchSystem;
 
 template<class Provider, class Dim>
