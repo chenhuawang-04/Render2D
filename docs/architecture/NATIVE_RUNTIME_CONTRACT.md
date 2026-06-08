@@ -38,10 +38,23 @@ Native Runtime APIs should return POD result values such as `NativeResult` or `N
 
 ## Not Implemented Yet
 
-Stage 7B-1 does not implement:
+Stage 7B-2 adds `NativeResourceRuntime<Provider, Dim>` as a CPU-side slot table skeleton for `BufferRef` and `ImageRef`.
 
-- resource slot arrays
-- free lists
+It implements:
+
+- buffer/image reserve
+- buffer/image placeholder reference creation
+- id + generation resolve
+- stale reference rejection
+- release
+- slot reuse with generation increment
+
+It still does not call Vulkan.
+
+## Not Implemented Yet
+
+The native runtime still does not implement:
+
 - deferred destroy queues
 - Vulkan object creation or destruction
 - MemoryCenter allocator integration

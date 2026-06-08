@@ -1514,6 +1514,8 @@
 
   7B-1 status: NativeTypes.hpp, NativeResult.hpp, and native_runtime_contract test are complete; this only defines runtime POD contracts and does not implement Vulkan resource tables.
 
+  7B-2 status: NativeResourceRuntime CPU-side slot table is complete for BufferRef/ImageRef; it supports reserve, create placeholder refs, resolve, stale-reference rejection, release, and id reuse with generation increment. No Vulkan API is called.
+
 
 
   目标：建立 Vulkan 资源 POD component 与 runtime storage。

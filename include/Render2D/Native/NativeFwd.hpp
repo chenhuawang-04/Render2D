@@ -36,6 +36,9 @@ template<class Provider, class Dim>
 class ResourceStorageRuntime;
 
 template<class Provider, class Dim>
+class NativeResourceRuntime;
+
+template<class Provider, class Dim>
 class DescriptorStorage;
 
 template<class Provider, class Dim>

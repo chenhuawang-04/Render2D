@@ -32,3 +32,15 @@ Reason:
 - IDs remain compact and directly indexable by native runtime tables.
 
 Native runtime owns actual Vulkan objects. ECS components only store POD references.
+
+## 3. NativeResourceRuntime is not ECS storage
+
+`NativeResourceRuntime<Provider, Dim>` is a backend runtime owner table skeleton, not an ECS component manager.
+
+It exists to validate and later own native resource slot lifetimes behind ECS-visible refs such as `BufferRef` and `ImageRef`.
+
+During host-engine merge:
+
+- keep ECS ownership of `BufferRef` / `ImageRef` components in the host ECS;
+- keep native resource lifetime, generation validation, and stale-reference rejection in Render2D native runtime;
+- do not replace native runtime tables with scene ECS storage.

@@ -60,6 +60,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/NativeComponents.hpp` — Native POD ECS components such as `BufferRef`, `ImageRef`, `PipelineRef`, `DeviceHandle`, and `SwapchainState`.
 - `include/Render2D/Native/NativeTypes.hpp` — Native runtime POD type contracts: status codes, object kinds, memory domains, IDs, generations, handles, and byte ranges.
 - `include/Render2D/Native/NativeResult.hpp` — POD result records for future native runtime APIs.
+- `include/Render2D/Native/ResourceRuntime.hpp` — CPU-side native resource runtime skeleton for `BufferRef` / `ImageRef` slot tables, id + generation validation, release, and reuse. It does not call Vulkan.
 
 ### Memory and Storage
 
@@ -74,6 +75,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/command_buffer_descriptor_test.cpp` — `CommandBuffer` descriptor build/clear behavior.
 - `tests/native_components_test.cpp` — Native POD ECS component contract checks.
 - `tests/native_runtime_contract_test.cpp` — Native runtime type/result POD contract checks.
+- `tests/native_resource_runtime_test.cpp` — CPU-side native resource runtime slot table, stale reference, and generation reuse checks.
 - `tests/temporary_ecs_storage_test.cpp` — Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` — Source used for expected compile failure.
 - `tests/expect_compile_failure.cmake` — CMake script that validates negative compile tests.

@@ -113,7 +113,13 @@ Current native runtime work has only defined type contracts:
 - `NativeResult`
 - `NativeCapacityResult`
 
-No Vulkan API calls or real resource ownership are implemented yet.
+The first CPU-side native runtime skeleton is also implemented:
+
+- `NativeResourceRuntime<Provider, Dim>`
+
+It manages `BufferRef` and `ImageRef` slot tables with id + generation validation, release, and slot reuse. It does not call Vulkan and does not own real GPU objects yet.
+
+No Vulkan API calls or real GPU resource ownership are implemented yet.
 
 ## Benchmarking
 
@@ -138,11 +144,11 @@ Implemented:
 - Null CPU benchmark
 - Native POD components
 - Native runtime POD type/result contracts
+- CPU-side `NativeResourceRuntime` slot table skeleton for `BufferRef` / `ImageRef`
 
 Not implemented yet:
 
-- Native resource slot tables
-- free lists and generation-based resolve APIs
+- complete Vulkan-backed native resource tables
 - deferred destroy queues
 - MemoryCenter-backed native allocation
 - Vulkan object creation/destruction

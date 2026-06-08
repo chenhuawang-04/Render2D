@@ -22,6 +22,7 @@
 #include "Render2D/Native/NativeFwd.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 #include "Render2D/Native/NativeTypes.hpp"
+#include "Render2D/Native/ResourceRuntime.hpp"
 #include "Render2D/Storage/StorageFwd.hpp"
 #include "Render2D/System/BatchSystem.hpp"
 #include "Render2D/System/BoundsSystem.hpp"
