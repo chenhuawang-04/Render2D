@@ -1,51 +1,29 @@
 # Render2D Architecture
 
-Render2D is a C++23, component-first, Vulkan-native rendering module. The current implementation intentionally focuses on data contracts, CPU-side systems, native POD references, and benchmarkable pipeline behavior before integrating real Vulkan runtime ownership.
+Render2D is a C++23, component-first, Vulkan-native rendering module. The current implementation focuses on strict data contracts, CPU-side systems, native POD references, and benchmarkable pipeline behavior before integrating real Vulkan object creation.
 
 ## Core principles
 
-1. **ECS owns components.** All render data records are ECS components, including derived records such as `VisibleItem`, `DrawCommand`, `BatchCommand`, `UploadCommand`, and `NativeSubmitCommand`.
-2. **Components are Strict POD.** Components must be trivial, standard-layout, trivially copyable, and aggregate. They do not own resources and do not contain `std::string`, `std::vector`, `std::span`, RAII wrappers, constructors, destructors, or virtual functions.
-3. **Systems do not own storage.** Production systems consume and write component streams through `std::span`. They do not depend on the temporary test ECS storage.
-4. **Provider/Dim are compile-time tags.** Current valid domain is `VulkanNativeProvider + Dim2`.
-5. **Native runtime owns backend objects.** ECS stores POD references such as `BufferRef` or `ImageRef`; future native runtime code owns actual Vulkan objects and lifetimes.
+1. **ECS owns components.** All render data records are ECS components, including `VisibleItem`, `DrawCommand`, `BatchCommand`, `UploadCommand`, and `NativeSubmitCommand`.
+2. **Components are Strict POD.** Components are trivial, standard-layout, trivially copyable, and aggregate. They do not own resources and do not contain `std::string`, `std::vector`, `std::span`, RAII wrappers, constructors, destructors, or virtual functions.
+3. **Systems do not own ECS storage.** Production systems consume and write component streams through non-owning boundaries such as `std::span`.
+4. **Provider/Dim are compile-time tags.** The current valid domain is `VulkanNativeProvider + Dim2`.
+5. **Native runtime owns backend lifetimes.** ECS stores POD handles/IDs. Runtime tables own and validate backend slots behind those refs.
 
 ## Current data pipeline
 
 ```text
-Transform[]
-Sprite[]
-Text[]
-Camera[]
-LocalBounds[]
-VisibilityMask[]
-    ->
-TransformSystem
-    ->
-WorldTransform[]
-    ->
-BoundsSystem
-    ->
-WorldBounds[]
-    ->
-CullingSystem
-    ->
-VisibleItem[]
-    ->
-CommandBuildSystem
-    ->
-DrawCommand[]
-    ->
-BatchSystem
-    ->
-BatchCommand[]
-    ->
-CommandBufferBuildSystem
-    ->
-CommandBuffer[]
+Transform[] / Sprite[] / Text[] / Camera[]
+    -> TransformSystem
+    -> BoundsSystem
+    -> CullingSystem
+    -> CommandBuildSystem
+    -> BatchSystem
+    -> CommandBufferBuildSystem
+    -> CommandBuffer[]
 ```
 
-The current pipeline is CPU-only. It does not create Vulkan command buffers or GPU resources.
+The current pipeline is CPU-only. It does not encode Vulkan command buffers or create GPU objects.
 
 ## Component layer
 
@@ -55,7 +33,7 @@ The component layer defines Strict POD ECS records:
 - Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`.
 - Command components: `DrawCommand`, `BatchCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
-- Native resource references: `BufferRef`, `ImageRef`, `PipelineRef`, `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `UploadSlice`.
+- Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `PipelineRef`, `ImageRef`, `BufferRef`, `UploadSlice`.
 
 Every supported component is registered through `ComponentTraits` and checked by `SupportedRenderComponent`.
 
@@ -74,17 +52,11 @@ This keeps systems reusable when the temporary test ECS is replaced by the host 
 
 ## Temporary test ECS
 
-The repository includes test-only storage under:
+The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration.
 
-```text
-tests/support/
-```
+## Native runtime skeleton
 
-This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration. This constraint is also tracked in `docs/ProjectMergeTODO.md`.
-
-## Native runtime direction
-
-Native references exposed to ECS use compact IDs and generation counters:
+Native references exposed to ECS use compact IDs plus generation counters:
 
 ```text
 resource_id + generation
@@ -93,33 +65,25 @@ resource_id + generation
 Examples:
 
 ```text
-BufferRef::buffer_id + BufferRef::generation
-ImageRef::image_id + ImageRef::generation
+DeviceHandle::device_id + DeviceHandle::generation
+QueueHandle::queue_id + QueueHandle::generation
+SwapchainState::swapchain_id + SwapchainState::generation
 PipelineRef::pipeline_id + PipelineRef::generation
+ImageRef::image_id + ImageRef::generation
+BufferRef::buffer_id + BufferRef::generation
+DescriptorSlice::descriptor_set_id + DescriptorSlice::generation
 ```
 
-The future Native Runtime will use those IDs to resolve into backend-owned slot tables. Generation checks prevent stale ECS references from accidentally resolving to reused native resources.
+Implemented CPU-side runtime skeletons:
 
-Current native runtime work has only defined type contracts:
+- `NativeFrameRuntime` - frame-in-flight slot rotation and `FrameSync` output.
+- `NativeDeviceRuntime` - device/queue handle slot tables.
+- `NativeResourceRuntime` - buffer/image reference slot tables.
+- `NativePipelineRuntime` - pipeline reference slot table.
+- `NativeDescriptorRuntime` - descriptor slice slot table.
+- `NativeSwapchainRuntime` - swapchain state slot table and resize generation bump.
 
-- `NativeStatusCode`
-- `NativeObjectKind`
-- `NativeMemoryDomain`
-- `NativeHandle`
-- `NativeId`
-- `NativeGeneration`
-- `NativeResourceKey`
-- `NativeByteRange`
-- `NativeResult`
-- `NativeCapacityResult`
-
-The first CPU-side native runtime skeleton is also implemented:
-
-- `NativeResourceRuntime<Provider, Dim>`
-
-It manages `BufferRef` and `ImageRef` slot tables with id + generation validation, release, and slot reuse. It does not call Vulkan and does not own real GPU objects yet.
-
-No Vulkan API calls or real GPU resource ownership are implemented yet.
+These runtime classes are not ECS storage. They own backend slot lifecycle metadata, validate generations, reject stale references, and reuse slots. They still do not call Vulkan and do not allocate real GPU resources.
 
 ## Benchmarking
 
@@ -144,16 +108,14 @@ Implemented:
 - Null CPU benchmark
 - Native POD components
 - Native runtime POD type/result contracts
-- CPU-side `NativeResourceRuntime` slot table skeleton for `BufferRef` / `ImageRef`
+- CPU-side Stage 7 native runtime skeletons for frame, device, queue, buffer, image, pipeline, descriptor, and swapchain records
 
 Not implemented yet:
 
-- complete Vulkan-backed native resource tables
-- deferred destroy queues
-- MemoryCenter-backed native allocation
 - Vulkan object creation/destruction
-- descriptor runtime
-- upload runtime
-- command runtime
-- swapchain runtime
+- MemoryCenter-backed Vulkan allocation
+- deferred destroy queues
+- real descriptor pool/set allocation
+- upload ring implementation
+- command encoding/runtime
 - Vulkan encoder and submit systems

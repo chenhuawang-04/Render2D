@@ -1516,6 +1516,8 @@
 
   7B-2 status: NativeResourceRuntime CPU-side slot table is complete for BufferRef/ImageRef; it supports reserve, create placeholder refs, resolve, stale-reference rejection, release, and id reuse with generation increment. No Vulkan API is called.
 
+  7B-3 status (done): NativeFrameRuntime / NativeDeviceRuntime / NativePipelineRuntime / NativeDescriptorRuntime / NativeSwapchainRuntime CPU-side skeletons are complete; covered frame slot rotation, device/queue, pipeline, descriptor, and swapchain reserve/create/resolve/release/reuse with generation stale checks. This stage still calls no Vulkan API.
+
 
 
   目标：建立 Vulkan 资源 POD component 与 runtime storage。

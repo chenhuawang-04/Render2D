@@ -39,6 +39,21 @@ template<class Provider, class Dim>
 class NativeResourceRuntime;
 
 template<class Provider, class Dim>
+class NativeFrameRuntime;
+
+template<class Provider, class Dim>
+class NativeDescriptorRuntime;
+
+template<class Provider, class Dim>
+class NativePipelineRuntime;
+
+template<class Provider, class Dim>
+class NativeDeviceRuntime;
+
+template<class Provider, class Dim>
+class NativeSwapchainRuntime;
+
+template<class Provider, class Dim>
 class DescriptorStorage;
 
 template<class Provider, class Dim>

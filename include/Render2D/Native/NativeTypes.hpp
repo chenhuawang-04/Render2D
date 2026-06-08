@@ -32,6 +32,7 @@ enum class NativeObjectKind : U8 {
     Fence = 10,
     CommandPool = 11,
     CommandBuffer = 12,
+    Frame = 13,
 };
 
 enum class NativeMemoryDomain : U8 {

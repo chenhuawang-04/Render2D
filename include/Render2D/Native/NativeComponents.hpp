@@ -15,6 +15,8 @@ struct DeviceHandle {
 template<class Provider, class Dim>
 struct QueueHandle {
     U64 handle;
+    U32 queue_id;
+    U32 generation;
     U32 queue_family_index;
     U32 queue_index;
     U32 flags;
@@ -23,6 +25,7 @@ struct QueueHandle {
 template<class Provider, class Dim>
 struct SwapchainState {
     U64 handle;
+    U32 swapchain_id;
     U32 image_first;
     U32 image_count;
     U32 width;
