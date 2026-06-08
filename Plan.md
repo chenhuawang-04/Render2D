@@ -1,4 +1,4 @@
-﻿组件可以脱离实体存在。
+组件可以脱离实体存在。
 
   ECS = component data streams + systems。
 
@@ -1435,7 +1435,10 @@
 
 
 
-  ## 阶段 6：Null CPU Benchmark
+  ## 阶段 6：Null CPU Benchmark（已完成）
+
+  当前状态：render2d_null_cpu_bench 已完成；覆盖 Transform、Bounds、Culling、CommandBuild、Batch、CommandBufferBuild；支持 --sprites 和 --frames；启用 RENDER2D_BUILD_BENCHMARKS 后进入 CTest smoke。
+
 
 
 
