@@ -28,6 +28,16 @@ render2d_apply_strict_warnings(render2d_command_buffer_descriptor_test)
 
 add_test(NAME render2d.command_buffer_descriptor COMMAND render2d_command_buffer_descriptor_test)
 
+add_executable(render2d_native_components_test
+    native_components_test.cpp
+)
+target_link_libraries(render2d_native_components_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_native_components_test)
+
+add_test(NAME render2d.native_components COMMAND render2d_native_components_test)
+
 add_executable(render2d_temporary_ecs_storage_test
     temporary_ecs_storage_test.cpp
 )

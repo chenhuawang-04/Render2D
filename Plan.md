@@ -1508,7 +1508,9 @@
 
 
 
-  ## 阶段 7：Vulkan Native Resource Components
+  ## 阶段 7：Vulkan Native Resource Components（7A Native POD Components 已完成）
+
+  7A 当前状态：NativeComponents.hpp 和 native_components 测试已完成；仅定义 POD ECS component，不做 Vulkan runtime/storage/RAII。
 
 
 

@@ -18,6 +18,7 @@
 #include "Render2D/Meta/Dim.hpp"
 #include "Render2D/Meta/Domain.hpp"
 #include "Render2D/Meta/Provider.hpp"
+#include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeFwd.hpp"
 #include "Render2D/Storage/StorageFwd.hpp"
 #include "Render2D/System/BatchSystem.hpp"

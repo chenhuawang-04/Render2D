@@ -1,25 +1,47 @@
 # Vulkan Native Only
 
-Render2D ????? `VulkanNativeProvider + Dim2`?Provider ??? OpenGL?D3D?Metal ????????
+Render2D currently supports only `VulkanNativeProvider + Dim2`. The Provider layer does not abstract OpenGL, D3D, Metal, or a generic backend.
 
-## Native component ??
+## Stage 7A: Native POD ECS Components
 
-Provider native ?????? POD component ???????? handle/index/slice/state?????? `Provider` ??????????? Vulkan?
+Stage 7A defines Vulkan-native state as Strict POD ECS components only. These components store IDs, indices, generation values, integer handle values, ranges, flags, and sizes.
 
-???
+Implemented components:
 
 ```cpp
-BufferRef<VulkanNativeProvider, Dim2>
-ImageRef<VulkanNativeProvider, Dim2>
-DescriptorSlice<VulkanNativeProvider, Dim2>
-UploadRingSlice<VulkanNativeProvider, Dim2>
-FenceState<VulkanNativeProvider, Dim2>
+DeviceHandle<Provider, Dim>
+QueueHandle<Provider, Dim>
+SwapchainState<Provider, Dim>
+FrameSync<Provider, Dim>
+PipelineRef<Provider, Dim>
+ImageRef<Provider, Dim>
+BufferRef<Provider, Dim>
+UploadSlice<Provider, Dim>
 ```
 
-?????????????? native runtime / resource storage / system ?????? component?
+Already-existing native/frame state components remain valid:
 
-## ????
+```cpp
+DescriptorSlice<Provider, Dim>
+UploadRingSlice<Provider, Dim>
+FenceState<Provider, Dim>
+```
 
-- `MemoryCenterNew`??? `Center.Memory.Headers` ???
-- `fast_math`??? `fast_math` ???POD ??? smoke test ????
-- Vulkan SDK??????????compile smoke ?? `<vulkan/vulkan.h>`?
+## Ownership Rule
+
+Native components do not own Vulkan resources. A handle field is only a value record. Components must not call `vkDestroy*`, allocate memory, hold RAII wrappers, or manage synchronization lifetimes.
+
+Resource creation, destruction, reuse, descriptor allocation, upload rings, swapchain recreation, and frame-in-flight synchronization belong to later native runtime/storage work.
+
+## Not Implemented in 7A
+
+Stage 7A intentionally does not implement:
+
+- `VkBuffer` creation
+- `VkImage` creation
+- `VkPipeline` creation
+- descriptor allocation
+- swapchain creation
+- command pools
+- Vulkan validation tests
+- MemoryCenter Vulkan allocation integration
