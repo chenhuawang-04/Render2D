@@ -459,10 +459,23 @@ public:
         const BufferRef<Provider, Dim>& destination_,
         U64 byte_count_) const noexcept
     {
+        return recordCopyBuffer(command_buffer_, source_, destination_, 0U, 0U, byte_count_);
+    }
+
+    NativeResult recordCopyBuffer(
+        VkCommandBuffer command_buffer_,
+        const BufferRef<Provider, Dim>& source_,
+        const BufferRef<Provider, Dim>& destination_,
+        U64 source_offset_,
+        U64 destination_offset_,
+        U64 byte_count_) const noexcept
+    {
         if (command_buffer_ == VK_NULL_HANDLE ||
             byte_count_ == 0U ||
-            byte_count_ > source_.byte_size ||
-            byte_count_ > destination_.byte_size) {
+            !isLiveBufferRef(source_) ||
+            !isLiveBufferRef(destination_) ||
+            !isValidBufferRange(source_, source_offset_, byte_count_) ||
+            !isValidBufferRange(destination_, destination_offset_, byte_count_)) {
             return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::Buffer, destination_.buffer_id, destination_.generation);
         }
 
@@ -478,11 +491,43 @@ public:
         }
 
         const VkBufferCopy copy_region{
-            .srcOffset = 0U,
-            .dstOffset = 0U,
+            .srcOffset = source_offset_,
+            .dstOffset = destination_offset_,
             .size = byte_count_,
         };
         vkCmdCopyBuffer(command_buffer_, source_buffer, destination_buffer, 1U, &copy_region);
+        return makeResult(NativeStatusCode::Ok, NativeObjectKind::Buffer, destination_.buffer_id, destination_.generation);
+    }
+
+    NativeResult recordCopyNativeBufferToBuffer(
+        VkCommandBuffer command_buffer_,
+        VkBuffer source_buffer_,
+        U64 source_offset_,
+        const BufferRef<Provider, Dim>& destination_,
+        U64 destination_offset_,
+        U64 byte_count_) const noexcept
+    {
+        if (command_buffer_ == VK_NULL_HANDLE ||
+            source_buffer_ == VK_NULL_HANDLE ||
+            byte_count_ == 0U ||
+            source_offset_ > kMaxU64 - byte_count_ ||
+            !isLiveBufferRef(destination_) ||
+            !isValidBufferRange(destination_, destination_offset_, byte_count_)) {
+            return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::Buffer, destination_.buffer_id, destination_.generation);
+        }
+
+        VkBuffer destination_buffer = VK_NULL_HANDLE;
+        const NativeResult result = resolveNativeBuffer(destination_, destination_buffer);
+        if (result.code != NativeStatusCode::Ok) {
+            return result;
+        }
+
+        const VkBufferCopy copy_region{
+            .srcOffset = source_offset_,
+            .dstOffset = destination_offset_,
+            .size = byte_count_,
+        };
+        vkCmdCopyBuffer(command_buffer_, source_buffer_, destination_buffer, 1U, &copy_region);
         return makeResult(NativeStatusCode::Ok, NativeObjectKind::Buffer, destination_.buffer_id, destination_.generation);
     }
 
@@ -663,6 +708,7 @@ private:
     };
 
     static constexpr U32 kFirstGeneration = 1U;
+    static constexpr U64 kMaxU64 = 0xFFFFFFFFFFFFFFFFULL;
 
     static NativeResult makeResult(
         NativeStatusCode code_,

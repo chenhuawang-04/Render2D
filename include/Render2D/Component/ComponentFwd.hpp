@@ -24,6 +24,9 @@ template<class Provider, class Dim>
 struct SpriteDrawPacket;
 
 template<class Provider, class Dim>
+struct SpriteInstanceUploadCommand;
+
+template<class Provider, class Dim>
 struct Text;
 
 template<class Provider, class Dim>

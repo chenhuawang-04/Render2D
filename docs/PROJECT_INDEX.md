@@ -36,12 +36,12 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Component/ComponentTraits.hpp` - Supported component trait and `SupportedRenderComponent` concept.
 - `include/Render2D/Component/Transform.hpp` - `Transform`, `WorldTransform`, and `TransformDirtyItem`; derived transforms store fast_math `Mat3`.
 - `include/Render2D/Component/Bounds.hpp` - `LocalBounds` and `WorldBounds`; bounds store fast_math `Aabb2`.
-- `include/Render2D/Component/Sprite.hpp` - Sprite-facing components, GPU-facing sprite POD records, and render references.
+- `include/Render2D/Component/Sprite.hpp` - Sprite-facing components, GPU-facing sprite POD records, sprite instance upload command, and render references.
 - `include/Render2D/Component/Text.hpp` - Text input, text dirty state/range, UTF-8 slice, font atlas, glyph run, and glyph instance POD components.
 - `include/Render2D/Component/Camera.hpp` - Camera input component.
 - `include/Render2D/Component/Command.hpp` - Visibility, sorting, draw command, and `CommandBuffer` descriptor components.
 - `include/Render2D/Component/Batch.hpp` - `BatchCommand`.
-- `include/Render2D/Component/Upload.hpp` - `UploadCommand` and `NativeSubmitCommand`.
+- `include/Render2D/Component/Upload.hpp` - `UploadCommand`, `NativeSubmitCommand`, and upload kind constants.
 - `include/Render2D/Component/Frame.hpp` - Frame/native state components such as `FrameIndex`, `DescriptorSlice`, and `FenceState`.
 
 ### System
@@ -51,7 +51,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/BoundsSystem.hpp` - Converts local bounds plus world transforms to world bounds, including dirty-index updates.
 - `include/Render2D/System/CullingSystem.hpp` - Produces `VisibleItem[]` using camera bounds and visibility masks.
 - `include/Render2D/System/CommandBuildSystem.hpp` - Builds `DrawCommand[]` from visible items and sprites.
-- `include/Render2D/System/SpriteInstanceSystem.hpp` - Stage 12B component-stream system building `SpriteInstance[]` from draw commands, world transforms, and sprites.
+- `include/Render2D/System/SpriteInstanceSystem.hpp` - Stage 12B/12C component-stream systems building `SpriteInstance[]` and sprite instance upload commands.
 - `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands.
 - `include/Render2D/System/SortKey.hpp` - Packed draw sort/batch key helpers.
 - `include/Render2D/System/SortSystem.hpp` - Stable radix sort over `DrawCommand.sort_key` using caller-owned scratch spans.
@@ -87,6 +87,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanPipelineRuntime.hpp` - Vulkan shader module, pipeline cache, pipeline layout, and dynamic-rendering pipeline runtime.
 - `include/Render2D/Native/VulkanPresentRuntime.hpp` - Stage 11C/11E acquire/present runtime using `vkAcquireNextImageKHR`, `vkQueuePresentKHR`, result mapping, and swapchain image-index validation.
 - `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - MemoryCenter-backed persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
+- `include/Render2D/Native/VulkanSpriteInstanceUploadRuntime.hpp` - Stage 12C stateless upload bridge from `SpriteInstance[]` to managed GPU buffers through the upload ring.
 - `include/Render2D/Native/VulkanRenderEncoder.hpp` - Dynamic rendering encoder for direct and indirect draw recording.
 
 ### Memory and Storage
@@ -106,6 +107,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/draw_sort_system_test.cpp` - Packed sort key, radix draw sort, batch merge, and collision-safety coverage.
 - `tests/sprite_instance_system_test.cpp` - Stage 12B Sprite GPU instance component contract and build-system coverage.
+- `tests/sprite_instance_upload_system_test.cpp` - Stage 12C typed sprite instance upload command conversion coverage.
 - `tests/upload_descriptor_compaction_test.cpp` - Stage 10I upload coalescing, descriptor compaction, in-place, capacity, invalid-input, and unsupported-domain coverage.
 - `tests/transform_dirty_system_test.cpp` - Sparse dirty transform/bounds update coverage.
 - `tests/bounds_system_test.cpp` - fast_math AABB transform regression coverage for translation, scale, rotation, shear, and error paths.
@@ -131,6 +133,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_pipeline_runtime_test.cpp` - Optional Vulkan shader module, pipeline cache, and dynamic-rendering pipeline lifecycle smoke test.
 - `tests/vulkan_present_runtime_test.cpp` - Stage 11C/11E headless acquire/present runtime tests for invalid init, stale refs, result mapping, invalid commands, and unsupported domains.
 - `tests/vulkan_upload_ring_runtime_test.cpp` - Optional Vulkan persistent upload ring frame-slot reuse smoke test.
+- `tests/vulkan_sprite_instance_upload_runtime_test.cpp` - Optional Stage 12C upload-ring to GPU buffer copy/readback smoke test for `SpriteInstance[]`.
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
@@ -174,6 +177,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-stage11-vulkan-acquire-present-runtime.md` - ADR for Stage 11C Vulkan acquire/present runtime ownership and ECS sync-generation records.
 - `docs/adr/2026-06-09-stage11-acquire-present-state-flow.md` - ADR for Stage 11E acquire-to-present component flow and headless result mapping coverage.
 - `docs/adr/2026-06-09-stage12-sprite-gpu-instance-contract.md` - ADR for Stage 12A/12B sprite GPU-facing POD records and instance build system.
+- `docs/adr/2026-06-09-stage12-sprite-instance-upload-path.md` - ADR for Stage 12C MemoryCenter-backed sprite instance upload path.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

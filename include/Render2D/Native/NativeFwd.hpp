@@ -123,6 +123,9 @@ template<class Provider, class Dim>
 class VulkanUploadRingRuntime;
 
 template<class Provider, class Dim>
+struct VulkanSpriteInstanceUploadRuntime;
+
+template<class Provider, class Dim>
 class DescriptorStorage;
 
 template<class Provider, class Dim>

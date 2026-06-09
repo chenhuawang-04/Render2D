@@ -3,6 +3,7 @@
 #include "Render2D/Component/Command.hpp"
 #include "Render2D/Component/Sprite.hpp"
 #include "Render2D/Component/Transform.hpp"
+#include "Render2D/Component/Upload.hpp"
 #include "Render2D/Core/Result.hpp"
 #include "Render2D/Meta/Domain.hpp"
 
@@ -89,6 +90,90 @@ struct SpriteInstanceBuildSystem {
                 .write_count = draw_count,
             };
         }
+    }
+};
+
+template<class Provider, class Dim>
+struct SpriteInstanceUploadSystem {
+    static SystemResult run(
+        std::span<const SpriteInstanceUploadCommand<Provider, Dim>> sprite_upload_commands_,
+        std::span<const SpriteInstance<Provider, Dim>> sprite_instances_,
+        std::span<UploadCommand<Provider, Dim>> upload_commands_) noexcept
+    {
+        if constexpr (!SupportedRenderDomain<Provider, Dim>) {
+            return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
+        } else {
+            if (!isSystemResultCountRepresentable(sprite_upload_commands_.size()) ||
+                !isSystemResultCountRepresentable(sprite_instances_.size()) ||
+                !isSystemResultCountRepresentable(upload_commands_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
+            if (sprite_upload_commands_.empty()) {
+                return {.code = SystemStatusCode::Ok, .read_count = 0U, .write_count = 0U};
+            }
+
+            U32 write_count = 0U;
+            for (Usize read_index = 0U; read_index < sprite_upload_commands_.size(); ++read_index) {
+                if (write_count >= upload_commands_.size()) {
+                    return {
+                        .code = SystemStatusCode::InsufficientCapacity,
+                        .read_count = static_cast<U32>(read_index),
+                        .write_count = write_count,
+                    };
+                }
+
+                const auto& command = sprite_upload_commands_[read_index];
+                U64 source_offset = 0U;
+                U64 byte_count = 0U;
+                if (!makeInstanceByteRange(command, sprite_instances_.size(), source_offset, byte_count)) {
+                    return {
+                        .code = SystemStatusCode::InvalidInput,
+                        .read_count = static_cast<U32>(read_index),
+                        .write_count = write_count,
+                    };
+                }
+
+                upload_commands_[write_count] = {
+                    .resource_id = command.destination_buffer_id,
+                    .source_offset = source_offset,
+                    .destination_offset = command.destination_offset,
+                    .byte_count = byte_count,
+                    .upload_kind = kUploadKindSpriteInstance,
+                    .flags = command.flags,
+                };
+                ++write_count;
+            }
+
+            return {
+                .code = SystemStatusCode::Ok,
+                .read_count = static_cast<U32>(sprite_upload_commands_.size()),
+                .write_count = write_count,
+            };
+        }
+    }
+
+private:
+    static constexpr U64 kMaxU64 = 0xFFFFFFFFFFFFFFFFULL;
+    static constexpr U64 kInstanceByteSize = static_cast<U64>(sizeof(SpriteInstance<Provider, Dim>));
+
+    static bool makeInstanceByteRange(
+        const SpriteInstanceUploadCommand<Provider, Dim>& command_,
+        Usize instance_count_,
+        U64& out_source_offset_,
+        U64& out_byte_count_) noexcept
+    {
+        if (command_.instance_count == 0U ||
+            command_.destination_generation == 0U ||
+            command_.instance_first > instance_count_ ||
+            command_.instance_count > instance_count_ - command_.instance_first ||
+            static_cast<U64>(command_.instance_first) > kMaxU64 / kInstanceByteSize ||
+            static_cast<U64>(command_.instance_count) > kMaxU64 / kInstanceByteSize) {
+            return false;
+        }
+
+        out_source_offset_ = static_cast<U64>(command_.instance_first) * kInstanceByteSize;
+        out_byte_count_ = static_cast<U64>(command_.instance_count) * kInstanceByteSize;
+        return command_.destination_offset <= kMaxU64 - out_byte_count_;
     }
 };
 

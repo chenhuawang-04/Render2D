@@ -381,3 +381,15 @@ Merge rule:
 - the 2D affine data is stored as six floats, not a runtime object and not a Vulkan handle;
 - GPU upload must treat `SpriteInstance[]` as source component data and use MemoryCenter-backed buffers in the runtime path;
 - pipeline/descriptors/shaders remain runtime concerns, not ECS ownership.
+
+## 30. Sprite instance upload is typed ECS command plus runtime copy
+
+Stage 12C adds `SpriteInstanceUploadCommand`, `SpriteInstanceUploadSystem`, and `VulkanSpriteInstanceUploadRuntime`.
+
+Merge rule:
+
+- host ECS owns `SpriteInstanceUploadCommand[]` and `UploadCommand[]`;
+- each sprite upload command carries destination buffer id + generation, not a raw owning GPU allocation;
+- `SpriteInstanceUploadSystem` only computes byte ranges and generic upload descriptors; it does not allocate or call Vulkan;
+- `VulkanSpriteInstanceUploadRuntime` writes to the MemoryCenter-backed upload ring and records a copy into a `VulkanResourceRuntime` managed buffer;
+- direct Vulkan memory allocation/mapping remains forbidden in the sprite path.

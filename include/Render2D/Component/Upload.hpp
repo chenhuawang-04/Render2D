@@ -5,6 +5,8 @@
 
 namespace Render2D {
 
+inline constexpr U32 kUploadKindSpriteInstance = 0x5350494EU;
+
 template<class Provider, class Dim>
 struct UploadCommand {
     U32 resource_id;

@@ -53,6 +53,7 @@ static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Sprite<Provider,
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteVertex<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteInstance<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteDrawPacket<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteInstanceUploadCommand<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Text<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TextState<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TextDirtyRange<Provider, Dim>>);

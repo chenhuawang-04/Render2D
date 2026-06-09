@@ -36,10 +36,15 @@ Text[] + TextState[] + FontAtlasRef[]
 DrawCommand[]
     -> DrawSortSystem (optional)
     -> DrawCommand[]
+    -> SpriteInstanceBuildSystem
+    -> SpriteInstance[]
     -> BatchSystem
     -> BatchCommand[]
 
 Native-bound side streams:
+SpriteInstanceUploadCommand[] + SpriteInstance[]
+    -> SpriteInstanceUploadSystem
+    -> UploadCommand[]
 UploadCommand[]
     -> UploadCoalesceSystem
     -> UploadCommand[]
@@ -64,7 +69,7 @@ The component layer defines Strict POD ECS records:
 
 - Scene/input components: `Transform`, `Sprite`, `Text`, `Utf8Slice`, `Camera`, `LocalBounds`, `VisibilityMask`, `RenderLayer`, `MaterialRef`, `TextureRef`, `FontRef`, `FontAtlasRef`.
 - Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`.
-- Command components: `DrawCommand`, `BatchCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
+- Command components: `DrawCommand`, `BatchCommand`, `SpriteInstanceUploadCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
 - Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `BufferRef`, `UploadSlice`.
 
@@ -98,6 +103,8 @@ Stage 10I adds allocation-free stream compaction for native-bound data. `UploadC
 Stage 10J adds `VulkanThreadCommandRuntime`, a Vulkan-native runtime that owns one command pool per runtime thread slot. It allocates command buffers from the requested thread pool and returns ordinary `NativeCommandBufferRef` id/generation records; thread ownership stays in runtime metadata and does not enter ECS components.
 
 Stage 12A/12B starts the production sprite GPU path. `SpriteVertex`, `SpriteInstance`, and `SpriteDrawPacket` are Strict POD component records. `SpriteInstanceBuildSystem` converts `DrawCommand[]`, `WorldTransform[]`, and `Sprite[]` into `SpriteInstance[]`, writing each record at `DrawCommand::instance_first` so sorted draw commands can keep stable instance references. It does not allocate and does not call Vulkan.
+
+Stage 12C adds the sprite instance upload path. `SpriteInstanceUploadCommand` is an ECS-owned POD command carrying an instance range plus destination buffer id/generation, destination offset, and frame index. `SpriteInstanceUploadSystem` converts those typed commands into generic `UploadCommand[]` for coalescing/range description. `VulkanSpriteInstanceUploadRuntime` then allocates and writes a MemoryCenter-backed upload-ring slice and records a copy from the upload ring into the managed GPU buffer through `VulkanResourceRuntime`.
 
 ## Temporary test ECS
 
@@ -148,6 +155,7 @@ Implemented Vulkan-backed runtimes:
 - `VulkanPipelineRuntime` - shader module creation, pipeline cache, dynamic-rendering pipeline layout/pipeline creation.
 - `VulkanPresentRuntime` - swapchain image acquire and queue present using resolved `SwapchainState`, `PresentCommand`, and `FrameSync`.
 - `VulkanUploadRingRuntime` - MemoryCenter-backed persistent mapped, frame-segmented upload ring; slices are not reusable until the frame is completed.
+- `VulkanSpriteInstanceUploadRuntime` - stateless bridge that uploads `SpriteInstance[]` through the upload ring into a managed GPU buffer.
 - `VulkanDynamicRenderEncoder` - records dynamic rendering, pipeline bind, direct draw, and indirect draw.
 
 These runtime classes are not ECS storage. They own backend slot lifecycle metadata, validate generations, reject stale references, reuse slots, and keep Vulkan handles out of ECS components.
@@ -204,12 +212,13 @@ Implemented:
 - Stage 11E acquire/present state coverage: `PresentCommandBuildSystem`, acquire/present result mapping tests, and present-side swapchain image-index validation
 - Stage 11F native frame-loop closeout: final documentation, merge guidance, and Debug/Perf verification
 - Stage 12A/12B sprite GPU instance contracts: `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, and `SpriteInstanceBuildSystem`
+- Stage 12C sprite instance GPU upload path: `SpriteInstanceUploadCommand`, `SpriteInstanceUploadSystem`, and `VulkanSpriteInstanceUploadRuntime`
 
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
 - host-engine window-visible capture automation
-- Sprite instance GPU upload, descriptor layout, pipeline, and real offscreen sprite draw
+- Sprite descriptor layout, pipeline, and real offscreen sprite draw
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
 - production texture atlas / sampled-image descriptor policy
 - Vulkan text draw integration

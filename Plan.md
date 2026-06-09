@@ -2180,7 +2180,7 @@
 
 - [x] 12A：Sprite GPU-facing POD component contracts 完成
 - [x] 12B：`SpriteInstanceBuildSystem` 完成
-- [ ] 12C：MemoryCenter-backed Sprite instance GPU upload path
+- [x] 12C：MemoryCenter-backed Sprite instance GPU upload path 完成
 - [ ] 12D：Sprite pipeline / descriptor layout
 - [ ] 12E：offscreen real sprite render smoke
 - [ ] 12F：第十二阶段文档与验证收口
@@ -2192,4 +2192,13 @@
 - `SpriteInstanceBuildSystem` 输入 `DrawCommand[]`、`WorldTransform[]`、`Sprite[]`；
 - 输出 `SpriteInstance[]`，按 `DrawCommand::instance_first` 写入，支持 sorted draw command 仍引用原 instance slot；
 - 系统只做 component -> component 转换，不分配、不调用 Vulkan、不持有 ECS storage；
-- 当前完成 CPU-side GPU instance 数据准备，真实 GPU upload / pipeline / offscreen sprite draw 留到 12C-12E。
+- 当前完成 CPU-side GPU instance 数据准备，真实 GPU pipeline / offscreen sprite draw 留到 12D-12E。
+
+12C 边界说明：
+
+- 新增 `SpriteInstanceUploadCommand`，是 Strict POD component，保存 instance range、目标 buffer id + generation、目标 offset、frame index；
+- `SpriteInstanceUploadSystem` 把 `SpriteInstanceUploadCommand[]` 转换为通用 `UploadCommand[]`，用于后续 coalesce/command-buffer range 描述；
+- `VulkanSpriteInstanceUploadRuntime` 使用 `VulkanUploadRingRuntime` 分配/写入 MemoryCenter-backed upload slice，并通过 `VulkanResourceRuntime` 记录 upload-ring buffer 到目标 GPU buffer 的 copy；
+- `VulkanResourceRuntime` 增加带 source/destination offset 的 buffer copy helper，以及 native source buffer -> managed buffer copy helper；
+- GPU allocation 和 mapped memory 仍全部由 MemoryCenter-backed runtime 处理，没有直接 `VkDeviceMemory` 管理；
+- 12C 已有 CPU system test 与 Vulkan upload/readback smoke 覆盖。

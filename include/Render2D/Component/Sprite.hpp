@@ -64,6 +64,17 @@ struct SpriteDrawPacket {
 };
 
 template<class Provider, class Dim>
+struct SpriteInstanceUploadCommand {
+    U32 instance_first;
+    U32 instance_count;
+    U32 destination_buffer_id;
+    U32 destination_generation;
+    U64 destination_offset;
+    U32 frame_index;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
 struct MaterialRef {
     U32 id;
 };
@@ -109,6 +120,13 @@ struct ComponentTraits<Provider, Dim, SpriteDrawPacket<Provider, Dim>> {
     static constexpr bool kSupported =
         SupportedRenderDomain<Provider, Dim> &&
         StrictPodComponent<SpriteDrawPacket<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, SpriteInstanceUploadCommand<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<SpriteInstanceUploadCommand<Provider, Dim>>;
 };
 
 template<class Provider, class Dim>
