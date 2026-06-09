@@ -83,6 +83,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with MemoryCenter-backed GPU allocation, upload/readback, and copy helpers.
 - `include/Render2D/Native/VulkanDescriptorRuntime.hpp` - Vulkan descriptor pool, set layout, set allocation, and descriptor update runtime.
 - `include/Render2D/Native/VulkanPipelineRuntime.hpp` - Vulkan shader module, pipeline cache, pipeline layout, and dynamic-rendering pipeline runtime.
+- `include/Render2D/Native/VulkanPresentRuntime.hpp` - Stage 11C acquire/present runtime using `vkAcquireNextImageKHR` and `vkQueuePresentKHR`.
 - `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - MemoryCenter-backed persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
 - `include/Render2D/Native/VulkanRenderEncoder.hpp` - Dynamic rendering encoder for direct and indirect draw recording.
 
@@ -124,6 +125,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_resource_runtime_test.cpp` - Optional Vulkan buffer/image/upload/readback/copy lifecycle smoke test.
 - `tests/vulkan_descriptor_runtime_test.cpp` - Optional Vulkan descriptor pool/set/layout/update lifecycle smoke test.
 - `tests/vulkan_pipeline_runtime_test.cpp` - Optional Vulkan shader module, pipeline cache, and dynamic-rendering pipeline lifecycle smoke test.
+- `tests/vulkan_present_runtime_test.cpp` - Stage 11C headless acquire/present runtime tests for invalid init, stale refs, invalid commands, and unsupported domains.
 - `tests/vulkan_upload_ring_runtime_test.cpp` - Optional Vulkan persistent upload ring frame-slot reuse smoke test.
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
@@ -165,6 +167,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-stage10-stream-compaction-thread-command-runtime.md` - ADR for Stage 10I upload/descriptor compaction and Stage 10J per-thread Vulkan command pools.
 - `docs/adr/2026-06-09-stage11-frame-present-deferred-destroy.md` - ADR for Stage 11 frame/present POD contracts and the deferred destroy runtime queue.
 - `docs/adr/2026-06-09-stage11-vulkan-swapchain-runtime.md` - ADR for Stage 11B host-surface-first Vulkan swapchain runtime ownership.
+- `docs/adr/2026-06-09-stage11-vulkan-acquire-present-runtime.md` - ADR for Stage 11C Vulkan acquire/present runtime ownership and ECS sync-generation records.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

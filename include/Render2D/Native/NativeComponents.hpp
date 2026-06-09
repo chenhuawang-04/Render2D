@@ -54,6 +54,7 @@ struct AcquiredImage {
     U32 image_index;
     U32 frame_index;
     U32 sync_id;
+    U32 sync_generation;
     U32 generation;
     U32 flags;
 };
@@ -63,6 +64,7 @@ struct PresentCommand {
     U32 swapchain_id;
     U32 image_index;
     U32 wait_sync_id;
+    U32 wait_sync_generation;
     U32 frame_index;
     U32 generation;
     U32 flags;

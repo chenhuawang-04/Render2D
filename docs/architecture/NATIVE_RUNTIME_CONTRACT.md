@@ -173,6 +173,18 @@ These records carry IDs, generations, frame indices, sync ids, flags, and non-ow
 
 The runtime owns created image views and only destroys the swapchain handle when it was created by Render2D or explicitly marked as owned. Swapchain image memory is not allocated through `VulkanMemoryCenterAllocator` because Vulkan owns swapchain image memory internally.
 
+## Stage 11C Vulkan acquire and present
+
+`VulkanPresentRuntime<Provider, Dim>` connects swapchain state and frame sync to Vulkan presentation:
+
+- `acquireNextImage` resolves `SwapchainState` and `FrameSync`, then calls `vkAcquireNextImageKHR`;
+- acquire emits `AcquiredImage`;
+- `present` resolves `PresentCommand` and `FrameSync`, then calls `vkQueuePresentKHR`;
+- Vulkan acquire/present results are mapped to `NativeStatusCode`;
+- stale swapchain and stale sync records are rejected through runtime generation checks.
+
+`AcquiredImage` and `PresentCommand` store sync generations. They still store no Vulkan semaphore or queue handles.
+
 ## Runtime memory policy
 
 Render2D runtime-owned dynamic arrays use `Render2D::McVector<T>` instead of `std::vector`. Vulkan resource and upload-ring backing memory is owned through `VulkanMemoryCenterAllocator`, which wraps MemoryCenter Vulkan adaptors and centralizes allocation, binding, persistent mapping, flushing, invalidation, and deallocation.
@@ -183,8 +195,7 @@ ECS-visible refs remain Strict POD and never store MemoryCenter allocators or al
 
 The current implementation still does not implement:
 
-- image acquisition
-- present/window-visible output
+- host-window surface integration and window-visible present smoke
 - production sprite instance shader/data layout
 - production texture atlas and sampled-image policy
 

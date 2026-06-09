@@ -333,3 +333,15 @@ Merge rule:
 - image views created for swapchain images are runtime-owned;
 - swapchain image memory is owned by Vulkan swapchain internals, not by Render2D GPU allocation;
 - ECS-visible state remains `SwapchainState[]` and `SwapchainImageRef[]` with id + generation validation.
+
+## 26. Acquire/present uses sync id + generation
+
+Stage 11 adds `VulkanPresentRuntime` and extends `AcquiredImage` / `PresentCommand` with sync generations.
+
+Merge rule:
+
+- acquire uses `FrameSync.image_available` through `VulkanSyncRuntime`;
+- present waits on `FrameSync.render_finished` through `VulkanSyncRuntime`;
+- `PresentCommand` must carry `wait_sync_id + wait_sync_generation`;
+- do not store raw semaphores or queues in ECS components;
+- stale sync or stale swapchain records must be rejected before calling Vulkan.

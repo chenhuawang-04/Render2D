@@ -6,11 +6,11 @@ This checklist tracks the native frame-loop stage after Stage 10 performance/run
 
 - [x] 11A: Frame/present/deferred-destroy POD component contracts.
 - [x] 11B: Vulkan swapchain runtime for host-provided surface/swapchain boundaries.
+- [x] 11C: Acquire/present runtime path using `vkAcquireNextImageKHR` and `vkQueuePresentKHR`.
 - [x] 11D: Runtime-owned deferred destroy queue with safe frame-lag draining.
 
 ## Remaining Route
 
-- [ ] 11C: Acquire/present runtime path using `vkAcquireNextImageKHR` and `vkQueuePresentKHR`.
 - [ ] 11E: State-level and optional Vulkan smoke coverage for resize/out-of-date/present flow.
 - [ ] 11F: Stage 11 closeout docs, final verification, and merge guidance.
 
@@ -59,6 +59,20 @@ Boundary:
 - Swapchain image memory is owned by Vulkan swapchain internals, not by Render2D GPU allocation.
 - Runtime-owned arrays use `McVector`.
 
+## 11C Current Result
+
+Added runtime:
+
+```text
+VulkanPresentRuntime
+```
+
+`VulkanPresentRuntime` initializes from `VkDevice` and present `VkQueue`, resolves swapchain/sync state through `VulkanSwapchainRuntime` and `VulkanSyncRuntime`, calls `vkAcquireNextImageKHR`, emits `AcquiredImage`, and presents `PresentCommand` through `vkQueuePresentKHR`.
+
+`AcquiredImage` and `PresentCommand` now include sync generation fields so stale `FrameSync` records can be rejected by the sync runtime.
+
+Automated coverage remains headless and state-level: invalid initialization, duplicate initialization, stale swapchain acquire/present, invalid present command, and unsupported-domain paths. Real window-visible present smoke remains 11E.
+
 ## Verification Commands
 
 ```powershell
@@ -66,8 +80,9 @@ cmake --build --preset clang-ninja-debug
 ctest --test-dir build --output-on-failure
 clang-tidy -p build tests\native_deferred_destroy_runtime_test.cpp tests\native_components_test.cpp tests\native_runtime_contract_test.cpp tests\compile_smoke.cpp --quiet
 clang-tidy -p build tests\vulkan_swapchain_runtime_test.cpp tests\native_runtime_contract_test.cpp --quiet
+clang-tidy -p build tests\vulkan_present_runtime_test.cpp tests\native_components_test.cpp tests\native_runtime_contract_test.cpp --quiet
 clang-tidy --verify-config --config-file=.clang-tidy
 git diff --check
 ```
 
-Current result: Debug tests passed 32/32 and Perf tests passed 41/41 on 2026-06-09 after 11B implementation.
+Current result: Debug tests passed 33/33 and Perf tests passed 42/42 on 2026-06-09 after 11C implementation.

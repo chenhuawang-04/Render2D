@@ -36,6 +36,7 @@
 #include "Render2D/Native/VulkanCommandRuntime.hpp"
 #include "Render2D/Native/VulkanDescriptorRuntime.hpp"
 #include "Render2D/Native/VulkanPipelineRuntime.hpp"
+#include "Render2D/Native/VulkanPresentRuntime.hpp"
 #include "Render2D/Native/VulkanRenderEncoder.hpp"
 #include "Render2D/Native/VulkanResourceRuntime.hpp"
 #include "Render2D/Native/VulkanSubmitRuntime.hpp"

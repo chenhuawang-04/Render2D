@@ -63,5 +63,27 @@ int main()
     };
     static_assert(kDestroy.object_kind == static_cast<R2D::U32>(R2D::NativeObjectKind::Image));
 
+    constexpr R2D::AcquiredImage<Provider, Dim> kAcquired{
+        .swapchain_id = 1U,
+        .image_index = 2U,
+        .frame_index = 3U,
+        .sync_id = 4U,
+        .sync_generation = 5U,
+        .generation = 6U,
+        .flags = 0U,
+    };
+    static_assert(kAcquired.sync_generation == 5U);
+
+    constexpr R2D::PresentCommand<Provider, Dim> kPresent{
+        .swapchain_id = 1U,
+        .image_index = 2U,
+        .wait_sync_id = 4U,
+        .wait_sync_generation = 5U,
+        .frame_index = 3U,
+        .generation = 6U,
+        .flags = 0U,
+    };
+    static_assert(kPresent.wait_sync_generation == 5U);
+
     return 0;
 }

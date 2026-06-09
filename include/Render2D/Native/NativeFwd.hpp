@@ -7,6 +7,7 @@ struct VulkanDescriptorRuntimeConfig;
 struct VulkanGraphicsPipelineConfig;
 struct VulkanDynamicRenderEncoderConfig;
 struct VulkanPipelineRuntimeConfig;
+struct VulkanPresentRuntimeConfig;
 struct VulkanResourceRuntimeConfig;
 struct VulkanSyncRuntimeConfig;
 struct VulkanSubmitRuntimeConfig;
@@ -96,6 +97,9 @@ class VulkanDescriptorRuntime;
 
 template<class Provider, class Dim>
 class VulkanPipelineRuntime;
+
+template<class Provider, class Dim>
+class VulkanPresentRuntime;
 
 template<class Provider, class Dim>
 class VulkanDynamicRenderEncoder;

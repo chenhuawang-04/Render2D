@@ -2131,7 +2131,7 @@
 - [x] 11A：Native frame/present/deferred-destroy POD component contracts 完成
 - [x] 11D：`NativeDeferredDestroyRuntime` deferred destroy queue 完成
 - [x] 11B：Vulkan swapchain runtime 完成
-- [ ] 11C：Acquire / Present runtime
+- [x] 11C：Acquire / Present runtime 完成
 - [ ] 11E：swapchain acquire/present smoke 与状态测试
 - [ ] 11F：第十一阶段文档与验证收口
 
@@ -2151,3 +2151,11 @@
 - ECS 仍只保存 `SwapchainState` / `SwapchainImageRef` 的 POD state；
 - swapchain image memory 是 Vulkan swapchain 内部所有，不走 Render2D GPU allocator；
 - runtime 内部动态数组继续使用 `McVector`。
+
+11C 边界说明：
+
+- `VulkanPresentRuntime` 负责 `vkAcquireNextImageKHR` 与 `vkQueuePresentKHR`；
+- runtime 通过 `VulkanSwapchainRuntime` 解析 swapchain；
+- runtime 通过 `VulkanSyncRuntime` 解析 `FrameSync`；
+- `AcquiredImage` / `PresentCommand` 增加 sync generation，避免 stale sync 被误用；
+- 当前自动化测试保持 headless state-level；真实 window-visible present smoke 留到 11E。

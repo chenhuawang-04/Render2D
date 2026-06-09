@@ -313,6 +313,19 @@ render2d_apply_strict_warnings(render2d_vulkan_pipeline_runtime_test)
 
 add_test(NAME render2d.vulkan_pipeline_runtime COMMAND render2d_vulkan_pipeline_runtime_test)
 
+add_executable(render2d_vulkan_present_runtime_test
+    vulkan_present_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_present_runtime_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_vulkan_present_runtime_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_vulkan_present_runtime_test)
+
+add_test(NAME render2d.vulkan_present_runtime COMMAND render2d_vulkan_present_runtime_test)
+
 add_executable(render2d_vulkan_upload_ring_runtime_test
     vulkan_upload_ring_runtime_test.cpp
 )

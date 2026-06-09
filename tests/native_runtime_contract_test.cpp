@@ -29,6 +29,7 @@ int main()
     requireNativePodContract<R2D::VulkanDynamicRenderEncoderConfig>();
     requireNativePodContract<R2D::VulkanGraphicsPipelineConfig>();
     requireNativePodContract<R2D::VulkanPipelineRuntimeConfig>();
+    requireNativePodContract<R2D::VulkanPresentRuntimeConfig>();
     requireNativePodContract<R2D::VulkanResourceRuntimeConfig>();
     requireNativePodContract<R2D::VulkanSyncRuntimeConfig>();
     requireNativePodContract<R2D::VulkanSubmitRuntimeConfig>();
