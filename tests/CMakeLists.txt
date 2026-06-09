@@ -78,6 +78,16 @@ render2d_apply_strict_warnings(render2d_draw_sort_system_test)
 
 add_test(NAME render2d.draw_sort_system COMMAND render2d_draw_sort_system_test)
 
+add_executable(render2d_upload_descriptor_compaction_test
+    upload_descriptor_compaction_test.cpp
+)
+target_link_libraries(render2d_upload_descriptor_compaction_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_upload_descriptor_compaction_test)
+
+add_test(NAME render2d.upload_descriptor_compaction COMMAND render2d_upload_descriptor_compaction_test)
+
 add_executable(render2d_transform_dirty_system_test
     transform_dirty_system_test.cpp
 )
@@ -213,6 +223,19 @@ target_link_libraries(render2d_vulkan_command_runtime_test PRIVATE
 render2d_apply_strict_warnings(render2d_vulkan_command_runtime_test)
 
 add_test(NAME render2d.vulkan_command_runtime COMMAND render2d_vulkan_command_runtime_test)
+
+add_executable(render2d_vulkan_thread_command_runtime_test
+    vulkan_thread_command_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_thread_command_runtime_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_vulkan_thread_command_runtime_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_vulkan_thread_command_runtime_test)
+
+add_test(NAME render2d.vulkan_thread_command_runtime COMMAND render2d_vulkan_thread_command_runtime_test)
 
 add_executable(render2d_vulkan_sync_runtime_test
     vulkan_sync_runtime_test.cpp

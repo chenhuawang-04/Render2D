@@ -39,6 +39,7 @@
 #include "Render2D/Native/VulkanResourceRuntime.hpp"
 #include "Render2D/Native/VulkanSubmitRuntime.hpp"
 #include "Render2D/Native/VulkanSyncRuntime.hpp"
+#include "Render2D/Native/VulkanThreadCommandRuntime.hpp"
 #include "Render2D/Native/VulkanUploadRingRuntime.hpp"
 #include "Render2D/Storage/StorageFwd.hpp"
 #include "Render2D/System/BatchSystem.hpp"
@@ -53,3 +54,4 @@
 #include "Render2D/System/SystemFwd.hpp"
 #include "Render2D/System/TextSystem.hpp"
 #include "Render2D/System/TransformSystem.hpp"
+#include "Render2D/System/UploadDescriptorCompactionSystem.hpp"

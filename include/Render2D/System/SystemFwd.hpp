@@ -42,6 +42,12 @@ template<class Provider, class Dim>
 struct UploadSystem;
 
 template<class Provider, class Dim>
+struct UploadCoalesceSystem;
+
+template<class Provider, class Dim>
+struct DescriptorCompactionSystem;
+
+template<class Provider, class Dim>
 struct EncodeSystem;
 
 template<class Provider, class Dim>

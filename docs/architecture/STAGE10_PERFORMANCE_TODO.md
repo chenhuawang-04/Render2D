@@ -12,12 +12,13 @@ This file is the execution checklist for fully completing Stage 10. It keeps opt
 - [x] 10F: Packed draw sort keys, explicit radix sort path, and BatchSystem packed-key comparison are implemented and benchmarked.
 - [x] 10G: ThreadCenter header dependency is integrated as runtime/system infrastructure only through an internal support target and smoke test.
 - [x] 10H: ThreadCenter-backed sprite CPU pipeline runtime is implemented with deterministic chunk merge and single-thread equivalence tests.
+- [x] 10I: Upload command coalescing and descriptor table compaction are implemented as allocation-free component-stream systems and benchmarked.
+- [x] 10J: Per-thread Vulkan command pools and command recording ownership are implemented in a dedicated native runtime.
+- [x] 10K: Final Stage 10 quality gate, documentation, ADR, and project index closeout are complete.
 
 ## Remaining Route
 
-- [ ] 10I: Upload command coalescing and descriptor table compaction.
-- [ ] 10J: Per-thread Vulkan command pools and command recording ownership.
-- [ ] 10K: Final Stage 10 quality gate and documentation closeout.
+None. Stage 10 is complete as of 2026-06-09.
 
 ## Non-negotiable Constraints
 
@@ -121,3 +122,46 @@ clang-tidy --verify-config --config-file=.clang-tidy
 ```
 
 Current result: build/test/tidy passed on 2026-06-09. `ThreadedCpuPipelineRuntime` parallelizes Transform, Bounds, Culling, and CommandBuild over deterministic chunks, merges visible items in chunk order, and keeps BatchSystem single-threaded as the current correctness-preserving tail stage.
+
+## Stage 10I Verification Commands
+
+```powershell
+cmake --preset clang-ninja-debug
+cmake --build --preset clang-ninja-debug
+ctest --test-dir build --output-on-failure
+cmake --preset clang-ninja-perf
+cmake --build --preset clang-ninja-perf
+ctest --preset clang-ninja-perf
+.\build_perf\bench\render2d_upload_descriptor_compaction_bench.exe --items 65536 --frames 8 --warmup 2
+clang-tidy -p build tests\upload_descriptor_compaction_test.cpp bench\upload_descriptor_compaction_bench.cpp --quiet
+```
+
+Current result: build/test passed on 2026-06-09. The dedicated Perf benchmark reduced 65,536 synthetic upload and descriptor records to 16,384 compacted records; local averages were about 0.183 ms for upload coalescing and 0.133 ms for descriptor compaction.
+
+## Stage 10J Verification Commands
+
+```powershell
+cmake --build --preset clang-ninja-debug
+ctest --test-dir build --output-on-failure
+cmake --build --preset clang-ninja-perf
+ctest --preset clang-ninja-perf
+clang-tidy -p build tests\vulkan_thread_command_runtime_test.cpp tests\compile_smoke.cpp --quiet
+```
+
+Current result: build/test passed on 2026-06-09. `render2d.vulkan_thread_command_runtime` covers invalid config, two per-thread pools, allocation from different pools, begin/end/reset, stale generation rejection, and id reuse.
+
+## Stage 10K Final Quality Gate
+
+```powershell
+cmake --preset clang-ninja-debug
+cmake --build --preset clang-ninja-debug
+ctest --test-dir build --output-on-failure
+cmake --preset clang-ninja-perf
+cmake --build --preset clang-ninja-perf
+ctest --preset clang-ninja-perf
+clang-tidy -p build tests\upload_descriptor_compaction_test.cpp tests\vulkan_thread_command_runtime_test.cpp bench\upload_descriptor_compaction_bench.cpp tests\compile_smoke.cpp --quiet
+clang-tidy --verify-config --config-file=.clang-tidy
+git diff --check
+```
+
+Current result: Debug tests passed 30/30 and Perf tests passed 38/38 on 2026-06-09. Final clang-tidy, `.clang-tidy` verification, `git diff --check`, `std::vector` scan, direct Vulkan memory API scan, and old-math scan passed.

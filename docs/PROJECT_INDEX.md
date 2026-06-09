@@ -54,6 +54,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands.
 - `include/Render2D/System/SortKey.hpp` - Packed draw sort/batch key helpers.
 - `include/Render2D/System/SortSystem.hpp` - Stable radix sort over `DrawCommand.sort_key` using caller-owned scratch spans.
+- `include/Render2D/System/UploadDescriptorCompactionSystem.hpp` - Stage 10I allocation-free upload coalescing and descriptor slice compaction over ECS component streams.
 - `include/Render2D/System/CommandBufferSystem.hpp` - Builds and clears POD `CommandBuffer` range descriptors.
 - `include/Render2D/System/EncodeSystem.hpp` - CPU-only encode contract from `CommandBuffer` ranges to `NativeCommandBufferRef`.
 - `include/Render2D/System/SubmitSystem.hpp` - CPU-only submit contract from native command refs and `FrameSync` to `NativeSubmitCommand`.
@@ -74,6 +75,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/SwapchainRuntime.hpp` - CPU-side swapchain state slot runtime.
 - `include/Render2D/Native/CommandRuntime.hpp` - CPU-side native command buffer ref slot runtime.
 - `include/Render2D/Native/VulkanCommandRuntime.hpp` - Vulkan command pool and command buffer lifecycle runtime behind `NativeCommandBufferRef`.
+- `include/Render2D/Native/VulkanThreadCommandRuntime.hpp` - Stage 10J per-thread Vulkan command pool runtime behind `NativeCommandBufferRef`.
 - `include/Render2D/Native/VulkanSyncRuntime.hpp` - Vulkan semaphore/fence lifecycle runtime behind `FrameSync`.
 - `include/Render2D/Native/VulkanSubmitRuntime.hpp` - Vulkan queue submit runtime for resolved command buffers and frame sync.
 - `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with MemoryCenter-backed GPU allocation, upload/readback, and copy helpers.
@@ -98,6 +100,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/threaded_cpu_pipeline_test.cpp` - Stage 10H single-thread equivalence and deterministic chunk merge coverage for `ThreadedCpuPipelineRuntime`.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/draw_sort_system_test.cpp` - Packed sort key, radix draw sort, batch merge, and collision-safety coverage.
+- `tests/upload_descriptor_compaction_test.cpp` - Stage 10I upload coalescing, descriptor compaction, in-place, capacity, invalid-input, and unsupported-domain coverage.
 - `tests/transform_dirty_system_test.cpp` - Sparse dirty transform/bounds update coverage.
 - `tests/bounds_system_test.cpp` - fast_math AABB transform regression coverage for translation, scale, rotation, shear, and error paths.
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
@@ -111,6 +114,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/native_command_runtime_test.cpp` - Native command buffer ref slot lifecycle, stale-reference, and reuse checks.
 - `tests/encode_submit_system_test.cpp` - CPU-only EncodeSystem and SubmitSystem contract checks.
 - `tests/vulkan_command_runtime_test.cpp` - Optional Vulkan command pool / command buffer lifecycle smoke test.
+- `tests/vulkan_thread_command_runtime_test.cpp` - Optional Stage 10J per-thread Vulkan command pool / command buffer ownership smoke test.
 - `tests/vulkan_sync_runtime_test.cpp` - Optional Vulkan semaphore/fence lifecycle smoke test.
 - `tests/vulkan_submit_runtime_test.cpp` - Optional Vulkan queue submit smoke test.
 - `tests/vulkan_resource_runtime_test.cpp` - Optional Vulkan buffer/image/upload/readback/copy lifecycle smoke test.
@@ -136,6 +140,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `bench/CMakeLists.txt` - Benchmark target registration.
 - `bench/bench_smoke.cpp` - Minimal benchmark target smoke.
 - `bench/null_cpu_bench.cpp` - Deterministic CPU-only sprite/text/mixed ECS pipeline benchmark.
+- `bench/upload_descriptor_compaction_bench.cpp` - Stage 10I Perf benchmark for synthetic upload-command coalescing and descriptor-slice compaction.
 - `bench/support/BenchmarkFramework.hpp` - Shared benchmark config parsing, timing accumulation, and text/CSV report helpers.
 
 ## Documentation
@@ -151,6 +156,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-fast-math-pod-math-types.md` - ADR for replacing Render2D-owned math structs with fast_math POD aliases and free-function math.
 - `docs/adr/2026-06-09-threadcenter-runtime-infrastructure.md` - ADR for embedding ThreadCenter as an internal runtime/system dependency only.
 - `docs/adr/2026-06-09-threaded-cpu-pipeline-runtime.md` - ADR for ThreadCenter-backed deterministic CPU pipeline runtime execution.
+- `docs/adr/2026-06-09-stage10-stream-compaction-thread-command-runtime.md` - ADR for Stage 10I upload/descriptor compaction and Stage 10J per-thread Vulkan command pools.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

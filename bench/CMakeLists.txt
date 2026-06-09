@@ -17,6 +17,14 @@ target_include_directories(render2d_null_cpu_bench PRIVATE
 )
 render2d_apply_strict_warnings(render2d_null_cpu_bench)
 
+add_executable(render2d_upload_descriptor_compaction_bench
+    upload_descriptor_compaction_bench.cpp
+)
+target_link_libraries(render2d_upload_descriptor_compaction_bench PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_upload_descriptor_compaction_bench)
+
 if(RENDER2D_BUILD_TESTS)
     add_test(NAME render2d.null_cpu_bench_smoke
         COMMAND render2d_null_cpu_bench --scenario mixed --sprites 1024 --texts 128 --frames 2 --warmup 1
@@ -35,6 +43,9 @@ if(RENDER2D_BUILD_TESTS)
     )
     add_test(NAME render2d.null_cpu_bench_warmup_zero_smoke
         COMMAND render2d_null_cpu_bench --scenario mixed --sprites 16 --texts 4 --frames 1 --warmup 0 --format csv
+    )
+    add_test(NAME render2d.upload_descriptor_compaction_bench_smoke
+        COMMAND render2d_upload_descriptor_compaction_bench --items 4096 --frames 2 --warmup 1
     )
     add_test(NAME render2d.null_cpu_bench_invalid_frames
         COMMAND render2d_null_cpu_bench --scenario mixed --frames nope

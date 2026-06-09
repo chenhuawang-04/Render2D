@@ -2086,6 +2086,9 @@
 - [x] 10F：draw sort / batch key 基础完成
 - [x] 10G：ThreadCenter 已接入为 runtime/system 基础设施
 - [x] 10H：ThreadCenter 多线程 sprite CPU pipeline runtime 完成
+- [x] 10I：UploadCommand 合并与 DescriptorSlice 压缩完成
+- [x] 10J：per-thread Vulkan command pool runtime 完成
+- [x] 10K：第十阶段文档、ADR、索引、验证收口完成
 
 10G 边界说明：
 
@@ -2102,3 +2105,21 @@
 - Culling 使用 per-chunk scratch，再按 chunk 顺序 merge，保证确定性；
 - Batch 暂时保持单线程 reference tail，避免改变 batch 边界；
 - 当前覆盖 sprite CPU path，text path 和 parallel batch/sort 留到后续阶段。
+
+10I 边界说明：
+
+- `UploadCoalesceSystem` / `DescriptorCompactionSystem` 只转换 ECS component streams；
+- 输出仍然是 `UploadCommand[]` / `DescriptorSlice[]`，仍归未来宿主 ECS 管；
+- 系统不分配、不调用 Vulkan、不拥有 storage。
+
+10J 边界说明：
+
+- `VulkanThreadCommandRuntime` 是 native runtime，不是 ECS；
+- 每个 runtime thread slot 拥有一个 `VkCommandPool`；
+- ECS 仍只保存 `NativeCommandBufferRef` 的 id + generation；
+- thread ownership 不进入组件，只存在于 runtime slot metadata。
+
+第十阶段结论：
+
+- Stage 10 已完成；
+- 后续 text 并行、parallel batch/sort、swapchain/present、deferred destroy、真实字体/atlas 集成，进入新阶段处理。

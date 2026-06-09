@@ -37,6 +37,16 @@ DrawCommand[]
     -> DrawCommand[]
     -> BatchSystem
     -> BatchCommand[]
+
+Native-bound side streams:
+UploadCommand[]
+    -> UploadCoalesceSystem
+    -> UploadCommand[]
+DescriptorSlice[]
+    -> DescriptorCompactionSystem
+    -> DescriptorSlice[]
+
+BatchCommand[] + UploadCommand[] + DescriptorSlice[]
     -> CommandBufferBuildSystem
     -> CommandBuffer[]
     -> EncodeSystem
@@ -82,6 +92,10 @@ Stage 10G integrates ThreadCenter as runtime/system infrastructure only. The rep
 
 Stage 10H adds `ThreadedCpuPipelineRuntime`, a ThreadCenter-backed runtime facade for the sprite CPU path. It parallelizes Transform, Bounds, Culling, and CommandBuild over fixed chunks, writes per-chunk culling scratch with `McVector`, merges visible items in chunk order, then runs BatchSystem through the existing single-thread reference path. It does not add ECS components and is intentionally not included by the umbrella header because it requires the internal ThreadCenter support target.
 
+Stage 10I adds allocation-free stream compaction for native-bound data. `UploadCoalesceSystem` merges adjacent contiguous `UploadCommand[]` records with the same resource/kind/flags, and `DescriptorCompactionSystem` merges adjacent contiguous `DescriptorSlice[]` records with the same descriptor set/generation. These outputs remain ECS component streams and are not native storage.
+
+Stage 10J adds `VulkanThreadCommandRuntime`, a Vulkan-native runtime that owns one command pool per runtime thread slot. It allocates command buffers from the requested thread pool and returns ordinary `NativeCommandBufferRef` id/generation records; thread ownership stays in runtime metadata and does not enter ECS components.
+
 ## Temporary test ECS
 
 The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration. Its backing arrays use `Render2D::McVector`, but the storage itself remains test-only.
@@ -121,6 +135,7 @@ Implemented CPU-side runtime skeletons:
 Implemented Vulkan-backed runtimes:
 
 - `VulkanCommandRuntime` - Vulkan command pool and command buffer lifecycle owner behind `NativeCommandBufferRef`.
+- `VulkanThreadCommandRuntime` - per-thread Vulkan command pools and command buffer lifecycle ownership behind `NativeCommandBufferRef`.
 - `VulkanSyncRuntime` - real semaphore/fence lifecycle behind `FrameSync`.
 - `VulkanSubmitRuntime` - real `vkQueueSubmit` using resolved command buffers and frame sync.
 - `VulkanResourceRuntime` - real buffer/image/image-view lifecycle, MemoryCenter-backed GPU allocation, upload/readback, copies, and image layout tracking.
@@ -142,6 +157,8 @@ cmake --build build
 ```
 
 It reports active counts and average pass timings for sprite systems, text dirty/glyph systems, batching, and command buffer descriptor build. The Stage 10B standard suite is run with `scripts/run_null_cpu_benchmarks.ps1` and documented in `docs/architecture/BENCHMARK_BASELINE.md`. Stage 10C records the fast_math migration delta there: 10k sprite bounds dropped from about 3.64 ms to about 0.55 ms on the local Debug benchmark. Stage 10D adds a RelWithDebInfo Perf preset, release-like test assertion handling, dirty-transform scenarios, and large/huge local benchmark suites so later single-thread and ThreadCenter work has stable evidence. Stage 10E adds dirty-index Transform/Bounds updates and a zero-rotation transform fast path.
+
+Stage 10I also adds `render2d_upload_descriptor_compaction_bench`, a Perf benchmark for synthetic upload and descriptor stream compaction. The local 65,536-item run compacts each stream to 16,384 records and records average upload/descriptor compaction times in `BENCHMARK_BASELINE.md`.
 
 ## Current boundaries
 
@@ -171,6 +188,9 @@ Implemented:
 - Stage 10F sort/batch foundation: packed draw sort keys, optional `DrawSortSystem`, and collision-safe packed-key-first `BatchSystem` comparison
 - Stage 10G ThreadCenter integration: header-only runtime/system dependency embedded in CMake through `render2d_thread_runtime_support`, with smoke coverage and no ECS/public-interface contamination
 - Stage 10H ThreadCenter-backed CPU pipeline runtime: deterministic chunked sprite path with single-thread equivalence coverage
+- Stage 10I stream compaction: `UploadCoalesceSystem`, `DescriptorCompactionSystem`, tests, and benchmark coverage
+- Stage 10J per-thread Vulkan command runtime: one command pool per runtime thread slot with runtime-only ownership metadata
+- Stage 10K Stage 10 closeout: final checklist, ADR, project index, and verification documentation
 
 Not implemented yet:
 

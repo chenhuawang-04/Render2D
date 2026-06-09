@@ -80,6 +80,18 @@ This stage only produces ECS-visible POD descriptors. It does not call `vkBeginC
 
 It still exposes only `NativeCommandBufferRef` to ECS. Real `VkCommandBuffer` handles stay inside the native runtime.
 
+## Stage 10J per-thread Vulkan command lifecycle
+
+`VulkanThreadCommandRuntime<Provider, Dim>` adds the parallel-recording ownership model:
+
+- one `VkCommandPool` per runtime thread slot;
+- command buffers allocated from the caller-selected thread pool;
+- per-thread pool reset through `resetThreadCommandPool`;
+- full runtime reset through `resetAllCommandPools`;
+- stale `NativeCommandBufferRef` rejection and generation reuse semantics matching the single-pool runtime.
+
+Thread ownership is runtime metadata only. `NativeCommandBufferRef` remains the only ECS-visible command-buffer record.
+
 ## Stage 8C Vulkan sync and submit
 
 Implemented Vulkan sync/submit contracts:

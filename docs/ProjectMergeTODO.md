@@ -229,3 +229,48 @@ Merge rule:
 - sorting is explicit because it reduces batch count but costs CPU time;
 - `BatchSystem` first compares packed `sort_key`, then verifies material, texture, layer, and flags to prevent collision merges;
 - future host integration should generate the same key layout before handing `DrawCommand[]` to Render2D systems.
+
+## 18. Upload and descriptor compaction still outputs ECS components
+
+Stage 10I adds:
+
+- `UploadCoalesceSystem`
+- `DescriptorCompactionSystem`
+
+Merge rule:
+
+- host ECS owns the input and output `UploadCommand[]` / `DescriptorSlice[]` streams;
+- systems use caller-owned spans and do not allocate;
+- coalesced/compacted records remain ordinary Strict POD components;
+- Vulkan runtimes consume the compacted ranges later but do not own ECS storage.
+
+`UploadCoalesceSystem` only merges adjacent uploads with the same resource, upload kind, flags, and contiguous source/destination byte ranges. `DescriptorCompactionSystem` only merges adjacent slices with the same descriptor set id, generation, and contiguous descriptor table range.
+
+## 19. Per-thread Vulkan command pools are runtime-only
+
+Stage 10J adds `VulkanThreadCommandRuntime`.
+
+Merge rule:
+
+- ECS stores only `NativeCommandBufferRef`;
+- per-thread command pool ownership stays in Render2D runtime slot metadata;
+- do not add thread ids, `VkCommandPool`, `VkCommandBuffer`, or ThreadCenter types to ECS components;
+- host scheduling may choose a thread index when allocating a command buffer, but that index is not part of the persistent component contract.
+
+`VulkanCommandRuntime` remains the single-pool reference runtime. Use `VulkanThreadCommandRuntime` when command recording is distributed across worker threads.
+
+## 20. Stage 10 is closed
+
+Stage 10 is complete as of 2026-06-09.
+
+Completed merge-relevant performance/runtime items:
+
+- test/bench framework and Perf preset;
+- fast_math-only render math;
+- dirty transform/bounds updates;
+- explicit draw sort and packed batch key;
+- ThreadCenter runtime infrastructure and threaded sprite CPU pipeline facade;
+- upload/descriptor stream compaction;
+- per-thread Vulkan command pool runtime.
+
+Future work belongs to a new stage, especially ThreadCenter-backed text work, parallel batch/sort tail stages, swapchain/window presentation, deferred destroy queues, and production font/atlas integration.

@@ -222,6 +222,31 @@ Interpretation:
 - CPU-only sort cost is visible, so sorting is now an explicit runtime choice instead of always-on.
 - Native renderer stages can use sorted paths when reduced batch/native submit count outweighs sort cost.
 
+## Stage 10I Upload/Descriptor Compaction Result
+
+Stage 10I adds:
+
+- `UploadCoalesceSystem` for adjacent `UploadCommand[]` byte-range merging.
+- `DescriptorCompactionSystem` for adjacent `DescriptorSlice[]` descriptor-table range merging.
+- `render2d_upload_descriptor_compaction_bench` for a dedicated Perf smoke benchmark.
+
+The benchmark uses synthetic four-record groups so the expected output count is exactly one compacted record per group.
+
+- Captured UTC: 2026-06-09
+- Build tree: `build_perf`
+- Command: `.\build_perf\bench\render2d_upload_descriptor_compaction_bench.exe --items 65536 --frames 8 --warmup 2`
+- Correctness gate: `ctest --preset clang-ninja-perf` passed 38/38.
+
+| Items | Upload Output | Descriptor Output | Upload Coalesce ms | Descriptor Compaction ms |
+|---:|---:|---:|---:|---:|
+| 65536 | 16384 | 16384 | 0.182750000 | 0.132950000 |
+
+Interpretation:
+
+- Both systems reduce the synthetic stream by 4x.
+- The systems are CPU-only, allocation-free, and keep outputs as ECS component streams.
+- The benchmark is a smoke/perf guard for stream compaction cost, not a GPU throughput claim.
+
 ## Gate Rule
 
 Before any Stage 10 optimization is accepted:
