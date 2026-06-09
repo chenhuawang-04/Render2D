@@ -2130,7 +2130,7 @@
 
 - [x] 11A：Native frame/present/deferred-destroy POD component contracts 完成
 - [x] 11D：`NativeDeferredDestroyRuntime` deferred destroy queue 完成
-- [ ] 11B：Vulkan swapchain runtime
+- [x] 11B：Vulkan swapchain runtime 完成
 - [ ] 11C：Acquire / Present runtime
 - [ ] 11E：swapchain acquire/present smoke 与状态测试
 - [ ] 11F：第十一阶段文档与验证收口
@@ -2142,3 +2142,12 @@
 - `NativeDeferredDestroyRuntime` 是 runtime queue，不是 ECS storage；
 - runtime 使用 `McVector` 保存 pending destroy commands；
 - 实际 Vulkan 资源销毁仍由对应 native runtime 执行，deferred queue 只决定何时可以安全释放。
+
+11B 边界说明：
+
+- `VulkanSwapchainRuntime` 不创建窗口，也不创建 `VkSurfaceKHR`；
+- host 提供 surface；runtime 可创建 swapchain，也可 adopt host 已创建的 swapchain；
+- runtime 查询 swapchain images 并创建/拥有 image views；
+- ECS 仍只保存 `SwapchainState` / `SwapchainImageRef` 的 POD state；
+- swapchain image memory 是 Vulkan swapchain 内部所有，不走 Render2D GPU allocator；
+- runtime 内部动态数组继续使用 `McVector`。

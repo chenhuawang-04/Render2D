@@ -79,6 +79,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanThreadCommandRuntime.hpp` - Stage 10J per-thread Vulkan command pool runtime behind `NativeCommandBufferRef`.
 - `include/Render2D/Native/VulkanSyncRuntime.hpp` - Vulkan semaphore/fence lifecycle runtime behind `FrameSync`.
 - `include/Render2D/Native/VulkanSubmitRuntime.hpp` - Vulkan queue submit runtime for resolved command buffers and frame sync.
+- `include/Render2D/Native/VulkanSwapchainRuntime.hpp` - Stage 11B Vulkan swapchain/image-view runtime for host-provided surfaces or adopted swapchains.
 - `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with MemoryCenter-backed GPU allocation, upload/readback, and copy helpers.
 - `include/Render2D/Native/VulkanDescriptorRuntime.hpp` - Vulkan descriptor pool, set layout, set allocation, and descriptor update runtime.
 - `include/Render2D/Native/VulkanPipelineRuntime.hpp` - Vulkan shader module, pipeline cache, pipeline layout, and dynamic-rendering pipeline runtime.
@@ -119,6 +120,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_thread_command_runtime_test.cpp` - Optional Stage 10J per-thread Vulkan command pool / command buffer ownership smoke test.
 - `tests/vulkan_sync_runtime_test.cpp` - Optional Vulkan semaphore/fence lifecycle smoke test.
 - `tests/vulkan_submit_runtime_test.cpp` - Optional Vulkan queue submit smoke test.
+- `tests/vulkan_swapchain_runtime_test.cpp` - Stage 11B state-level swapchain runtime tests for invalid config, reserve paths, stale refs, and unsupported domains.
 - `tests/vulkan_resource_runtime_test.cpp` - Optional Vulkan buffer/image/upload/readback/copy lifecycle smoke test.
 - `tests/vulkan_descriptor_runtime_test.cpp` - Optional Vulkan descriptor pool/set/layout/update lifecycle smoke test.
 - `tests/vulkan_pipeline_runtime_test.cpp` - Optional Vulkan shader module, pipeline cache, and dynamic-rendering pipeline lifecycle smoke test.
@@ -162,6 +164,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-threaded-cpu-pipeline-runtime.md` - ADR for ThreadCenter-backed deterministic CPU pipeline runtime execution.
 - `docs/adr/2026-06-09-stage10-stream-compaction-thread-command-runtime.md` - ADR for Stage 10I upload/descriptor compaction and Stage 10J per-thread Vulkan command pools.
 - `docs/adr/2026-06-09-stage11-frame-present-deferred-destroy.md` - ADR for Stage 11 frame/present POD contracts and the deferred destroy runtime queue.
+- `docs/adr/2026-06-09-stage11-vulkan-swapchain-runtime.md` - ADR for Stage 11B host-surface-first Vulkan swapchain runtime ownership.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

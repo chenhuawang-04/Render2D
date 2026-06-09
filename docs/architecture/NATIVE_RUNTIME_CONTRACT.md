@@ -160,6 +160,19 @@ These records carry IDs, generations, frame indices, sync ids, flags, and non-ow
 
 `NativeDeferredDestroyRuntime<Provider, Dim>` owns a runtime queue of `DeferredDestroyCommand` records in `McVector`. It validates commands, applies an optional safe frame lag, preserves FIFO ordering among drained commands, and refuses to mutate the queue when the caller-provided output span is too small. The queue decides when a record is safe to release; the actual Vulkan destruction still happens through the native runtime that owns the resource slot.
 
+## Stage 11B Vulkan swapchain runtime
+
+`VulkanSwapchainRuntime<Provider, Dim>` provides the swapchain boundary for host-engine integration:
+
+- host code provides `VkSurfaceKHR`;
+- Render2D can create a `VkSwapchainKHR` from that surface;
+- Render2D can also adopt a host-created `VkSwapchainKHR`;
+- the runtime queries swapchain images and creates image views;
+- ECS-visible state is `SwapchainState` and `SwapchainImageRef`;
+- stale swapchain/image refs are rejected through generation validation.
+
+The runtime owns created image views and only destroys the swapchain handle when it was created by Render2D or explicitly marked as owned. Swapchain image memory is not allocated through `VulkanMemoryCenterAllocator` because Vulkan owns swapchain image memory internally.
+
 ## Runtime memory policy
 
 Render2D runtime-owned dynamic arrays use `Render2D::McVector<T>` instead of `std::vector`. Vulkan resource and upload-ring backing memory is owned through `VulkanMemoryCenterAllocator`, which wraps MemoryCenter Vulkan adaptors and centralizes allocation, binding, persistent mapping, flushing, invalidation, and deallocation.
@@ -170,7 +183,7 @@ ECS-visible refs remain Strict POD and never store MemoryCenter allocators or al
 
 The current implementation still does not implement:
 
-- swapchain creation or image acquisition
+- image acquisition
 - present/window-visible output
 - production sprite instance shader/data layout
 - production texture atlas and sampled-image policy

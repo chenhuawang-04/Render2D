@@ -321,3 +321,15 @@ Merge rule:
 - component records carry swapchain/image/frame/sync IDs and generations only;
 - Vulkan handle fields are non-owning snapshots for native resolution/debugging, not lifetime authority;
 - acquire/present runtime integration must preserve these records without adding production ECS storage inside Render2D.
+
+## 25. Swapchain boundary is host-surface-first
+
+Stage 11 adds `VulkanSwapchainRuntime`.
+
+Merge rule:
+
+- host engine owns window creation and `VkSurfaceKHR`;
+- Render2D may create a swapchain from that surface or adopt a host-created swapchain;
+- image views created for swapchain images are runtime-owned;
+- swapchain image memory is owned by Vulkan swapchain internals, not by Render2D GPU allocation;
+- ECS-visible state remains `SwapchainState[]` and `SwapchainImageRef[]` with id + generation validation.

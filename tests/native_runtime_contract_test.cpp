@@ -32,6 +32,9 @@ int main()
     requireNativePodContract<R2D::VulkanResourceRuntimeConfig>();
     requireNativePodContract<R2D::VulkanSyncRuntimeConfig>();
     requireNativePodContract<R2D::VulkanSubmitRuntimeConfig>();
+    requireNativePodContract<R2D::VulkanSwapchainAdoptConfig>();
+    requireNativePodContract<R2D::VulkanSwapchainCreateConfig>();
+    requireNativePodContract<R2D::VulkanSwapchainRuntimeConfig>();
     requireNativePodContract<R2D::VulkanUploadRingRuntimeConfig>();
 
     static_assert(std::is_enum_v<R2D::NativeStatusCode>);

@@ -140,6 +140,7 @@ Implemented Vulkan-backed runtimes:
 - `VulkanThreadCommandRuntime` - per-thread Vulkan command pools and command buffer lifecycle ownership behind `NativeCommandBufferRef`.
 - `VulkanSyncRuntime` - real semaphore/fence lifecycle behind `FrameSync`.
 - `VulkanSubmitRuntime` - real `vkQueueSubmit` using resolved command buffers and frame sync.
+- `VulkanSwapchainRuntime` - swapchain/image-view runtime for host-provided surfaces or adopted swapchains.
 - `VulkanResourceRuntime` - real buffer/image/image-view lifecycle, MemoryCenter-backed GPU allocation, upload/readback, copies, and image layout tracking.
 - `VulkanDescriptorRuntime` - descriptor pool, descriptor set layout, set allocation, and descriptor array updates.
 - `VulkanPipelineRuntime` - shader module creation, pipeline cache, dynamic-rendering pipeline layout/pipeline creation.
@@ -194,12 +195,13 @@ Implemented:
 - Stage 10J per-thread Vulkan command runtime: one command pool per runtime thread slot with runtime-only ownership metadata
 - Stage 10K Stage 10 closeout: final checklist, ADR, project index, and verification documentation
 - Stage 11A native frame/present POD contracts: `SwapchainImageRef`, `AcquiredImage`, `PresentCommand`, and `DeferredDestroyCommand`
+- Stage 11B Vulkan swapchain runtime: host-provided surface or adopted swapchain, image query, image-view ownership, and POD swapchain/image refs
 - Stage 11D deferred destroy foundation: `NativeDeferredDestroyRuntime` queues retire commands and drains only frame-safe records
 
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
-- swapchain creation, image acquire, present, and window-visible output
+- image acquire, present, and window-visible output
 - production sprite instance shader/data layout
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
 - production texture atlas / sampled-image descriptor policy

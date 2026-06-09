@@ -10,6 +10,9 @@ struct VulkanPipelineRuntimeConfig;
 struct VulkanResourceRuntimeConfig;
 struct VulkanSyncRuntimeConfig;
 struct VulkanSubmitRuntimeConfig;
+struct VulkanSwapchainRuntimeConfig;
+struct VulkanSwapchainCreateConfig;
+struct VulkanSwapchainAdoptConfig;
 struct VulkanThreadCommandRuntimeConfig;
 struct VulkanUploadRingRuntimeConfig;
 
@@ -105,6 +108,9 @@ class VulkanSyncRuntime;
 
 template<class Provider, class Dim>
 class VulkanSubmitRuntime;
+
+template<class Provider, class Dim>
+class VulkanSwapchainRuntime;
 
 template<class Provider, class Dim>
 class VulkanThreadCommandRuntime;
