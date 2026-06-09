@@ -90,6 +90,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 
 - `tests/CMakeLists.txt` - Test target registration, including manual negative-compile include wiring for MemoryCenter and Vector_New.
 - `tests/compile_smoke.cpp` - Umbrella compile smoke and broad static assertions.
+- `tests/test_harness_test.cpp` - Self-test for the lightweight test assertion harness.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
 - `tests/text_glyph_components_test.cpp` - Text/Glyph Strict POD component contract and temporary stream storage behavior.
@@ -116,12 +117,14 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/support/ComponentStreamView.hpp` - Test-only view helpers for temporary ECS storage.
 - `tests/support/VulkanSmokeContext.hpp` - Optional Vulkan instance/device/queue setup helper for smoke tests.
 - `tests/support/FullScreenTriangleShaders.hpp` - Embedded SPIR-V for the offscreen full-screen triangle smoke test.
+- `tests/support/TestHarness.hpp` - Lightweight no-dependency assertion helpers for CTest executables.
 
 ## Benchmarks
 
 - `bench/CMakeLists.txt` - Benchmark target registration.
 - `bench/bench_smoke.cpp` - Minimal benchmark target smoke.
-- `bench/null_cpu_bench.cpp` - Deterministic CPU-only ECS pipeline benchmark.
+- `bench/null_cpu_bench.cpp` - Deterministic CPU-only sprite/text/mixed ECS pipeline benchmark.
+- `bench/support/BenchmarkFramework.hpp` - Shared benchmark config parsing, timing accumulation, and text/CSV report helpers.
 
 ## Documentation
 

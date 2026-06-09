@@ -122,15 +122,15 @@ These runtime classes are not ECS storage. They own backend slot lifecycle metad
 
 ## Benchmarking
 
-The Null CPU benchmark validates the current pipeline without Vulkan:
+The Null CPU benchmark validates the current sprite/text/mixed component pipelines without Vulkan:
 
 ```powershell
 cmake --preset clang-ninja-debug -DRENDER2D_BUILD_BENCHMARKS=ON
 cmake --build build
-.\build\bench\render2d_null_cpu_bench.exe --sprites 10000 --frames 4
+.\build\bench\render2d_null_cpu_bench.exe --scenario mixed --sprites 10000 --texts 2048 --frames 8 --warmup 2
 ```
 
-It reports visible count, draw count, batch count, and average pass timings.
+It reports active counts and average pass timings for sprite systems, text dirty/glyph systems, batching, and command buffer descriptor build. Stage 10 optimization work must compare against this baseline first.
 
 ## Current boundaries
 

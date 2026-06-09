@@ -1439,7 +1439,7 @@
 
   ## 阶段 6：Null CPU Benchmark（已完成）
 
-  当前状态：render2d_null_cpu_bench 已完成；覆盖 Transform、Bounds、Culling、CommandBuild、Batch、CommandBufferBuild；支持 --sprites 和 --frames；启用 RENDER2D_BUILD_BENCHMARKS 后进入 CTest smoke。
+  当前状态：render2d_null_cpu_bench baseline/test framework upgraded (done): covers sprite, text, and mixed CPU component pipelines; supports --scenario, --sprites, --texts, --frames, --warmup, --visibility, --glyphs-per-text, --dirty-text-stride, and --format text|csv; CTest includes sprite/text/mixed benchmark smokes.
 
 
 
@@ -1753,6 +1753,10 @@
 
 
   优化项：
+
+
+
+  10A status (done): test/bench framework is complete. Shared TestHarness and BenchmarkFramework exist; Null CPU benchmark now produces reproducible sprite/text/mixed baselines with warmup, visibility mode, dirty text cadence, and text/csv reports.
 
 
 
