@@ -2,7 +2,6 @@
 
 #include <Render2D/Core/Types.hpp>
 
-#include <algorithm>
 #include <charconv>
 #include <chrono>
 #include <iostream>
@@ -305,7 +304,7 @@ inline double elapsedMs(
 
 inline double averageMs(double total_ms_, U32 frame_count_) noexcept
 {
-    const auto divisor = static_cast<double>(std::max(frame_count_, 1U));
+    const auto divisor = static_cast<double>(frame_count_ == 0U ? 1U : frame_count_);
     return total_ms_ / divisor;
 }
 

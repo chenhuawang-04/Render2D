@@ -102,7 +102,7 @@ int main()
     glyph_instances.push(GlyphInstance{
         .glyph_run_index = 0U,
         .glyph_id = 41U,
-        .atlas_rect = {.min_x = 0.0F, .min_y = 0.0F, .max_x = 0.25F, .max_y = 0.5F},
+        .atlas_rect = R2D::makeAabb2(0.0F, 0.0F, 0.25F, 0.5F),
         .position_x = 10.0F,
         .position_y = 20.0F,
         .color_rgba8 = 0xFFFFFFFFU,
@@ -113,7 +113,7 @@ int main()
     glyph_instances.push(GlyphInstance{
         .glyph_run_index = 0U,
         .glyph_id = 42U,
-        .atlas_rect = {.min_x = 0.25F, .min_y = 0.0F, .max_x = 0.5F, .max_y = 0.5F},
+        .atlas_rect = R2D::makeAabb2(0.25F, 0.0F, 0.5F, 0.5F),
         .position_x = 18.0F,
         .position_y = 20.0F,
         .color_rgba8 = 0xFFFFFFFFU,
@@ -129,6 +129,8 @@ int main()
     assert(run_view.data[0].glyph_count == instance_view.count);
     assert(instance_view.data[1U].glyph_id == 42U);
     assert(instance_view.data[1U].position_x > instance_view.data[0U].position_x);
+    assert(R2D::aabb2Min(instance_view.data[1U].atlas_rect).x == 0.25F);
+    assert(R2D::aabb2Max(instance_view.data[1U].atlas_rect).x == 0.5F);
 
     const FontAtlasRef atlas{
         .font_id = kText.font_id,

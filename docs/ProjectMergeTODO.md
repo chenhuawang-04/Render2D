@@ -164,3 +164,17 @@ Stage 9 intentionally does not link FreeType. Its purpose is to lock the ECS-fac
 - unchanged `Text` entries can skip glyph run/instance rebuild through dirty ranges;
 - `GlyphBatchSystem` converts glyph runs into the same draw-command path used by sprites;
 - future FreeType/shaping/atlas code must update backing font runtime data outside ECS components.
+
+## 14. Render math is fast_math POD-only
+
+Render2D no longer owns independent math structs for 2D bounds or affine transforms.
+
+Current merge rule:
+
+- `Render2D::Vec2` is `MMath::Vec2`;
+- `Render2D::Mat3` is `MMath::Mat3`;
+- `Render2D::Aabb2` is `MMath::Aabb2`;
+- `WorldTransform::affine` stores `Mat3`, not a custom `Affine2X3`;
+- AABB construction/access must go through `makeAabb2`, `aabb2Min`, and `aabb2Max` because fast_math stores max values internally as negatives.
+
+Host-engine integration should map its ECS component streams to these POD math fields directly or through a single conversion edge. Do not reintroduce Render2D-local vector, matrix, or AABB implementations.

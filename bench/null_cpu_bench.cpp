@@ -170,7 +170,7 @@ void fillSpriteInputs(const R2DB::BenchmarkConfig& config_, BenchState& state_) 
         };
         state_.local_bounds[index] = {
             .source_id = source_id,
-            .bounds = {.min_x = -0.5F, .min_y = -0.5F, .max_x = 0.5F, .max_y = 0.5F},
+            .bounds = R2D::makeAabb2(-0.5F, -0.5F, 0.5F, 0.5F),
         };
         state_.visibility_masks[index] = {.mask = hidden ? 0U : 0xFFFFFFFFU};
         state_.sprites[index] = {

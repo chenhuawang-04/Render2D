@@ -57,9 +57,9 @@ int main()
     }};
 
     const std::array<LocalBounds, 3U> local_bounds{{
-        {.source_id = 0U, .bounds = {.min_x = -0.5F, .min_y = -0.5F, .max_x = 0.5F, .max_y = 0.5F}},
-        {.source_id = 1U, .bounds = {.min_x = -0.5F, .min_y = -0.5F, .max_x = 0.5F, .max_y = 0.5F}},
-        {.source_id = 2U, .bounds = {.min_x = -0.5F, .min_y = -0.5F, .max_x = 0.5F, .max_y = 0.5F}},
+        {.source_id = 0U, .bounds = R2D::makeAabb2(-0.5F, -0.5F, 0.5F, 0.5F)},
+        {.source_id = 1U, .bounds = R2D::makeAabb2(-0.5F, -0.5F, 0.5F, 0.5F)},
+        {.source_id = 2U, .bounds = R2D::makeAabb2(-0.5F, -0.5F, 0.5F, 0.5F)},
     }};
 
     const std::array<VisibilityMask, 3U> visibility_masks{{
@@ -117,8 +117,8 @@ int main()
     std::array<WorldBounds, local_bounds.size()> world_bounds{};
     result = R2D::BoundsSystem<Provider, Dim>::run(world_transforms, local_bounds, world_bounds);
     assert(result.code == R2D::SystemStatusCode::Ok);
-    assert(world_bounds[0U].bounds.min_x == -0.5F);
-    assert(world_bounds[1U].bounds.max_x == 1.5F);
+    assert(R2D::aabb2Min(world_bounds[0U].bounds).x == -0.5F);
+    assert(R2D::aabb2Max(world_bounds[1U].bounds).x == 1.5F);
 
     std::array<VisibleItem, local_bounds.size()> visible_items{};
     result = R2D::CullingSystem<Provider, Dim>::run(kCamera, world_bounds, visibility_masks, visible_items);

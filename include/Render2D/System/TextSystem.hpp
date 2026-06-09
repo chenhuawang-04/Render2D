@@ -508,12 +508,11 @@ private:
         const U32 row = glyph_id_ / config_.atlas_column_count;
         const float min_x = static_cast<float>(column) * config_.atlas_cell_width;
         const float min_y = static_cast<float>(row) * config_.atlas_cell_height;
-        return {
-            .min_x = min_x,
-            .min_y = min_y,
-            .max_x = min_x + config_.atlas_cell_width,
-            .max_y = min_y + config_.atlas_cell_height,
-        };
+        return makeAabb2(
+            min_x,
+            min_y,
+            min_x + config_.atlas_cell_width,
+            min_y + config_.atlas_cell_height);
     }
 };
 

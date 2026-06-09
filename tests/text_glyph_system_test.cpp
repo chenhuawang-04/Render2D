@@ -90,6 +90,8 @@ int main()
     assert(glyph_instances[0U].glyph_id == 32U);
     assert(glyph_instances[0U].position_x == 0.0F);
     assert(glyph_instances[0U].position_y == 3.0F);
+    assert(R2D::aabb2Min(glyph_instances[0U].atlas_rect).x == 0.0F);
+    assert(R2D::aabb2Max(glyph_instances[0U].atlas_rect).x == 1.0F / 16.0F);
     assert(glyph_instances[0U].color_rgba8 == kTexts[0U].color_rgba8);
     assert(glyph_instances[1U].glyph_id == 33U);
     assert(glyph_instances[1U].position_x == 10.0F);

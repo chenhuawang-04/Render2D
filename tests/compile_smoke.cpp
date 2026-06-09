@@ -36,8 +36,12 @@ static_assert(R2D::StrictPodComponent<SmokePodComponent>);
 static_assert(!R2D::StrictPodComponent<SmokeNonPodComponent>);
 static_assert(R2D::StrictPodComponent<R2D::RangeU32>);
 static_assert(R2D::StrictPodComponent<R2D::SystemResult>);
+static_assert(R2D::StrictPodComponent<R2D::Vec2>);
+static_assert(R2D::StrictPodComponent<R2D::Mat3>);
 static_assert(R2D::StrictPodComponent<R2D::Aabb2>);
-static_assert(R2D::StrictPodComponent<R2D::Affine2X3>);
+static_assert(std::is_same_v<R2D::Vec2, MMath::Vec2>);
+static_assert(std::is_same_v<R2D::Mat3, MMath::Mat3>);
+static_assert(std::is_same_v<R2D::Aabb2, MMath::Aabb2>);
 
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Transform<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::WorldTransform<Provider, Dim>>);

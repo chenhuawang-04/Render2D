@@ -19,7 +19,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 
 ### Core
 
-- `include/Render2D/Core/Types.hpp` - Fixed-width aliases and POD utility records such as `RangeU32`, `Aabb2`, and `Affine2X3`.
+- `include/Render2D/Core/Types.hpp` - Fixed-width aliases, POD ranges, and fast_math-backed aliases/helpers for `Vec2`, `Mat3`, and `Aabb2`.
 - `include/Render2D/Core/Result.hpp` - POD `SystemResult` and `SystemStatusCode` for CPU systems.
 - `include/Render2D/Core/Version.hpp` - Version constants.
 
@@ -34,8 +34,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Component/ComponentFwd.hpp` - Forward declarations for ECS components.
 - `include/Render2D/Component/StrictPod.hpp` - Strict POD component concept and validation helper.
 - `include/Render2D/Component/ComponentTraits.hpp` - Supported component trait and `SupportedRenderComponent` concept.
-- `include/Render2D/Component/Transform.hpp` - `Transform` and `WorldTransform`.
-- `include/Render2D/Component/Bounds.hpp` - `LocalBounds` and `WorldBounds`.
+- `include/Render2D/Component/Transform.hpp` - `Transform` and `WorldTransform`; derived transforms store fast_math `Mat3`.
+- `include/Render2D/Component/Bounds.hpp` - `LocalBounds` and `WorldBounds`; bounds store fast_math `Aabb2`.
 - `include/Render2D/Component/Sprite.hpp` - Sprite-facing components and render references.
 - `include/Render2D/Component/Text.hpp` - Text input, text dirty state/range, UTF-8 slice, font atlas, glyph run, and glyph instance POD components.
 - `include/Render2D/Component/Camera.hpp` - Camera input component.
@@ -88,10 +88,11 @@ This document is the living file index for Render2D. It summarizes the purpose o
 
 ## Tests
 
-- `tests/CMakeLists.txt` - Test target registration, including manual negative-compile include wiring for MemoryCenter and Vector_New.
+- `tests/CMakeLists.txt` - Test target registration, including manual negative-compile include wiring for MemoryCenter, Vector_New, and fast_math.
 - `tests/compile_smoke.cpp` - Umbrella compile smoke and broad static assertions.
 - `tests/test_harness_test.cpp` - Self-test for the lightweight test assertion harness.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
+- `tests/bounds_system_test.cpp` - fast_math AABB transform regression coverage for translation, scale, rotation, shear, and error paths.
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
 - `tests/text_glyph_components_test.cpp` - Text/Glyph Strict POD component contract and temporary stream storage behavior.
 - `tests/text_glyph_system_test.cpp` - Stage 9B glyph-run and glyph-instance system behavior and error paths.
@@ -119,6 +120,10 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/support/FullScreenTriangleShaders.hpp` - Embedded SPIR-V for the offscreen full-screen triangle smoke test.
 - `tests/support/TestHarness.hpp` - Lightweight no-dependency assertion helpers for CTest executables.
 
+## Scripts
+
+- `scripts/run_null_cpu_benchmarks.ps1` - Runs the Stage 10B standard Null CPU benchmark suite and writes timestamped CSV/Markdown reports under `build/bench_results/`.
+
 ## Benchmarks
 
 - `bench/CMakeLists.txt` - Benchmark target registration.
@@ -136,12 +141,14 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-text-glyph-pod-components.md` - ADR for Text/Glyph Strict POD data contracts.
 - `docs/adr/2026-06-09-freetype-vendor-and-test-glyph-systems.md` - ADR for dormant FreeType vendor source and deterministic Stage 9B glyph systems.
 - `docs/adr/2026-06-09-stage9-text-dirty-glyph-pipeline.md` - ADR for Stage 9 text dirty ranges, dirty glyph updates, and glyph draw-command batching.
+- `docs/adr/2026-06-09-fast-math-pod-math-types.md` - ADR for replacing Render2D-owned math structs with fast_math POD aliases and free-function math.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.
 - `docs/architecture/VULKAN_NATIVE_ONLY.md` - Vulkan-native-only policy and native POD components.
 - `docs/architecture/NATIVE_RUNTIME_CONTRACT.md` - Native runtime type, result, and CPU-side skeleton contracts.
 - `docs/architecture/NULL_CPU_BENCHMARK.md` - CPU-only benchmark design and usage.
+- `docs/architecture/BENCHMARK_BASELINE.md` - Stage 10B standard benchmark scenarios, runner usage, current local baseline capture, and optimization gate rule.
 
 
 ## Third-party source snapshots

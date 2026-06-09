@@ -1016,15 +1016,15 @@
 
 
 
-  11. fast_math 使用规则
+  11. fast_math usage rule
 
 
 
-  fast_math POD 类型可以作为组件字段使用，前提是通过 static_assert 验证。
+  fast_math POD types are allowed in component fields only after static_assert validation.
 
 
 
-  建议使用：
+  Required types:
 
 
 
@@ -1036,23 +1036,23 @@
 
 
 
-  但为了 GPU upload 更紧凑，DrawCommand 里不一定直接放 Mat3，可以压缩为：
+  Render2D exposes only these aliases:
 
 
 
-  Affine2x3
+  Render2D::Vec2
 
-    m00 m01 m02
+  Render2D::Mat3
 
-    m10 m11 m12
-
-
-
-  它也是 POD。
+  Render2D::Aabb2
 
 
 
-  Transform 输入组件可以是：
+  Do not reintroduce Render2D-owned vector, matrix, affine, or AABB types.
+
+
+
+  Transform input components stay scalar:
 
 
 
@@ -1068,11 +1068,11 @@
 
 
 
-  派生 WorldTransform 可以是：
+  Derived WorldTransform uses:
 
 
 
-  Affine2x3
+  Mat3
 
 
 
@@ -1757,6 +1757,12 @@
 
 
   10A status (done): test/bench framework is complete. Shared TestHarness and BenchmarkFramework exist; Null CPU benchmark now produces reproducible sprite/text/mixed baselines with warmup, visibility mode, dirty text cadence, and text/csv reports.
+
+
+  10B status (done): standard benchmark baseline is complete. `scripts/run_null_cpu_benchmarks.ps1` runs sprite_high_10k, sprite_low_10k, text_static_2k, text_dirty_2k, and mixed_10k_2k, writes timestamped CSV/Markdown reports under build/bench_results, and `docs/architecture/BENCHMARK_BASELINE.md` records the current local reference capture and gate rule.
+
+
+  10C status (done): fast_math migration is complete. Render2D-owned `Aabb2` / `Affine2X3` structs were removed; `Vec2`, `Mat3`, and `Aabb2` now alias `MMath` POD types. Transform, bounds, culling, and text atlas math use fast_math free functions. BoundsSystem uses the center/extents formula and reduced the local Debug 10k sprite bounds pass from ~3.64 ms to ~0.55 ms.
 
 
 

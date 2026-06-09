@@ -4,7 +4,6 @@
 #include "Render2D/Core/Result.hpp"
 #include "Render2D/Meta/Domain.hpp"
 
-#include <cmath>
 #include <span>
 
 namespace Render2D {
@@ -28,18 +27,21 @@ struct TransformSystem {
 
             for (Usize index = 0U; index < transforms_.size(); ++index) {
                 const auto& transform = transforms_[index];
-                const auto cos_rotation = std::cos(transform.rotation_radians);
-                const auto sin_rotation = std::sin(transform.rotation_radians);
+                MMath::SinCos sin_cos{};
+                MMath::sincos(MMath::Angle{.value = transform.rotation_radians}, &sin_cos);
 
                 world_transforms_[index] = WorldTransform<Provider, Dim>{
                     .source_id = transform.source_id,
                     .affine = {
-                        .m00 = cos_rotation * transform.scale_x,
-                        .m01 = -sin_rotation * transform.scale_y,
+                        .m00 = sin_cos.cos * transform.scale_x,
+                        .m01 = -sin_cos.sin * transform.scale_y,
                         .m02 = transform.position_x,
-                        .m10 = sin_rotation * transform.scale_x,
-                        .m11 = cos_rotation * transform.scale_y,
+                        .m10 = sin_cos.sin * transform.scale_x,
+                        .m11 = sin_cos.cos * transform.scale_y,
                         .m12 = transform.position_y,
+                        .m20 = 0.0F,
+                        .m21 = 0.0F,
+                        .m22 = 1.0F,
                     },
                 };
             }

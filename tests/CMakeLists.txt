@@ -31,6 +31,16 @@ render2d_apply_strict_warnings(render2d_cpu_system_pipeline_test)
 
 add_test(NAME render2d.cpu_system_pipeline COMMAND render2d_cpu_system_pipeline_test)
 
+add_executable(render2d_bounds_system_test
+    bounds_system_test.cpp
+)
+target_link_libraries(render2d_bounds_system_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_bounds_system_test)
+
+add_test(NAME render2d.bounds_system COMMAND render2d_bounds_system_test)
+
 add_executable(render2d_command_buffer_descriptor_test
     command_buffer_descriptor_test.cpp
 )
@@ -237,5 +247,6 @@ add_test(NAME render2d.negative_non_pod_component
         -D VECTOR_NEW_INCLUDE_DIR=${RENDER2D_VECTOR_NEW_INCLUDE_DIR}
         -D MEMORY_CENTER_INCLUDE_DIR=${RENDER2D_MEMORY_CENTER_SOURCE_DIR}/include
         -D MIMALLOC_INCLUDE_DIR=${RENDER2D_MEMORY_CENTER_SOURCE_DIR}/third_party/mimalloc/include
+        -D FAST_MATH_INCLUDE_DIR=${RENDER2D_FAST_MATH_SOURCE_DIR}/include
         -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_compile_failure.cmake
 )

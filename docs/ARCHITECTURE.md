@@ -9,7 +9,8 @@ Render2D is a C++23, component-first, Vulkan-native rendering module. The curren
 3. **Systems do not own ECS storage.** Production systems consume and write component streams through non-owning boundaries such as `std::span`.
 4. **Provider/Dim are compile-time tags.** The current valid domain is `VulkanNativeProvider + Dim2`.
 5. **Memory is centralized.** Render2D-owned dynamic CPU arrays use `Render2D::McVector` backed by MemoryCenter/Vector_New; Vulkan buffer/image backing memory is allocated and synchronized through `VulkanMemoryCenterAllocator`.
-6. **Native runtime owns backend lifetimes.** ECS stores POD handles/IDs. Runtime tables own and validate backend slots behind those refs.
+6. **Math is centralized through fast_math.** Render2D math aliases (`Vec2`, `Mat3`, `Aabb2`) are `MMath` Strict POD types, and render math systems call fast_math free functions.
+7. **Native runtime owns backend lifetimes.** ECS stores POD handles/IDs. Runtime tables own and validate backend slots behind those refs.
 
 ## Current data pipeline
 
@@ -54,7 +55,7 @@ The component layer defines Strict POD ECS records:
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
 - Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `BufferRef`, `UploadSlice`.
 
-Every supported component is registered through `ComponentTraits` and checked by `SupportedRenderComponent`.
+Every supported component is registered through `ComponentTraits` and checked by `SupportedRenderComponent`. `WorldTransform` stores `Render2D::Mat3` (`MMath::Mat3`), while `LocalBounds`, `WorldBounds`, and `GlyphInstance::atlas_rect` store `Render2D::Aabb2` (`MMath::Aabb2`). Use `makeAabb2` / `aabb2Min` / `aabb2Max` instead of touching AABB internals.
 
 ## System layer
 
@@ -70,6 +71,8 @@ Systems are stateless template types. They:
 This keeps systems reusable when the temporary test ECS is replaced by the host engine ECS.
 
 Stage 9 text systems are dependency-free and deterministic. `TextDirtySystem` emits dirty glyph ranges, `GlyphRunBuildSystem` and `GlyphInstanceBuildSystem` can update only those ranges, and `GlyphBatchSystem` emits regular `DrawCommand[]` entries over `GlyphInstance[]`. Real UTF-8 decoding, shaping, rasterization, atlas packing, and FreeType linkage are deferred to a dedicated font runtime stage.
+
+Stage 10C migrated transform, bounds, culling, and atlas-rect math to fast_math. `BoundsSystem` now uses the fast center/extents transform formula over `MMath::Mat3` / `MMath::Aabb2` instead of Render2D-owned math structs.
 
 ## Temporary test ECS
 
@@ -130,7 +133,7 @@ cmake --build build
 .\build\bench\render2d_null_cpu_bench.exe --scenario mixed --sprites 10000 --texts 2048 --frames 8 --warmup 2
 ```
 
-It reports active counts and average pass timings for sprite systems, text dirty/glyph systems, batching, and command buffer descriptor build. Stage 10 optimization work must compare against this baseline first.
+It reports active counts and average pass timings for sprite systems, text dirty/glyph systems, batching, and command buffer descriptor build. The Stage 10B standard suite is run with `scripts/run_null_cpu_benchmarks.ps1` and documented in `docs/architecture/BENCHMARK_BASELINE.md`. Stage 10C records the fast_math migration delta there: 10k sprite bounds dropped from about 3.64 ms to about 0.55 ms on the local Debug benchmark.
 
 ## Current boundaries
 
@@ -154,6 +157,7 @@ Implemented:
 - Stage 9A Text/Glyph Strict POD components: `Utf8Slice`, `GlyphRun`, `GlyphInstance`, and `FontAtlasRef`
 - Stage 9B deterministic test glyph systems through `GlyphRunBuildSystem`, `GlyphInstanceBuildSystem`, and `GlyphBuildConfig`
 - Dormant FreeType source copied under `third_party/freetype` for future font integration; it is not built yet
+- Stage 10C fast_math migration: `Render2D::Vec2`, `Render2D::Mat3`, and `Render2D::Aabb2` alias `MMath` POD types; custom Render2D `Aabb2` / `Affine2X3` structs are removed
 
 Not implemented yet:
 

@@ -67,20 +67,16 @@ private:
     {
         const auto half_width = camera_.viewport_width * 0.5F;
         const auto half_height = camera_.viewport_height * 0.5F;
-        return {
-            .min_x = camera_.position_x - half_width,
-            .min_y = camera_.position_y - half_height,
-            .max_x = camera_.position_x + half_width,
-            .max_y = camera_.position_y + half_height,
-        };
+        return makeAabb2(
+            camera_.position_x - half_width,
+            camera_.position_y - half_height,
+            camera_.position_x + half_width,
+            camera_.position_y + half_height);
     }
 
     static bool intersects(const Aabb2& left_, const Aabb2& right_) noexcept
     {
-        return left_.min_x <= right_.max_x &&
-            left_.max_x >= right_.min_x &&
-            left_.min_y <= right_.max_y &&
-            left_.max_y >= right_.min_y;
+        return Render2D::aabb2Intersects(left_, right_);
     }
 };
 

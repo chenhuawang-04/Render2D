@@ -28,6 +28,9 @@ endif()
 if(DEFINED MIMALLOC_INCLUDE_DIR AND NOT MIMALLOC_INCLUDE_DIR STREQUAL "")
     list(APPEND extra_include_args -I "${MIMALLOC_INCLUDE_DIR}")
 endif()
+if(DEFINED FAST_MATH_INCLUDE_DIR AND NOT FAST_MATH_INCLUDE_DIR STREQUAL "")
+    list(APPEND extra_include_args -I "${FAST_MATH_INCLUDE_DIR}")
+endif()
 
 execute_process(
     COMMAND "${CXX_COMPILER}" -std=c++23 -I "${INCLUDE_DIR}" ${extra_include_args} -c "${SOURCE_FILE}" -o "${OUTPUT_FILE}"

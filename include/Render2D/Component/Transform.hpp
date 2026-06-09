@@ -18,7 +18,7 @@ struct Transform {
 template<class Provider, class Dim>
 struct WorldTransform {
     U32 source_id;
-    Affine2X3 affine;
+    Mat3 affine;
 };
 
 template<class Provider, class Dim>

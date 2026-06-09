@@ -5,7 +5,6 @@
 #include "Render2D/Core/Result.hpp"
 #include "Render2D/Meta/Domain.hpp"
 
-#include <algorithm>
 #include <span>
 
 namespace Render2D {
@@ -21,9 +20,12 @@ struct BoundsSystem {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
             if (world_transforms_.size() != local_bounds_.size()) {
+                const Usize read_count = world_transforms_.size() < local_bounds_.size() ?
+                    world_transforms_.size() :
+                    local_bounds_.size();
                 return {
                     .code = SystemStatusCode::InvalidInput,
-                    .read_count = static_cast<U32>(std::min(world_transforms_.size(), local_bounds_.size())),
+                    .read_count = static_cast<U32>(read_count),
                     .write_count = 0U,
                 };
             }
@@ -51,23 +53,16 @@ struct BoundsSystem {
     }
 
 private:
-    static Aabb2 transformBounds(const Aabb2& bounds_, const Affine2X3& affine_) noexcept
+    static Aabb2 transformBounds(Aabb2 bounds_, Mat3 affine_) noexcept
     {
-        const auto x0 = affine_.m00 * bounds_.min_x + affine_.m01 * bounds_.min_y + affine_.m02;
-        const auto y0 = affine_.m10 * bounds_.min_x + affine_.m11 * bounds_.min_y + affine_.m12;
-        const auto x1 = affine_.m00 * bounds_.max_x + affine_.m01 * bounds_.min_y + affine_.m02;
-        const auto y1 = affine_.m10 * bounds_.max_x + affine_.m11 * bounds_.min_y + affine_.m12;
-        const auto x2 = affine_.m00 * bounds_.min_x + affine_.m01 * bounds_.max_y + affine_.m02;
-        const auto y2 = affine_.m10 * bounds_.min_x + affine_.m11 * bounds_.max_y + affine_.m12;
-        const auto x3 = affine_.m00 * bounds_.max_x + affine_.m01 * bounds_.max_y + affine_.m02;
-        const auto y3 = affine_.m10 * bounds_.max_x + affine_.m11 * bounds_.max_y + affine_.m12;
-
-        return {
-            .min_x = std::min({x0, x1, x2, x3}),
-            .min_y = std::min({y0, y1, y2, y3}),
-            .max_x = std::max({x0, x1, x2, x3}),
-            .max_y = std::max({y0, y1, y2, y3}),
+        const Vec2 center = MMath::aabb2Center(bounds_);
+        const Vec2 extents = MMath::aabb2Extents(bounds_);
+        const Vec2 world_center = MMath::mat3TransformPoint(affine_, center);
+        const Vec2 world_extents{
+            .x = MMath::abs(affine_.m00) * extents.x + MMath::abs(affine_.m01) * extents.y,
+            .y = MMath::abs(affine_.m10) * extents.x + MMath::abs(affine_.m11) * extents.y,
         };
+        return makeAabb2FromCenterExtents(world_center, world_extents);
     }
 };
 

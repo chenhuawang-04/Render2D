@@ -6,7 +6,6 @@
 
 #include <vulkan/vulkan.h>
 
-#include <algorithm>
 #include <array>
 #include <type_traits>
 
@@ -65,9 +64,9 @@ public:
             max_descriptor_sets = config_.max_descriptor_sets;
             combined_image_sampler_count = config_.combined_image_sampler_count;
             storage_buffer_count = config_.storage_buffer_count;
-            descriptor_array_capacity = std::max(
-                combined_image_sampler_count,
-                storage_buffer_count);
+            descriptor_array_capacity = combined_image_sampler_count > storage_buffer_count ?
+                combined_image_sampler_count :
+                storage_buffer_count;
             descriptor_pool_flags =
                 config_.descriptor_pool_flags | static_cast<U32>(VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
             descriptor_set_layout_flags = config_.descriptor_set_layout_flags;

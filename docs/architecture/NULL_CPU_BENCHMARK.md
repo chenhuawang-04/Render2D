@@ -66,6 +66,16 @@ DrawCommand[] -> BatchCommand[] -> CommandBuffer[]
 
 The mixed scenario appends text draw commands after sprite draw commands, then batches the combined command stream. Static text can be measured with `--dirty-text-stride 0`; incremental dirty updates can be measured with `--dirty-text-stride N`. Numeric arguments are parsed strictly: malformed values fail instead of falling back to defaults.
 
+## Baseline Runner
+
+For the full Stage 10B baseline suite, use:
+
+```powershell
+.\scripts\run_null_cpu_benchmarks.ps1
+```
+
+The runner emits timestamped CSV and Markdown reports under `build/bench_results/`; see `docs/architecture/BENCHMARK_BASELINE.md` for the standard scenario list and current local reference capture.
+
 ## Reported Metrics
 
 The report includes active counts and average per-frame timings for:

@@ -1,0 +1,101 @@
+# Benchmark Baseline
+
+Stage 10B establishes reproducible benchmark scenarios before any hot-path optimization. These numbers are local reference data, not hard CI thresholds yet. Future Stage 10 optimization work must record before/after results using the same scenarios.
+
+## Runner
+
+Build the benchmark first:
+
+```powershell
+cmake --build build --target render2d_null_cpu_bench
+```
+
+Run the standard baseline suite:
+
+```powershell
+.\scripts\run_null_cpu_benchmarks.ps1
+```
+
+Generated files are written under ignored build output:
+
+```text
+build/bench_results/null_cpu_baseline_<timestamp>.csv
+build/bench_results/null_cpu_baseline_<timestamp>.md
+```
+
+Optional large local-only scenarios:
+
+```powershell
+.\scripts\run_null_cpu_benchmarks.ps1 -IncludeLarge
+```
+
+## Standard Scenarios
+
+| Scenario | Purpose | Main arguments |
+|---|---|---|
+| `sprite_high_10k` | Sprite transform/bounds/culling/command baseline with high visibility. | `--scenario sprite --sprites 10000 --visibility high` |
+| `sprite_low_10k` | Sprite culling/compaction baseline with low visibility. | `--scenario sprite --sprites 10000 --visibility low` |
+| `text_static_2k` | Static text after warmup; validates no dirty glyph rebuild. | `--scenario text --texts 2048 --dirty-text-stride 0` |
+| `text_dirty_2k` | Partial dirty text rebuild cadence. | `--scenario text --texts 2048 --dirty-text-stride 8` |
+| `mixed_10k_2k` | Combined sprite + text command stream baseline. | `--scenario mixed --sprites 10000 --texts 2048 --dirty-text-stride 8` |
+
+All standard scenarios use `--frames 8 --warmup 2 --glyphs-per-text 8 --format csv` where applicable.
+
+## Current Local Reference Capture
+
+- Captured UTC: 2026-06-09T06:02:38Z
+- Build tree: `build`
+- Build type: Debug
+- Compiler: Clang 22.1.5
+- CMake: 4.0.4
+- Vulkan SDK: `D:\PUsing\SDKs\Vulkan SDK 1.3.296.0`
+- OS: Microsoft Windows NT 10.0.22631.0
+- CPU identifier: Intel64 Family 6 Model 154 Stepping 3, GenuineIntel
+
+| Scenario | Visible | Total Draws | Batches | Transform ms | Bounds ms | Culling ms | Sprite Cmd ms | Text Dirty ms | Glyph Run ms | Glyph Instance ms | Glyph Batch ms | Batch ms |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `sprite_high_10k` | 10000 | 10000 | 79 | 0.10035 | 3.64515 | 0.105675 | 0.130425 | 0 | 0 | 0 | 0 | 0.0547375 |
+| `sprite_low_10k` | 1250 | 1250 | 79 | 0.08855 | 3.61521 | 0.0463375 | 0.0161 | 0 | 0 | 0 | 0 | 0.0077875 |
+| `text_static_2k` | 0 | 2048 | 2048 | 0 | 0 | 0 | 0 | 0.0281 | 6.25e-05 | 6.25e-05 | 0.0505875 | 0.0194375 |
+| `text_dirty_2k` | 0 | 2048 | 2048 | 0 | 0 | 0 | 0 | 0.0331375 | 0.0056875 | 0.06075 | 0.0495 | 0.0227375 |
+| `mixed_10k_2k` | 10000 | 12048 | 2127 | 0.101025 | 3.63987 | 0.100638 | 0.129825 | 0.0316125 | 0.0111 | 0.0589625 | 0.0489625 | 0.081325 |
+
+## Initial Bottleneck Reading
+
+- `BoundsSystem` dominates the sprite and mixed baselines, so it is the first data-backed optimization candidate.
+- Low visibility reduces command build and batch cost as expected, but bounds remains almost unchanged because all sprite bounds are still transformed.
+- Static text validates that warmup removes dirty glyph rebuild work; dirty text shows glyph instance rebuild cost only for the configured partial dirty cadence.
+- `BatchSystem` cost is currently small for sprite-only cases but grows with text draw count in mixed scenarios.
+
+
+## Stage 10C fast_math Migration Result
+
+- Captured UTC: 2026-06-09T07:14:19Z
+- Change: `Render2D::Aabb2` / `Affine2X3` structs were removed; `Vec2`, `Mat3`, and `Aabb2` now alias fast_math POD types; transform/bounds/culling/text atlas math now calls fast_math free functions.
+- Correctness gate: `ctest --test-dir build --output-on-failure` passed 30/30 after migration.
+
+| Scenario | Transform ms | Bounds ms | Culling ms | Sprite Cmd ms | Text Dirty ms | Glyph Instance ms | Batch ms |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `sprite_high_10k` | 0.26095 | 0.5528 | 0.107775 | 0.125225 | 0 | 0 | 0.0577875 |
+| `sprite_low_10k` | 0.251775 | 0.531125 | 0.04925 | 0.0149625 | 0 | 0 | 0.00795 |
+| `text_static_2k` | 0 | 0 | 0 | 0 | 0.0301125 | 5e-05 | 0.0218375 |
+| `text_dirty_2k` | 0 | 0 | 0 | 0 | 0.0346625 | 0.09215 | 0.0251625 |
+| `mixed_10k_2k` | 0.262912 | 0.552575 | 0.116475 | 0.1408 | 0.03485 | 0.0939375 | 0.0849125 |
+
+Bounds delta against the Stage 10B capture:
+
+- `sprite_high_10k`: 3.64515 ms -> 0.5528 ms, about 6.6x faster.
+- `sprite_low_10k`: 3.61521 ms -> 0.531125 ms, about 6.8x faster.
+- `mixed_10k_2k`: 3.63987 ms -> 0.552575 ms, about 6.6x faster.
+
+Transform time increased on this Debug capture because it now uses fast_math trigonometry as required. The bounds bottleneck is removed; future transform work should use a data-backed batch/SoA path instead of reverting to non-fast_math math.
+
+## Gate Rule
+
+Before any Stage 10 optimization is accepted:
+
+1. Run this baseline suite before the change.
+2. Apply one optimization only.
+3. Run the same suite after the change.
+4. Record delta and correctness verification.
+5. Keep `ctest`, clang-tidy, `std::vector` scan, and direct Vulkan memory API scan green.
