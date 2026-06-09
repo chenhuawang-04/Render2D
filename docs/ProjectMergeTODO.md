@@ -140,4 +140,18 @@ Merge rule:
 - UTF-8 backing buffers, font files, shaping caches, atlas images, and glyph raster data remain outside ECS components;
 - glyph systems should pass only ids, ranges, atlas rects, positions, colors, sort keys, and flags through ECS.
 
-Still not implemented: font shaping, atlas packing, sampled-image descriptor policy, and Vulkan text draw integration.
+Stage 9B now provides deterministic placeholder glyph run/instance systems. Still not implemented: real UTF-8 decoding, font shaping, atlas packing, sampled-image descriptor policy, and Vulkan text draw integration.
+
+
+## 12. FreeType is vendored but dormant
+
+FreeType source has been copied to `third_party/freetype/` from `E:/Project/MelosyneTest/VulkanRender_New/freetype-master`.
+
+Current rule:
+
+- do not include FreeType headers from Render2D public headers;
+- do not add FreeType to CMake until a dedicated font runtime stage starts;
+- keep Stage 9B glyph systems deterministic and dependency-free;
+- when FreeType is enabled later, keep all FreeType handles, faces, glyph slots, and atlas ownership outside ECS components.
+
+License note: FreeType offers FTL or GPLv2+ choices; choose and document the project policy before shipping or linking it.

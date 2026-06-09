@@ -41,6 +41,16 @@ render2d_apply_strict_warnings(render2d_text_glyph_components_test)
 
 add_test(NAME render2d.text_glyph_components COMMAND render2d_text_glyph_components_test)
 
+add_executable(render2d_text_glyph_system_test
+    text_glyph_system_test.cpp
+)
+target_link_libraries(render2d_text_glyph_system_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_text_glyph_system_test)
+
+add_test(NAME render2d.text_glyph_system COMMAND render2d_text_glyph_system_test)
+
 add_executable(render2d_native_components_test
     native_components_test.cpp
 )

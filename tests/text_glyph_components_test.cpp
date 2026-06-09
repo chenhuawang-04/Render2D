@@ -102,6 +102,7 @@ int main()
     assert(instance_view.data[1U].position_x > instance_view.data[0U].position_x);
 
     const FontAtlasRef atlas{
+        .font_id = kText.font_id,
         .atlas_id = run_view.data[0].atlas_id,
         .generation = run_view.data[0].atlas_generation,
         .texture_id = 99U,

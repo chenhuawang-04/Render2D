@@ -1682,6 +1682,8 @@
 
   9A status (done): Text/Glyph Strict POD component contract is complete. `Utf8Slice`, `GlyphRun`, `GlyphInstance`, and `FontAtlasRef` are registered as supported ECS components, with tests covering POD traits and temporary ECS stream storage. No font library, shaping, atlas packing, or Vulkan text draw is implemented in 9A.
 
+  9B status (done): Deterministic test glyph systems are complete. `GlyphRunBuildSystem` maps `Text[]` to `GlyphRun[]` by font atlas id and UTF-8 byte count, while `GlyphInstanceBuildSystem` expands runs into placeholder `GlyphInstance[]` using `GlyphBuildConfig`. FreeType has been copied to `third_party/freetype` for future integration but is not connected to CMake or runtime yet.
+
 
 
   目标：文本也保持 Strict POD component stream。

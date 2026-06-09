@@ -49,4 +49,5 @@
 #include "Render2D/System/EncodeSystem.hpp"
 #include "Render2D/System/SubmitSystem.hpp"
 #include "Render2D/System/SystemFwd.hpp"
+#include "Render2D/System/TextSystem.hpp"
 #include "Render2D/System/TransformSystem.hpp"

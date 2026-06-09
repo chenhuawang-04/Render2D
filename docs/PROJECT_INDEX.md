@@ -7,7 +7,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `.clang-tidy` - Project clang-tidy configuration adapted from the Melosyne style rules.
 - `.gitignore` - Ignores CMake/Ninja build output, user files, and generated compiler artifacts.
 - `AGENTS.md` - Contributor guide for this repository.
-- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, MemoryCenter/Vector_New/fast_math/Vulkan dependencies, warnings, tests, and benchmarks.
+- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, MemoryCenter/Vector_New/fast_math/Vulkan dependencies, warnings, tests, and benchmarks. Dormant `third_party/freetype` is intentionally not added here yet.
 - `CMakePresets.json` - Default `clang-ninja-debug` configure/build/test preset.
 - `Plan.md` - Long-term implementation plan and phase tracking.
 
@@ -55,6 +55,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/CommandBufferSystem.hpp` - Builds and clears POD `CommandBuffer` range descriptors.
 - `include/Render2D/System/EncodeSystem.hpp` - CPU-only encode contract from `CommandBuffer` ranges to `NativeCommandBufferRef`.
 - `include/Render2D/System/SubmitSystem.hpp` - CPU-only submit contract from native command refs and `FrameSync` to `NativeSubmitCommand`.
+- `include/Render2D/System/TextSystem.hpp` - Deterministic Stage 9B glyph-run and glyph-instance build systems using `GlyphBuildConfig`.
 
 ### Native
 
@@ -92,6 +93,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
 - `tests/text_glyph_components_test.cpp` - Text/Glyph Strict POD component contract and temporary stream storage behavior.
+- `tests/text_glyph_system_test.cpp` - Stage 9B glyph-run and glyph-instance system behavior and error paths.
 - `tests/native_components_test.cpp` - Native POD ECS component contract checks.
 - `tests/native_runtime_contract_test.cpp` - Native runtime type/result POD contract checks.
 - `tests/native_resource_runtime_test.cpp` - Buffer/image native slot table stale-reference and generation reuse checks.
@@ -128,9 +130,15 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-08-component-first-vulkan-native-render2d.md` - Initial ADR for component-first Vulkan-native architecture.
 - `docs/adr/2026-06-09-memorycenter-mcvector-runtime-memory.md` - ADR for MemoryCenter/McVector CPU runtime storage and Vulkan GPU allocation.
 - `docs/adr/2026-06-09-text-glyph-pod-components.md` - ADR for Text/Glyph Strict POD data contracts.
+- `docs/adr/2026-06-09-freetype-vendor-and-test-glyph-systems.md` - ADR for dormant FreeType vendor source and deterministic Stage 9B glyph systems.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.
 - `docs/architecture/VULKAN_NATIVE_ONLY.md` - Vulkan-native-only policy and native POD components.
 - `docs/architecture/NATIVE_RUNTIME_CONTRACT.md` - Native runtime type, result, and CPU-side skeleton contracts.
 - `docs/architecture/NULL_CPU_BENCHMARK.md` - CPU-only benchmark design and usage.
+
+
+## Third-party source snapshots
+
+- `third_party/freetype/` - Copied FreeType source snapshot from `E:/Project/MelosyneTest/VulkanRender_New/freetype-master`. It is stored for future text work and is not currently built, linked, or included by Render2D CMake.

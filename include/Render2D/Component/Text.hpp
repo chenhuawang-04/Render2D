@@ -32,6 +32,7 @@ struct FontRef {
 
 template<class Provider, class Dim>
 struct FontAtlasRef {
+    U32 font_id;
     U32 atlas_id;
     U32 generation;
     U32 texture_id;

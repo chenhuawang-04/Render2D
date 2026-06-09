@@ -58,4 +58,4 @@ Text[] + Utf8Slice[] + FontAtlasRef[]
     -> future DrawCommand[] / BatchCommand[]
 ```
 
-`Text`, `Utf8Slice`, `FontAtlasRef`, `GlyphRun`, and `GlyphInstance` are ECS components. They do not own strings, glyph caches, atlas images, or font resources. Backing storage and future shaping/atlas systems remain outside the component contract.
+`Text`, `Utf8Slice`, `FontAtlasRef`, `GlyphRun`, and `GlyphInstance` are ECS components. They do not own strings, glyph caches, atlas images, or font resources. Backing storage and future shaping/atlas systems remain outside the component contract. Stage 9B adds deterministic test systems that expand UTF-8 byte counts into placeholder glyph runs and instances; this is not real shaping.

@@ -137,13 +137,15 @@ Implemented:
 - Stage 8F MemoryCenter-backed persistent mapped upload ring with frame-slot reuse protection through `VulkanUploadRingRuntime`
 - Stage 8G offscreen dynamic-rendering smoke through `VulkanDynamicRenderEncoder`
 - Stage 9A Text/Glyph Strict POD components: `Utf8Slice`, `GlyphRun`, `GlyphInstance`, and `FontAtlasRef`
+- Stage 9B deterministic test glyph systems through `GlyphRunBuildSystem`, `GlyphInstanceBuildSystem`, and `GlyphBuildConfig`
+- Dormant FreeType source copied under `third_party/freetype` for future font integration; it is not built yet
 
 Not implemented yet:
 
 - deferred destroy queues
 - swapchain creation, image acquire, present, and window-visible output
 - production sprite instance shader/data layout
-- font shaping and atlas packing
+- real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
 - production texture atlas / sampled-image descriptor policy
 - Vulkan text draw integration
 - RenderDoc automation; current capture target is the offscreen Vulkan smoke executable
