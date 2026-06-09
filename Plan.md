@@ -1,4 +1,4 @@
-组件可以脱离实体存在。
+﻿组件可以脱离实体存在。
 
   ECS = component data streams + systems。
 
@@ -2075,3 +2075,21 @@
 
 
 
+
+## 2026-06-09 阶段进度补充
+
+- [x] 10A：test/bench 框架完成
+- [x] 10B：标准 benchmark baseline 完成
+- [x] 10C：fast_math 全量迁移完成
+- [x] 10D：perf/profile harness 完成
+- [x] 10E：单线程 dirty transform / bounds 热路径优化完成
+- [x] 10F：draw sort / batch key 基础完成
+- [x] 10G：ThreadCenter 已接入为 runtime/system 基础设施
+
+10G 边界说明：
+
+- ThreadCenter 只作为 runtime/system infrastructure 使用；
+- 不进入 ECS component；
+- 不改变现有单线程 system 的正确性基线；
+- 当前仅完成构建接入、内部 runtime support target 与 smoke test；
+- 后续 10H 再进入基于 ThreadCenter 的多线程 CPU pipeline。

@@ -29,6 +29,19 @@ render2d_apply_strict_warnings(render2d_test_harness_test)
 
 add_test(NAME render2d.test_harness COMMAND render2d_test_harness_test)
 
+add_executable(render2d_thread_center_dependency_test
+    thread_center_dependency_test.cpp
+)
+target_link_libraries(render2d_thread_center_dependency_test PRIVATE
+    render2d_thread_runtime_support
+)
+target_include_directories(render2d_thread_center_dependency_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_thread_center_dependency_test)
+
+add_test(NAME render2d.thread_center_dependency COMMAND render2d_thread_center_dependency_test)
+
 add_executable(render2d_cpu_system_pipeline_test
     cpu_system_pipeline_test.cpp
 )

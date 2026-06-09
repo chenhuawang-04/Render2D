@@ -10,10 +10,10 @@ This file is the execution checklist for fully completing Stage 10. It keeps opt
 - [x] 10D: Benchmark/profile harness now includes Perf preset, dirty transform scenarios, large/huge local suites, and profile runner metadata.
 - [x] 10E: Single-thread Transform/Bounds dirty-index path and zero-rotation Transform fast path are implemented and benchmarked.
 - [x] 10F: Packed draw sort keys, explicit radix sort path, and BatchSystem packed-key comparison are implemented and benchmarked.
+- [x] 10G: ThreadCenter header dependency is integrated as runtime/system infrastructure only through an internal support target and smoke test.
 
 ## Remaining Route
 
-- [ ] 10G: ThreadCenter dependency integration as runtime/system infrastructure only.
 - [ ] 10H: ThreadCenter-backed multi-thread CPU pipeline with deterministic merge.
 - [ ] 10I: Upload command coalescing and descriptor table compaction.
 - [ ] 10J: Per-thread Vulkan command pools and command recording ownership.
@@ -43,7 +43,13 @@ Planned CMake dependency target:
 Center.Thread.Headers
 ```
 
-ThreadCenter will be used by runtime/system pipeline code only. The single-thread systems remain available and are the correctness reference for threaded execution.
+Render2D currently wires this through an internal target:
+
+```text
+render2d_thread_runtime_support -> Render2D::Render2D + Center.Thread.Headers
+```
+
+ThreadCenter will be used by runtime/system pipeline code only. The public `Render2D::Render2D` target and ECS component contracts remain ThreadCenter-free. The single-thread systems remain available and are the correctness reference for threaded execution.
 
 ## Stage 10D Verification Commands
 
@@ -83,3 +89,19 @@ ctest --preset clang-ninja-perf
 ```
 
 Current result: all commands passed on 2026-06-09. `--enable-sort` remains explicit because sorting reduces batch count but has measurable CPU cost.
+
+## Stage 10G Verification Commands
+
+```powershell
+cmake --preset clang-ninja-debug
+cmake --build --preset clang-ninja-debug
+ctest --test-dir build --output-on-failure
+cmake --preset clang-ninja-perf
+cmake --build --preset clang-ninja-perf
+ctest --preset clang-ninja-perf
+clang-tidy -p build tests\thread_center_dependency_test.cpp tests\compile_smoke.cpp --quiet
+git diff --check
+clang-tidy --verify-config --config-file=.clang-tidy
+```
+
+Current result: build/test passed on 2026-06-09. `render2d_thread_center_dependency_test` proves the ThreadCenter runtime dependency is available without placing ThreadCenter types into ECS components or the public `Render2D::Render2D` interface target.

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.28)
 
 project(Render2D
     VERSION 0.1.0
@@ -20,6 +20,8 @@ set(RENDER2D_FAST_MATH_SOURCE_DIR "E:/Project/MelosyneTest/Math/fast_math" CACHE
     "Path to fast_math source tree.")
 set(RENDER2D_VECTOR_NEW_INCLUDE_DIR "E:/Project/MelosyneTest/Vector_New/include" CACHE PATH
     "Path to Vector_New include tree providing Center/Memory/Container/Vector/McVector.hpp.")
+set(RENDER2D_THREAD_CENTER_SOURCE_DIR "E:/Project/MelosyneTest/ThreadCenter" CACHE PATH
+    "Path to ThreadCenter source tree.")
 
 if(NOT EXISTS "${RENDER2D_MEMORY_CENTER_SOURCE_DIR}/CMakeLists.txt")
     message(FATAL_ERROR "MemoryCenterNew was not found at RENDER2D_MEMORY_CENTER_SOURCE_DIR='${RENDER2D_MEMORY_CENTER_SOURCE_DIR}'.")
@@ -29,6 +31,9 @@ if(NOT EXISTS "${RENDER2D_FAST_MATH_SOURCE_DIR}/CMakeLists.txt")
 endif()
 if(NOT EXISTS "${RENDER2D_VECTOR_NEW_INCLUDE_DIR}/Center/Memory/Container/Vector/McVector.hpp")
     message(FATAL_ERROR "McVector was not found at RENDER2D_VECTOR_NEW_INCLUDE_DIR='${RENDER2D_VECTOR_NEW_INCLUDE_DIR}'.")
+endif()
+if(NOT EXISTS "${RENDER2D_THREAD_CENTER_SOURCE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR "ThreadCenter was not found at RENDER2D_THREAD_CENTER_SOURCE_DIR='${RENDER2D_THREAD_CENTER_SOURCE_DIR}'.")
 endif()
 
 set(MCENTER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -43,8 +48,30 @@ set(FAST_MATH_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(FAST_MATH_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
 set(FAST_MATH_BUILD_MODULES OFF CACHE BOOL "" FORCE)
 
+set(THREAD_CENTER_BUILD_HEADER_API ON CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_MODULES OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_TESTS_HEADER OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_TESTS_MODULE OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_BENCH_HEADER OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_BUILD_BENCH_MODULE OFF CACHE BOOL "" FORCE)
+set(THREAD_CENTER_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+
 add_subdirectory("${RENDER2D_MEMORY_CENTER_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/MemoryCenterNew")
 add_subdirectory("${RENDER2D_FAST_MATH_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/fast_math")
+add_subdirectory("${RENDER2D_THREAD_CENTER_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/ThreadCenter")
+
+get_target_property(RENDER2D_THREAD_CENTER_INCLUDE_DIRS
+    Center.Thread.Headers
+    INTERFACE_INCLUDE_DIRECTORIES
+)
+if(RENDER2D_THREAD_CENTER_INCLUDE_DIRS)
+    set_property(TARGET Center.Thread.Headers PROPERTY
+        INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${RENDER2D_THREAD_CENTER_INCLUDE_DIRS}"
+    )
+endif()
 
 if(RENDER2D_REQUIRE_VULKAN)
     find_package(Vulkan REQUIRED)
@@ -54,6 +81,7 @@ endif()
 
 add_library(Render2D INTERFACE)
 add_library(Render2D::Render2D ALIAS Render2D)
+add_library(render2d_thread_runtime_support INTERFACE)
 
 target_compile_features(Render2D INTERFACE cxx_std_23)
 target_include_directories(Render2D INTERFACE
@@ -66,8 +94,14 @@ target_link_libraries(Render2D INTERFACE
     fast_math
 )
 
+target_link_libraries(render2d_thread_runtime_support INTERFACE
+    Render2D::Render2D
+    Center.Thread.Headers
+)
+
 if(TARGET Vulkan::Vulkan)
     target_link_libraries(Render2D INTERFACE Vulkan::Vulkan)
+    target_link_libraries(render2d_thread_runtime_support INTERFACE Vulkan::Vulkan)
 endif()
 
 function(render2d_apply_strict_warnings target_name)

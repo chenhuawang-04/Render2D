@@ -78,6 +78,8 @@ Stage 10C migrated transform, bounds, culling, and atlas-rect math to fast_math.
 
 Stage 10F adds packed draw sort keys and an optional stable radix `DrawSortSystem`. Sorting reduces batch counts when command streams are not already resource-grouped, but it is explicit (`--enable-sort` in benchmarks) because CPU-only sort cost is measurable.
 
+Stage 10G integrates ThreadCenter as runtime/system infrastructure only. The repository now embeds `Center.Thread.Headers` and exposes it through an internal `render2d_thread_runtime_support` target used by a smoke test. ECS components, system signatures, and the public `Render2D::Render2D` interface remain ThreadCenter-free at this stage.
+
 ## Temporary test ECS
 
 The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration. Its backing arrays use `Render2D::McVector`, but the storage itself remains test-only.
@@ -165,9 +167,11 @@ Implemented:
 - Stage 10D benchmark/profile harness: `clang-ninja-perf` preset, dirty transform benchmark input mutation, extended runner suites, and Stage 10 TODO tracking
 - Stage 10E single-thread spatial hot path: `TransformDirtyItem`, `TransformSystem::runDirty`, `BoundsSystem::runDirty`, and zero-rotation transform fast path
 - Stage 10F sort/batch foundation: packed draw sort keys, optional `DrawSortSystem`, and collision-safe packed-key-first `BatchSystem` comparison
+- Stage 10G ThreadCenter integration: header-only runtime/system dependency embedded in CMake through `render2d_thread_runtime_support`, with smoke coverage and no ECS/public-interface contamination
 
 Not implemented yet:
 
+- ThreadCenter-backed multi-thread CPU pipeline and deterministic per-thread merge
 - deferred destroy queues
 - swapchain creation, image acquire, present, and window-visible output
 - production sprite instance shader/data layout

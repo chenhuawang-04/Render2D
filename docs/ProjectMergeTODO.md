@@ -191,6 +191,13 @@ Merge rule:
 - multi-thread paths must write per-thread streams and merge deterministically;
 - host ECS still owns component streams.
 
+Stage 10G integration note:
+
+- Render2D embeds ThreadCenter in CMake with header API only;
+- current integration target is `render2d_thread_runtime_support`;
+- `render2d_thread_runtime_support` links `Render2D::Render2D` + `Center.Thread.Headers`;
+- public `Render2D::Render2D` remains ThreadCenter-free until a real public runtime header needs it.
+
 ## 16. TransformDirtyItem is an ECS-visible component
 
 Stage 10E adds `TransformDirtyItem<Provider, Dim>` as a Strict POD dirty-index component.

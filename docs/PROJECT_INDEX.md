@@ -7,8 +7,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `.clang-tidy` - Project clang-tidy configuration adapted from the Melosyne style rules.
 - `.gitignore` - Ignores CMake/Ninja build output, user files, and generated compiler artifacts.
 - `AGENTS.md` - Contributor guide for this repository.
-- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, MemoryCenter/Vector_New/fast_math/Vulkan dependencies, warnings, tests, and benchmarks. Dormant `third_party/freetype` is intentionally not added here yet.
-- `CMakePresets.json` - Debug and Perf configure/build/test presets, including `clang-ninja-perf` for RelWithDebInfo benchmark captures.
+- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, the internal `render2d_thread_runtime_support` target, MemoryCenter/Vector_New/fast_math/ThreadCenter/Vulkan dependencies, warnings, tests, and benchmarks. Dormant `third_party/freetype` is intentionally not added here yet.
+- `CMakePresets.json` - Debug and Perf configure/build/test presets, now aligned to the CMake 3.28 minimum required by embedded ThreadCenter.
 - `Plan.md` - Long-term implementation plan and phase tracking.
 
 ## Public include tree
@@ -93,6 +93,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/CMakeLists.txt` - Test target registration, release-like test assertion handling, and manual negative-compile include wiring for MemoryCenter, Vector_New, and fast_math.
 - `tests/compile_smoke.cpp` - Umbrella compile smoke and broad static assertions.
 - `tests/test_harness_test.cpp` - Self-test for the lightweight test assertion harness.
+- `tests/thread_center_dependency_test.cpp` - Stage 10G smoke test proving ThreadCenter is available to runtime/system code without entering ECS components.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/draw_sort_system_test.cpp` - Packed sort key, radix draw sort, batch merge, and collision-safety coverage.
 - `tests/transform_dirty_system_test.cpp` - Sparse dirty transform/bounds update coverage.
@@ -146,6 +147,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-freetype-vendor-and-test-glyph-systems.md` - ADR for dormant FreeType vendor source and deterministic Stage 9B glyph systems.
 - `docs/adr/2026-06-09-stage9-text-dirty-glyph-pipeline.md` - ADR for Stage 9 text dirty ranges, dirty glyph updates, and glyph draw-command batching.
 - `docs/adr/2026-06-09-fast-math-pod-math-types.md` - ADR for replacing Render2D-owned math structs with fast_math POD aliases and free-function math.
+- `docs/adr/2026-06-09-threadcenter-runtime-infrastructure.md` - ADR for embedding ThreadCenter as an internal runtime/system dependency only.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.
