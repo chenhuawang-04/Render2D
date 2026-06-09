@@ -80,6 +80,8 @@ Stage 10F adds packed draw sort keys and an optional stable radix `DrawSortSyste
 
 Stage 10G integrates ThreadCenter as runtime/system infrastructure only. The repository now embeds `Center.Thread.Headers` and exposes it through an internal `render2d_thread_runtime_support` target used by a smoke test. ECS components, system signatures, and the public `Render2D::Render2D` interface remain ThreadCenter-free at this stage.
 
+Stage 10H adds `ThreadedCpuPipelineRuntime`, a ThreadCenter-backed runtime facade for the sprite CPU path. It parallelizes Transform, Bounds, Culling, and CommandBuild over fixed chunks, writes per-chunk culling scratch with `McVector`, merges visible items in chunk order, then runs BatchSystem through the existing single-thread reference path. It does not add ECS components and is intentionally not included by the umbrella header because it requires the internal ThreadCenter support target.
+
 ## Temporary test ECS
 
 The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration. Its backing arrays use `Render2D::McVector`, but the storage itself remains test-only.
@@ -168,10 +170,11 @@ Implemented:
 - Stage 10E single-thread spatial hot path: `TransformDirtyItem`, `TransformSystem::runDirty`, `BoundsSystem::runDirty`, and zero-rotation transform fast path
 - Stage 10F sort/batch foundation: packed draw sort keys, optional `DrawSortSystem`, and collision-safe packed-key-first `BatchSystem` comparison
 - Stage 10G ThreadCenter integration: header-only runtime/system dependency embedded in CMake through `render2d_thread_runtime_support`, with smoke coverage and no ECS/public-interface contamination
+- Stage 10H ThreadCenter-backed CPU pipeline runtime: deterministic chunked sprite path with single-thread equivalence coverage
 
 Not implemented yet:
 
-- ThreadCenter-backed multi-thread CPU pipeline and deterministic per-thread merge
+- ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
 - deferred destroy queues
 - swapchain creation, image acquire, present, and window-visible output
 - production sprite instance shader/data layout

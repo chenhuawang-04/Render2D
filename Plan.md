@@ -2085,6 +2085,7 @@
 - [x] 10E：单线程 dirty transform / bounds 热路径优化完成
 - [x] 10F：draw sort / batch key 基础完成
 - [x] 10G：ThreadCenter 已接入为 runtime/system 基础设施
+- [x] 10H：ThreadCenter 多线程 sprite CPU pipeline runtime 完成
 
 10G 边界说明：
 
@@ -2092,4 +2093,12 @@
 - 不进入 ECS component；
 - 不改变现有单线程 system 的正确性基线；
 - 当前仅完成构建接入、内部 runtime support target 与 smoke test；
-- 后续 10H 再进入基于 ThreadCenter 的多线程 CPU pipeline。
+- 10H 已在该边界上实现 ThreadCenter 多线程 CPU pipeline runtime。
+
+10H 边界说明：
+
+- `ThreadedCpuPipelineRuntime` 是 runtime facade，不是 ECS；
+- 并行阶段：Transform、Bounds、Culling、CommandBuild；
+- Culling 使用 per-chunk scratch，再按 chunk 顺序 merge，保证确定性；
+- Batch 暂时保持单线程 reference tail，避免改变 batch 边界；
+- 当前覆盖 sprite CPU path，text path 和 parallel batch/sort 留到后续阶段。

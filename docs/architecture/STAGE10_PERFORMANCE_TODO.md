@@ -11,10 +11,10 @@ This file is the execution checklist for fully completing Stage 10. It keeps opt
 - [x] 10E: Single-thread Transform/Bounds dirty-index path and zero-rotation Transform fast path are implemented and benchmarked.
 - [x] 10F: Packed draw sort keys, explicit radix sort path, and BatchSystem packed-key comparison are implemented and benchmarked.
 - [x] 10G: ThreadCenter header dependency is integrated as runtime/system infrastructure only through an internal support target and smoke test.
+- [x] 10H: ThreadCenter-backed sprite CPU pipeline runtime is implemented with deterministic chunk merge and single-thread equivalence tests.
 
 ## Remaining Route
 
-- [ ] 10H: ThreadCenter-backed multi-thread CPU pipeline with deterministic merge.
 - [ ] 10I: Upload command coalescing and descriptor table compaction.
 - [ ] 10J: Per-thread Vulkan command pools and command recording ownership.
 - [ ] 10K: Final Stage 10 quality gate and documentation closeout.
@@ -105,3 +105,19 @@ clang-tidy --verify-config --config-file=.clang-tidy
 ```
 
 Current result: build/test passed on 2026-06-09. `render2d_thread_center_dependency_test` proves the ThreadCenter runtime dependency is available without placing ThreadCenter types into ECS components or the public `Render2D::Render2D` interface target.
+
+## Stage 10H Verification Commands
+
+```powershell
+cmake --preset clang-ninja-debug
+cmake --build --preset clang-ninja-debug
+ctest --test-dir build --output-on-failure
+cmake --preset clang-ninja-perf
+cmake --build --preset clang-ninja-perf
+ctest --preset clang-ninja-perf
+clang-tidy -p build tests\threaded_cpu_pipeline_test.cpp tests\thread_center_dependency_test.cpp --quiet
+git diff --check
+clang-tidy --verify-config --config-file=.clang-tidy
+```
+
+Current result: build/test/tidy passed on 2026-06-09. `ThreadedCpuPipelineRuntime` parallelizes Transform, Bounds, Culling, and CommandBuild over deterministic chunks, merges visible items in chunk order, and keeps BatchSystem single-threaded as the current correctness-preserving tail stage.

@@ -58,6 +58,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/EncodeSystem.hpp` - CPU-only encode contract from `CommandBuffer` ranges to `NativeCommandBufferRef`.
 - `include/Render2D/System/SubmitSystem.hpp` - CPU-only submit contract from native command refs and `FrameSync` to `NativeSubmitCommand`.
 - `include/Render2D/System/TextSystem.hpp` - Stage 9 text dirty detection, dirty glyph-run/instance updates, and glyph-to-DrawCommand batching using `GlyphBuildConfig` / `GlyphDrawConfig`.
+- `include/Render2D/System/ThreadedCpuPipeline.hpp` - Stage 10H ThreadCenter-backed runtime facade for deterministic chunked sprite CPU pipeline execution. It is not included by the umbrella header because consumers must link `render2d_thread_runtime_support`.
 
 ### Native
 
@@ -94,6 +95,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/compile_smoke.cpp` - Umbrella compile smoke and broad static assertions.
 - `tests/test_harness_test.cpp` - Self-test for the lightweight test assertion harness.
 - `tests/thread_center_dependency_test.cpp` - Stage 10G smoke test proving ThreadCenter is available to runtime/system code without entering ECS components.
+- `tests/threaded_cpu_pipeline_test.cpp` - Stage 10H single-thread equivalence and deterministic chunk merge coverage for `ThreadedCpuPipelineRuntime`.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/draw_sort_system_test.cpp` - Packed sort key, radix draw sort, batch merge, and collision-safety coverage.
 - `tests/transform_dirty_system_test.cpp` - Sparse dirty transform/bounds update coverage.
@@ -148,6 +150,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-stage9-text-dirty-glyph-pipeline.md` - ADR for Stage 9 text dirty ranges, dirty glyph updates, and glyph draw-command batching.
 - `docs/adr/2026-06-09-fast-math-pod-math-types.md` - ADR for replacing Render2D-owned math structs with fast_math POD aliases and free-function math.
 - `docs/adr/2026-06-09-threadcenter-runtime-infrastructure.md` - ADR for embedding ThreadCenter as an internal runtime/system dependency only.
+- `docs/adr/2026-06-09-threaded-cpu-pipeline-runtime.md` - ADR for ThreadCenter-backed deterministic CPU pipeline runtime execution.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

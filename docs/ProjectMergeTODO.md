@@ -198,6 +198,14 @@ Stage 10G integration note:
 - `render2d_thread_runtime_support` links `Render2D::Render2D` + `Center.Thread.Headers`;
 - public `Render2D::Render2D` remains ThreadCenter-free until a real public runtime header needs it.
 
+Stage 10H integration note:
+
+- `ThreadedCpuPipelineRuntime` is runtime orchestration, not ECS storage;
+- host ECS still passes ordinary component streams through `std::span`;
+- Transform/Bounds/CommandBuild write fixed output slots by deterministic chunk;
+- Culling writes per-chunk scratch and merges visible items in chunk order;
+- Batch remains the single-thread reference tail stage until a dedicated parallel batch design lands.
+
 ## 16. TransformDirtyItem is an ECS-visible component
 
 Stage 10E adds `TransformDirtyItem<Provider, Dim>` as a Strict POD dirty-index component.
