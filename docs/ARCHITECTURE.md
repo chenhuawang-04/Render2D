@@ -133,7 +133,7 @@ cmake --build build
 .\build\bench\render2d_null_cpu_bench.exe --scenario mixed --sprites 10000 --texts 2048 --frames 8 --warmup 2
 ```
 
-It reports active counts and average pass timings for sprite systems, text dirty/glyph systems, batching, and command buffer descriptor build. The Stage 10B standard suite is run with `scripts/run_null_cpu_benchmarks.ps1` and documented in `docs/architecture/BENCHMARK_BASELINE.md`. Stage 10C records the fast_math migration delta there: 10k sprite bounds dropped from about 3.64 ms to about 0.55 ms on the local Debug benchmark.
+It reports active counts and average pass timings for sprite systems, text dirty/glyph systems, batching, and command buffer descriptor build. The Stage 10B standard suite is run with `scripts/run_null_cpu_benchmarks.ps1` and documented in `docs/architecture/BENCHMARK_BASELINE.md`. Stage 10C records the fast_math migration delta there: 10k sprite bounds dropped from about 3.64 ms to about 0.55 ms on the local Debug benchmark. Stage 10D adds a RelWithDebInfo Perf preset, release-like test assertion handling, dirty-transform scenarios, and large/huge local benchmark suites so later single-thread and ThreadCenter work has stable evidence.
 
 ## Current boundaries
 
@@ -158,6 +158,7 @@ Implemented:
 - Stage 9B deterministic test glyph systems through `GlyphRunBuildSystem`, `GlyphInstanceBuildSystem`, and `GlyphBuildConfig`
 - Dormant FreeType source copied under `third_party/freetype` for future font integration; it is not built yet
 - Stage 10C fast_math migration: `Render2D::Vec2`, `Render2D::Mat3`, and `Render2D::Aabb2` alias `MMath` POD types; custom Render2D `Aabb2` / `Affine2X3` structs are removed
+- Stage 10D benchmark/profile harness: `clang-ninja-perf` preset, dirty transform benchmark input mutation, extended runner suites, and Stage 10 TODO tracking
 
 Not implemented yet:
 

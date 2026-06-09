@@ -1,0 +1,59 @@
+# Stage 10 Performance TODO
+
+This file is the execution checklist for fully completing Stage 10. It keeps optimization order explicit so each change has a benchmark before/after and does not break ECS/Strict POD boundaries.
+
+## Completed
+
+- [x] 10A: Test/benchmark framework exists.
+- [x] 10B: Standard Null CPU benchmark runner and baseline document exist.
+- [x] 10C: Render math migrated to fast_math POD aliases and BoundsSystem hot path was reduced.
+- [x] 10D: Benchmark/profile harness now includes Perf preset, dirty transform scenarios, large/huge local suites, and profile runner metadata.
+
+## Remaining Route
+
+- [ ] 10E: Single-thread hot-path optimization for Transform / Bounds / Culling / CommandBuild.
+- [ ] 10F: Sort, radix/key packing, and BatchSystem key comparison.
+- [ ] 10G: ThreadCenter dependency integration as runtime/system infrastructure only.
+- [ ] 10H: ThreadCenter-backed multi-thread CPU pipeline with deterministic merge.
+- [ ] 10I: Upload command coalescing and descriptor table compaction.
+- [ ] 10J: Per-thread Vulkan command pools and command recording ownership.
+- [ ] 10K: Final Stage 10 quality gate and documentation closeout.
+
+## Non-negotiable Constraints
+
+- Components remain Strict POD.
+- Host ECS owns component streams; Render2D does not introduce production ECS storage.
+- Render2D-owned dynamic arrays use `McVector` / MemoryCenter.
+- Math remains fast_math-only.
+- ThreadCenter types must not enter ECS components.
+- No direct Vulkan memory allocation/mapping API calls.
+- Every optimization records benchmark before/after.
+
+## ThreadCenter Integration Boundary
+
+ThreadCenter source root is expected at:
+
+```text
+E:/Project/MelosyneTest/ThreadCenter
+```
+
+Planned CMake dependency target:
+
+```text
+Center.Thread.Headers
+```
+
+ThreadCenter will be used by runtime/system pipeline code only. The single-thread systems remain available and are the correctness reference for threaded execution.
+
+## Stage 10D Verification Commands
+
+```powershell
+cmake --build build
+ctest --test-dir build --output-on-failure
+cmake --preset clang-ninja-perf
+cmake --build --preset clang-ninja-perf
+ctest --preset clang-ninja-perf
+.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeDirtyTransform -Quiet
+```
+
+Current result: all commands passed on 2026-06-09. Perf benchmark targets keep standard `RelWithDebInfo` `NDEBUG` codegen; tests add `-UNDEBUG` in release-like builds so assert-based checks remain active.

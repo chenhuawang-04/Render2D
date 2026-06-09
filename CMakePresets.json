@@ -18,18 +18,42 @@
         "RENDER2D_BUILD_BENCHMARKS": "OFF",
         "RENDER2D_REQUIRE_VULKAN": "ON"
       }
+    },
+    {
+      "name": "clang-ninja-perf",
+      "displayName": "Clang Ninja Perf",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build_perf",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "RENDER2D_BUILD_TESTS": "ON",
+        "RENDER2D_BUILD_BENCHMARKS": "ON",
+        "RENDER2D_REQUIRE_VULKAN": "ON"
+      }
     }
   ],
   "buildPresets": [
     {
       "name": "clang-ninja-debug",
       "configurePreset": "clang-ninja-debug"
+    },
+    {
+      "name": "clang-ninja-perf",
+      "configurePreset": "clang-ninja-perf"
     }
   ],
   "testPresets": [
     {
       "name": "clang-ninja-debug",
       "configurePreset": "clang-ninja-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "clang-ninja-perf",
+      "configurePreset": "clang-ninja-perf",
       "output": {
         "outputOnFailure": true
       }

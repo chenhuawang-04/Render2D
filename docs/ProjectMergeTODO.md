@@ -178,3 +178,15 @@ Current merge rule:
 - AABB construction/access must go through `makeAabb2`, `aabb2Min`, and `aabb2Max` because fast_math stores max values internally as negatives.
 
 Host-engine integration should map its ECS component streams to these POD math fields directly or through a single conversion edge. Do not reintroduce Render2D-local vector, matrix, or AABB implementations.
+
+## 15. ThreadCenter is runtime infrastructure only
+
+ThreadCenter source is expected at `E:/Project/MelosyneTest/ThreadCenter` for Stage 10G and later.
+
+Merge rule:
+
+- use ThreadCenter only in Render2D runtime/system orchestration;
+- do not store ThreadCenter types in ECS components;
+- keep single-thread systems as the deterministic correctness reference;
+- multi-thread paths must write per-thread streams and merge deterministically;
+- host ECS still owns component streams.

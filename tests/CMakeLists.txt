@@ -1,3 +1,11 @@
+if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo|MinSizeRel")
+    if(MSVC)
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/UNDEBUG>)
+    else()
+        add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-UNDEBUG>)
+    endif()
+endif()
+
 add_executable(render2d_compile_smoke
     compile_smoke.cpp
 )

@@ -16,6 +16,14 @@ Run the standard baseline suite:
 .\scripts\run_null_cpu_benchmarks.ps1
 ```
 
+Run the optimized Perf suite:
+
+```powershell
+cmake --preset clang-ninja-perf
+cmake --build --preset clang-ninja-perf
+.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeDirtyTransform
+```
+
 Generated files are written under ignored build output:
 
 ```text
@@ -26,7 +34,8 @@ build/bench_results/null_cpu_baseline_<timestamp>.md
 Optional large local-only scenarios:
 
 ```powershell
-.\scripts\run_null_cpu_benchmarks.ps1 -IncludeLarge
+.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeLarge
+.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeHuge
 ```
 
 ## Standard Scenarios
@@ -89,6 +98,65 @@ Bounds delta against the Stage 10B capture:
 - `mixed_10k_2k`: 3.63987 ms -> 0.552575 ms, about 6.6x faster.
 
 Transform time increased on this Debug capture because it now uses fast_math trigonometry as required. The bounds bottleneck is removed; future transform work should use a data-backed batch/SoA path instead of reverting to non-fast_math math.
+
+
+## Stage 10D Benchmark/Profile Harness
+
+Stage 10D adds the measurement coverage required before continuing optimization:
+
+- `clang-ninja-perf` CMake preset using `RelWithDebInfo` and benchmarks enabled.
+- Release-like test builds add `-UNDEBUG` under `tests/` only, keeping assert-based tests active while benchmark targets retain standard optimized `NDEBUG` codegen.
+- `--dirty-transform-stride <0|N>` benchmark option to mutate a deterministic subset of transforms each frame.
+- `scripts/run_null_cpu_benchmarks.ps1 -BuildDir <dir>` so Debug and Perf build trees can be captured separately.
+- `-IncludeDirtyTransform`, `-IncludeLarge`, and `-IncludeHuge` runner switches.
+
+Dirty-transform scenario IDs added by `-IncludeDirtyTransform`:
+
+| Scenario | Purpose |
+|---|---|
+| `sprite_dirty_transform_10k` | 10k sprite pipeline with every fourth transform mutated per frame. |
+| `mixed_dirty_transform_10k_2k` | Mixed sprite/text pipeline with partial transform and text dirty updates. |
+
+Large/huge scenario IDs are local-only stress cases and are not hard CI gates yet.
+
+### Stage 10D Debug Capture
+
+- Captured UTC: 2026-06-09T08:12:32Z
+- Build tree: `build`
+- Command: `.\scripts\run_null_cpu_benchmarks.ps1 -IncludeDirtyTransform -Quiet`
+- Correctness gate: `ctest --test-dir build --output-on-failure` passed 31/31.
+
+| Scenario | Dirty Xform | Visible | Total Draws | Batches | Transform ms | Bounds ms | Culling ms | Sprite Cmd ms | Text Dirty ms | Glyph Instance ms | Batch ms |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `sprite_high_10k` | 0 | 10000 | 10000 | 79 | 0.453438 | 0.953837 | 0.193737 | 0.202563 | 0 | 0 | 0.103187 |
+| `sprite_low_10k` | 0 | 1250 | 1250 | 79 | 0.6429 | 1.09659 | 0.120938 | 0.0399 | 0 | 0 | 0.0243125 |
+| `text_static_2k` | 0 | 0 | 2048 | 2048 | 0 | 0 | 0 | 0 | 0.0759375 | 0.0001875 | 0.049525 |
+| `text_dirty_2k` | 0 | 0 | 2048 | 2048 | 0 | 0 | 0 | 0 | 0.0745375 | 0.161963 | 0.0460875 |
+| `mixed_10k_2k` | 0 | 10000 | 12048 | 2127 | 0.655575 | 2.46059 | 0.274575 | 0.247138 | 0.0775625 | 0.1786 | 0.191462 |
+| `sprite_dirty_transform_10k` | 4 | 10000 | 10000 | 79 | 0.611013 | 1.00548 | 0.233987 | 0.249262 | 0 | 0 | 0.142275 |
+| `mixed_dirty_transform_10k_2k` | 4 | 10000 | 12048 | 2127 | 0.565462 | 0.988237 | 0.205038 | 0.217425 | 0.06565 | 0.14895 | 0.165475 |
+
+### Stage 10D Perf Capture
+
+- Captured UTC: 2026-06-09T08:23:44Z
+- Build tree: `build_perf`
+- Command: `.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeDirtyTransform -Quiet`
+- Correctness gate: `ctest --preset clang-ninja-perf` passed 31/31.
+
+| Scenario | Dirty Xform | Visible | Total Draws | Batches | Transform ms | Bounds ms | Culling ms | Sprite Cmd ms | Text Dirty ms | Glyph Instance ms | Batch ms |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `sprite_high_10k` | 0 | 10000 | 10000 | 79 | 0.091475 | 0.0445 | 0.0282125 | 0.026525 | 0 | 0 | 0.0254625 |
+| `sprite_low_10k` | 0 | 1250 | 1250 | 79 | 0.0917 | 0.044575 | 0.00895 | 0.0037375 | 0 | 0 | 0.0027875 |
+| `text_static_2k` | 0 | 0 | 2048 | 2048 | 0 | 0 | 0 | 0 | 0.0113375 | 0.000025 | 0.0052125 |
+| `text_dirty_2k` | 0 | 0 | 2048 | 2048 | 0 | 0 | 0 | 0 | 0.0136375 | 0.010125 | 0.005575 |
+| `mixed_10k_2k` | 0 | 10000 | 12048 | 2127 | 0.090825 | 0.04445 | 0.0283 | 0.026925 | 0.0116 | 0.0095875 | 0.0307125 |
+| `sprite_dirty_transform_10k` | 4 | 10000 | 10000 | 79 | 0.176475 | 0.04445 | 0.0282875 | 0.0272625 | 0 | 0 | 0.025025 |
+| `mixed_dirty_transform_10k_2k` | 4 | 10000 | 12048 | 2127 | 0.176675 | 0.0444375 | 0.028325 | 0.0312875 | 0.01185 | 0.0097625 | 0.0308125 |
+
+Perf large/huge switch checks also passed locally:
+
+- `.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeDirtyTransform -IncludeLarge -Quiet` produced 11 scenarios.
+- `.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeHuge -Quiet` produced 7 scenarios.
 
 ## Gate Rule
 

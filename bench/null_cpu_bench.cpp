@@ -275,6 +275,25 @@ void mutateDirtyTexts(
     }
 }
 
+void mutateDirtyTransforms(
+    const R2DB::BenchmarkConfig& config_,
+    R2D::U32 frame_index_,
+    BenchState& state_) noexcept
+{
+    if (config_.dirty_transform_stride == 0U || state_.transforms.empty()) {
+        return;
+    }
+
+    const auto stride = static_cast<R2D::Usize>(config_.dirty_transform_stride);
+    const auto first = static_cast<R2D::Usize>(frame_index_ % config_.dirty_transform_stride);
+    const float frame_delta = static_cast<float>((frame_index_ & 0xFU) + 1U) * 0.001F;
+    for (R2D::Usize index = first; index < state_.transforms.size(); index += stride) {
+        state_.transforms[index].position_x += frame_delta;
+        state_.transforms[index].position_y -= frame_delta;
+        state_.transforms[index].rotation_radians += frame_delta;
+    }
+}
+
 void copyTextStates(BenchState& state_) noexcept
 {
     for (R2D::Usize index = 0U; index < state_.next_text_states.size(); ++index) {
@@ -283,8 +302,14 @@ void copyTextStates(BenchState& state_) noexcept
     state_.text_state_initialized = true;
 }
 
-[[nodiscard]] int runSpritePath(BenchState& state_, R2DB::BenchmarkTotals& frame_totals_)
+[[nodiscard]] int runSpritePath(
+    const R2DB::BenchmarkConfig& config_,
+    R2D::U32 frame_index_,
+    BenchState& state_,
+    R2DB::BenchmarkTotals& frame_totals_)
 {
+    mutateDirtyTransforms(config_, frame_index_, state_);
+
     auto start = std::chrono::steady_clock::now();
     auto result = R2D::TransformSystem<Provider, Dim>::run(state_.transforms, state_.world_transforms);
     auto end = std::chrono::steady_clock::now();
@@ -452,7 +477,7 @@ void copyTextStates(BenchState& state_) noexcept
     auto frame_totals = R2DB::kZeroBenchmarkTotals;
 
     if (hasSpritePath(config_)) {
-        const int result = runSpritePath(state_, frame_totals);
+        const int result = runSpritePath(config_, frame_index_, state_, frame_totals);
         if (result != 0) {
             return result;
         }

@@ -8,7 +8,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `.gitignore` - Ignores CMake/Ninja build output, user files, and generated compiler artifacts.
 - `AGENTS.md` - Contributor guide for this repository.
 - `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, MemoryCenter/Vector_New/fast_math/Vulkan dependencies, warnings, tests, and benchmarks. Dormant `third_party/freetype` is intentionally not added here yet.
-- `CMakePresets.json` - Default `clang-ninja-debug` configure/build/test preset.
+- `CMakePresets.json` - Debug and Perf configure/build/test presets, including `clang-ninja-perf` for RelWithDebInfo benchmark captures.
 - `Plan.md` - Long-term implementation plan and phase tracking.
 
 ## Public include tree
@@ -88,7 +88,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 
 ## Tests
 
-- `tests/CMakeLists.txt` - Test target registration, including manual negative-compile include wiring for MemoryCenter, Vector_New, and fast_math.
+- `tests/CMakeLists.txt` - Test target registration, release-like test assertion handling, and manual negative-compile include wiring for MemoryCenter, Vector_New, and fast_math.
 - `tests/compile_smoke.cpp` - Umbrella compile smoke and broad static assertions.
 - `tests/test_harness_test.cpp` - Self-test for the lightweight test assertion harness.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
@@ -122,7 +122,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 
 ## Scripts
 
-- `scripts/run_null_cpu_benchmarks.ps1` - Runs the Stage 10B standard Null CPU benchmark suite and writes timestamped CSV/Markdown reports under `build/bench_results/`.
+- `scripts/run_null_cpu_benchmarks.ps1` - Runs standard, dirty-transform, large, and huge local Null CPU benchmark suites; supports `-BuildDir` for Debug/Perf trees and writes timestamped CSV/Markdown reports.
 
 ## Benchmarks
 
@@ -148,7 +148,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/architecture/VULKAN_NATIVE_ONLY.md` - Vulkan-native-only policy and native POD components.
 - `docs/architecture/NATIVE_RUNTIME_CONTRACT.md` - Native runtime type, result, and CPU-side skeleton contracts.
 - `docs/architecture/NULL_CPU_BENCHMARK.md` - CPU-only benchmark design and usage.
-- `docs/architecture/BENCHMARK_BASELINE.md` - Stage 10B standard benchmark scenarios, runner usage, current local baseline capture, and optimization gate rule.
+- `docs/architecture/BENCHMARK_BASELINE.md` - Stage 10 benchmark scenarios, runner usage, Debug/Perf captures, and optimization gate rule.
+- `docs/architecture/STAGE10_PERFORMANCE_TODO.md` - Stage 10 completion checklist, ThreadCenter boundary, and remaining performance work items.
 
 
 ## Third-party source snapshots

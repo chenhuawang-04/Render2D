@@ -1765,6 +1765,9 @@
   10C status (done): fast_math migration is complete. Render2D-owned `Aabb2` / `Affine2X3` structs were removed; `Vec2`, `Mat3`, and `Aabb2` now alias `MMath` POD types. Transform, bounds, culling, and text atlas math use fast_math free functions. BoundsSystem uses the center/extents formula and reduced the local Debug 10k sprite bounds pass from ~3.64 ms to ~0.55 ms.
 
 
+  10D status (done): benchmark/profile harness is complete. Added RelWithDebInfo `clang-ninja-perf`, release-like test assertion handling, dirty-transform benchmark mutation, `-BuildDir`, `-IncludeDirtyTransform`, `-IncludeLarge`, and `-IncludeHuge` runner support. Stage 10 completion TODO and verification are tracked in `docs/architecture/STAGE10_PERFORMANCE_TODO.md`.
+
+
 
   SIMD bounds/culling
 
@@ -2067,8 +2070,6 @@
   9. Vulkan RAII 生命周期由 storage/runtime/system 处理。
 
   10. 性能先通过 Null CPU pipeline benchmark 验证，再进入 Vulkan。
-
-
 
 
 

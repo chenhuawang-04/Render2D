@@ -27,6 +27,9 @@ if(RENDER2D_BUILD_TESTS)
     add_test(NAME render2d.null_cpu_bench_text_smoke
         COMMAND render2d_null_cpu_bench --scenario text --texts 128 --frames 2 --warmup 1 --glyphs-per-text 8 --dirty-text-stride 4
     )
+    add_test(NAME render2d.null_cpu_bench_dirty_transform_smoke
+        COMMAND render2d_null_cpu_bench --scenario sprite --sprites 1024 --frames 2 --warmup 1 --visibility high --dirty-transform-stride 4
+    )
     add_test(NAME render2d.null_cpu_bench_mixed_csv_smoke
         COMMAND render2d_null_cpu_bench --scenario mixed --sprites 1024 --texts 128 --frames 2 --warmup 1 --visibility low --glyphs-per-text 8 --dirty-text-stride 8 --format csv
     )

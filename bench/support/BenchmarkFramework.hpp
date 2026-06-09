@@ -34,6 +34,7 @@ struct BenchmarkConfig {
     U32 warmup_count;
     U32 glyphs_per_text;
     U32 dirty_text_stride;
+    U32 dirty_transform_stride;
     BenchScenario scenario;
     VisibilityMode visibility;
     OutputFormat output_format;
@@ -70,6 +71,7 @@ inline constexpr BenchmarkConfig kDefaultBenchmarkConfig{
     .warmup_count = 2U,
     .glyphs_per_text = 8U,
     .dirty_text_stride = 0U,
+    .dirty_transform_stride = 0U,
     .scenario = BenchScenario::Mixed,
     .visibility = VisibilityMode::High,
     .output_format = OutputFormat::Text,
@@ -244,6 +246,11 @@ inline bool parseBenchmarkConfig(int argc_, char** argv_, BenchmarkConfig& out_c
                 return false;
             }
             ++index;
+        } else if (option == "--dirty-transform-stride" && index + 1 < argc_) {
+            if (!parseU32(argv_[index + 1], out_config_.dirty_transform_stride)) {
+                return false;
+            }
+            ++index;
         } else if (option == "--scenario" && index + 1 < argc_) {
             if (!parseScenario(argv_[index + 1], out_config_.scenario)) {
                 return false;
@@ -292,6 +299,7 @@ inline void printBenchmarkUsage(std::ostream& out_)
          << "  --visibility high|low\n"
          << "  --glyphs-per-text <count> (>0)\n"
          << "  --dirty-text-stride <0|N>\n"
+         << "  --dirty-transform-stride <0|N>\n"
          << "  --format text|csv\n";
 }
 
@@ -342,7 +350,8 @@ inline void printTextReport(
          << " frames=" << config_.frame_count
          << " warmup=" << config_.warmup_count
          << " glyphs_per_text=" << config_.glyphs_per_text
-         << " dirty_text_stride=" << config_.dirty_text_stride << '\n';
+         << " dirty_text_stride=" << config_.dirty_text_stride
+         << " dirty_transform_stride=" << config_.dirty_transform_stride << '\n';
     out_ << "visible=" << totals_.visible_count
          << " sprite_draws=" << totals_.sprite_draw_count
          << " text_dirty=" << totals_.text_dirty_count
@@ -368,7 +377,7 @@ inline void printCsvReport(
     const BenchmarkTotals& totals_)
 {
     out_ << "scenario,visibility,sprites,texts,frames,warmup,glyphs_per_text,dirty_text_stride,"
-         << "visible,sprite_draws,text_dirty,glyphs,glyph_draws,total_draws,batches,"
+         << "dirty_transform_stride,visible,sprite_draws,text_dirty,glyphs,glyph_draws,total_draws,batches,"
          << "avg_transform_ms,avg_bounds_ms,avg_culling_ms,avg_sprite_command_ms,"
          << "avg_text_dirty_ms,avg_glyph_run_ms,avg_glyph_instance_ms,avg_glyph_batch_ms,"
          << "avg_batch_ms,avg_command_buffer_ms\n";
@@ -380,6 +389,7 @@ inline void printCsvReport(
          << config_.warmup_count << ','
          << config_.glyphs_per_text << ','
          << config_.dirty_text_stride << ','
+         << config_.dirty_transform_stride << ','
          << totals_.visible_count << ','
          << totals_.sprite_draw_count << ','
          << totals_.text_dirty_count << ','
