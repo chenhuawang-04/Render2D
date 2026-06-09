@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+
 #include "Render2D/Native/VulkanResourceRuntime.hpp"
 
 #include <vulkan/vulkan.h>
@@ -7,7 +9,6 @@
 #include <algorithm>
 #include <array>
 #include <type_traits>
-#include <vector>
 
 namespace Render2D {
 
@@ -638,8 +639,8 @@ private:
         return slot.occupied != 0U && slot.generation.value == slice_.generation;
     }
 
-    std::vector<DescriptorSlot> descriptor_slots;
-    std::vector<U32> free_descriptor_ids;
+    McVector<DescriptorSlot> descriptor_slots;
+    McVector<U32> free_descriptor_ids;
     VkDevice device = VK_NULL_HANDLE;
     VkDescriptorPool descriptor_pool = VK_NULL_HANDLE;
     VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;

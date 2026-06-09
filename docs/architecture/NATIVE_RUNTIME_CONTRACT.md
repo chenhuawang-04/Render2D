@@ -93,8 +93,8 @@ Implemented Vulkan sync/submit contracts:
 
 `VulkanResourceRuntime<Provider, Dim>` owns real resources behind POD refs:
 
-- `VkBuffer` + `VkDeviceMemory` behind `BufferRef`
-- `VkImage` + `VkImageView` + `VkDeviceMemory` behind `ImageRef`
+- `VkBuffer` + MemoryCenter Vulkan allocation slice behind `BufferRef`
+- `VkImage` + `VkImageView` + MemoryCenter Vulkan allocation slice behind `ImageRef`
 - host-visible upload/readback buffer writes and reads
 - device-local buffers/images
 - buffer copy, buffer barriers, image layout transitions, and image-to-buffer readback
@@ -112,7 +112,7 @@ Implemented Vulkan descriptor/pipeline contracts:
 
 ## Stage 8F upload ring lifetime
 
-`VulkanUploadRingRuntime<Provider, Dim>` owns a persistent mapped upload buffer split into frame segments. It emits `UploadRingSlice` records with `ring_id + generation`.
+`VulkanUploadRingRuntime<Provider, Dim>` owns a MemoryCenter-backed persistent mapped upload buffer split into frame segments. It emits `UploadRingSlice` records with `ring_id + generation`.
 
 Safety rule:
 
@@ -135,13 +135,18 @@ A frame segment cannot be reused before `completeFrame`, and old slices become s
 
 The smoke test uses the upload ring to hold `VkDrawIndirectCommand`, renders a magenta full-screen sprite-like triangle into an offscreen `R8G8B8A8` image, copies it to a readback buffer, and verifies the bytes.
 
+## Runtime memory policy
+
+Render2D runtime-owned dynamic arrays use `Render2D::McVector<T>` instead of `std::vector`. Vulkan resource and upload-ring backing memory is owned through `VulkanMemoryCenterAllocator`, which wraps MemoryCenter Vulkan adaptors and centralizes allocation, binding, persistent mapping, flushing, invalidation, and deallocation.
+
+ECS-visible refs remain Strict POD and never store MemoryCenter allocators or allocation objects.
+
 ## Remaining non-goals
 
 The current implementation still does not implement:
 
 - swapchain creation or image acquisition
 - present/window-visible output
-- MemoryCenter Vulkan allocation
 - deferred destroy queues
 - production sprite instance shader/data layout
 - production texture atlas and sampled-image policy

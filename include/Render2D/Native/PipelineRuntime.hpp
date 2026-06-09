@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+
 #include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 
-#include <vector>
 
 namespace Render2D {
 
@@ -172,8 +173,8 @@ private:
             pipeline_slots[ref_.pipeline_id].generation.value == ref_.generation;
     }
 
-    std::vector<PipelineSlot> pipeline_slots;
-    std::vector<U32> free_pipeline_ids;
+    McVector<PipelineSlot> pipeline_slots;
+    McVector<U32> free_pipeline_ids;
     U32 active_count = 0U;
 };
 

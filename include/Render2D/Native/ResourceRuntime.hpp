@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+
 #include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 
-#include <vector>
 
 namespace Render2D {
 
@@ -398,10 +399,10 @@ private:
         return slot.occupied != 0U && slot.generation.value == ref_.generation;
     }
 
-    std::vector<BufferSlot> buffer_slots;
-    std::vector<ImageSlot> image_slots;
-    std::vector<U32> free_buffer_ids;
-    std::vector<U32> free_image_ids;
+    McVector<BufferSlot> buffer_slots;
+    McVector<ImageSlot> image_slots;
+    McVector<U32> free_buffer_ids;
+    McVector<U32> free_image_ids;
     U32 active_buffer_count = 0U;
     U32 active_image_count = 0U;
 };

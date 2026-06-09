@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+
 #include "Render2D/Native/VulkanCommandRuntime.hpp"
 #include "Render2D/Native/VulkanSyncRuntime.hpp"
 
@@ -7,7 +9,6 @@
 
 #include <span>
 #include <type_traits>
-#include <vector>
 
 namespace Render2D {
 
@@ -183,7 +184,7 @@ private:
         }
     }
 
-    std::vector<VkCommandBuffer> submit_command_buffers;
+    McVector<VkCommandBuffer> submit_command_buffers;
     VkQueue queue = VK_NULL_HANDLE;
     VkResult last_vulkan_result = VK_SUCCESS;
     U32 wait_stage_flags = 0U;

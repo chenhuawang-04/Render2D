@@ -1,10 +1,11 @@
-﻿#pragma once
+#pragma once
+
+#include "Render2D/Memory/RenderVector.hpp"
 
 #include <Render2D/Render2D.hpp>
 
 #include <vulkan/vulkan.h>
 
-#include <vector>
 
 namespace Render2DTest {
 
@@ -107,7 +108,7 @@ inline bool findQueueFamily(
         return false;
     }
 
-    std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+    Render2D::McVector<VkQueueFamilyProperties> queue_families(queue_family_count);
     vkGetPhysicalDeviceQueueFamilyProperties(
         physical_device_,
         &queue_family_count,
@@ -144,7 +145,7 @@ inline bool selectPhysicalDevice(
         return false;
     }
 
-    std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
+    Render2D::McVector<VkPhysicalDevice> physical_devices(physical_device_count);
     result = vkEnumeratePhysicalDevices(instance_, &physical_device_count, physical_devices.data());
     if (result != VK_SUCCESS) {
         return false;

@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+
 #include "Render2D/Component/Frame.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 
-#include <vector>
 
 namespace Render2D {
 
@@ -175,8 +176,8 @@ private:
             descriptor_slots[slice_.descriptor_set_id].generation.value == slice_.generation;
     }
 
-    std::vector<DescriptorSlot> descriptor_slots;
-    std::vector<U32> free_descriptor_ids;
+    McVector<DescriptorSlot> descriptor_slots;
+    McVector<U32> free_descriptor_ids;
     U32 active_count = 0U;
 };
 

@@ -63,7 +63,7 @@ During host-engine merge:
 
 The CPU-side native runtime and encode/submit skeletons do not call Vulkan. They validate the component/runtime boundary and slot lifecycle semantics.
 
-Stage 8B and later attach real Vulkan objects behind the same POD references. MemoryCenter-backed Vulkan allocation, swapchain creation/present, and deferred destruction are still host-merge concerns.
+Stage 8B and later attach real Vulkan objects behind the same POD references. MemoryCenter-backed Vulkan allocation is now implemented for resources/upload; swapchain creation/present and deferred destruction are still host-merge concerns.
 
 
 ## 5. Stage 8A is an encode/submit contract only
@@ -119,3 +119,12 @@ Old `UploadRingSlice` records become stale by generation after completion.
 The Stage 8 smoke test renders a magenta sprite-like full-screen triangle into an offscreen `R8G8B8A8` image and verifies readback bytes. This proves command recording, dynamic rendering, indirect draw, upload ring, queue submit, and resource readback without requiring a platform window.
 
 Host-engine merge still needs swapchain/window integration for on-screen presentation and RenderDoc capture of a real window frame.
+
+
+## 10. MemoryCenter and McVector are mandatory for Render2D-owned storage
+
+Render2D-owned dynamic arrays must use `Render2D::McVector<T>`, which aliases Vector_New `Center::Memory::mc_vector` and routes allocation through MemoryCenter. Do not introduce `std::vector` in Render2D source, test support, or benchmarks.
+
+Vulkan buffer/image backing memory must be allocated, persistently mapped, flushed, invalidated, and freed through `VulkanMemoryCenterAllocator`. Render2D runtime code should not call `vkAllocateMemory`, `vkFreeMemory`, `vkMapMemory`, `vkUnmapMemory`, `vkBindBufferMemory`, or `vkBindImageMemory` directly.
+
+Merge rule: host ECS owns only POD component streams and refs; Render2D native runtime owns MemoryCenter-backed CPU runtime tables and GPU allocation slices behind `id + generation` references.

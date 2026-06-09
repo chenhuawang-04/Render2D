@@ -1,11 +1,12 @@
-﻿#pragma once
+#pragma once
+
+#include "Render2D/Memory/RenderVector.hpp"
 
 #include "ComponentStreamView.hpp"
 
 #include <Render2D/Component/ComponentTraits.hpp>
 
 #include <utility>
-#include <vector>
 
 namespace Render2D::TestSupport {
 
@@ -66,12 +67,12 @@ public:
 
     Component& at(Usize index_)
     {
-        return components.at(index_);
+        return components[index_];
     }
 
     const Component& at(Usize index_) const
     {
-        return components.at(index_);
+        return components[index_];
     }
 
     ComponentStreamView<Provider, Dim, Component> view() noexcept
@@ -85,7 +86,7 @@ public:
     }
 
 private:
-    std::vector<Component> components;
+    McVector<Component> components;
 };
 
 template<class Provider, class Dim, class Component>

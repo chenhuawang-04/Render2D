@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+
 #include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 
 #include <vulkan/vulkan.h>
 
 #include <type_traits>
-#include <vector>
 
 namespace Render2D {
 
@@ -495,8 +496,8 @@ private:
         return slot.occupied != 0U && slot.generation.value == ref_.generation;
     }
 
-    std::vector<CommandBufferSlot> command_buffer_slots;
-    std::vector<U32> free_command_buffer_ids;
+    McVector<CommandBufferSlot> command_buffer_slots;
+    McVector<U32> free_command_buffer_ids;
     VkDevice device = VK_NULL_HANDLE;
     VkCommandPool command_pool = VK_NULL_HANDLE;
     VkResult last_vulkan_result = VK_SUCCESS;

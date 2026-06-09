@@ -6,7 +6,6 @@
 #include <iostream>
 #include <span>
 #include <string_view>
-#include <vector>
 
 namespace R2D = Render2D;
 
@@ -29,16 +28,16 @@ struct BenchConfig {
 };
 
 struct BenchState {
-    std::vector<Transform> transforms;
-    std::vector<WorldTransform> world_transforms;
-    std::vector<LocalBounds> local_bounds;
-    std::vector<WorldBounds> world_bounds;
-    std::vector<VisibilityMask> visibility_masks;
-    std::vector<VisibleItem> visible_items;
-    std::vector<Sprite> sprites;
-    std::vector<DrawCommand> draw_commands;
-    std::vector<BatchCommand> batch_commands;
-    std::vector<CommandBuffer> command_buffers;
+    R2D::McVector<Transform> transforms;
+    R2D::McVector<WorldTransform> world_transforms;
+    R2D::McVector<LocalBounds> local_bounds;
+    R2D::McVector<WorldBounds> world_bounds;
+    R2D::McVector<VisibilityMask> visibility_masks;
+    R2D::McVector<VisibleItem> visible_items;
+    R2D::McVector<Sprite> sprites;
+    R2D::McVector<DrawCommand> draw_commands;
+    R2D::McVector<BatchCommand> batch_commands;
+    R2D::McVector<CommandBuffer> command_buffers;
 };
 
 struct BenchTotals {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+
 #include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 
@@ -9,7 +11,6 @@
 #include <cstdint>
 #include <span>
 #include <type_traits>
-#include <vector>
 
 namespace Render2D {
 
@@ -616,8 +617,8 @@ private:
         return slot.occupied != 0U && slot.generation.value == ref_.generation;
     }
 
-    std::vector<PipelineSlot> pipeline_slots;
-    std::vector<U32> free_pipeline_ids;
+    McVector<PipelineSlot> pipeline_slots;
+    McVector<U32> free_pipeline_ids;
     VkDevice device = VK_NULL_HANDLE;
     VkPipelineCache pipeline_cache = VK_NULL_HANDLE;
     VkResult last_vulkan_result = VK_SUCCESS;

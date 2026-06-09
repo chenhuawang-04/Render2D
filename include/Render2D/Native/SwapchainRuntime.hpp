@@ -1,9 +1,10 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+
 #include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 
-#include <vector>
 
 namespace Render2D {
 
@@ -251,8 +252,8 @@ private:
         return slot.occupied != 0U && slot.generation.value == state_.generation;
     }
 
-    std::vector<SwapchainSlot> swapchain_slots;
-    std::vector<U32> free_swapchain_ids;
+    McVector<SwapchainSlot> swapchain_slots;
+    McVector<U32> free_swapchain_ids;
     U32 active_swapchain_count = 0U;
 };
 

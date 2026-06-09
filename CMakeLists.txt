@@ -18,12 +18,17 @@ set(RENDER2D_MEMORY_CENTER_SOURCE_DIR "E:/Project/MelosyneTest/MemoryCenterNew" 
     "Path to MemoryCenterNew source tree.")
 set(RENDER2D_FAST_MATH_SOURCE_DIR "E:/Project/MelosyneTest/Math/fast_math" CACHE PATH
     "Path to fast_math source tree.")
+set(RENDER2D_VECTOR_NEW_INCLUDE_DIR "E:/Project/MelosyneTest/Vector_New/include" CACHE PATH
+    "Path to Vector_New include tree providing Center/Memory/Container/Vector/McVector.hpp.")
 
 if(NOT EXISTS "${RENDER2D_MEMORY_CENTER_SOURCE_DIR}/CMakeLists.txt")
     message(FATAL_ERROR "MemoryCenterNew was not found at RENDER2D_MEMORY_CENTER_SOURCE_DIR='${RENDER2D_MEMORY_CENTER_SOURCE_DIR}'.")
 endif()
 if(NOT EXISTS "${RENDER2D_FAST_MATH_SOURCE_DIR}/CMakeLists.txt")
     message(FATAL_ERROR "fast_math was not found at RENDER2D_FAST_MATH_SOURCE_DIR='${RENDER2D_FAST_MATH_SOURCE_DIR}'.")
+endif()
+if(NOT EXISTS "${RENDER2D_VECTOR_NEW_INCLUDE_DIR}/Center/Memory/Container/Vector/McVector.hpp")
+    message(FATAL_ERROR "McVector was not found at RENDER2D_VECTOR_NEW_INCLUDE_DIR='${RENDER2D_VECTOR_NEW_INCLUDE_DIR}'.")
 endif()
 
 set(MCENTER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
@@ -53,6 +58,7 @@ add_library(Render2D::Render2D ALIAS Render2D)
 target_compile_features(Render2D INTERFACE cxx_std_23)
 target_include_directories(Render2D INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${RENDER2D_VECTOR_NEW_INCLUDE_DIR}>
     $<INSTALL_INTERFACE:include>
 )
 target_link_libraries(Render2D INTERFACE

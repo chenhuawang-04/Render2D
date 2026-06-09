@@ -3,7 +3,6 @@
 #include <vulkan/vulkan.h>
 
 #include <cassert>
-#include <vector>
 
 namespace R2D = Render2D;
 
@@ -61,7 +60,7 @@ bool findQueueFamily(
         return false;
     }
 
-    std::vector<VkQueueFamilyProperties> queue_families(queue_family_count);
+    R2D::McVector<VkQueueFamilyProperties> queue_families(queue_family_count);
     vkGetPhysicalDeviceQueueFamilyProperties(
         physical_device_,
         &queue_family_count,
@@ -97,7 +96,7 @@ bool selectPhysicalDevice(
         return false;
     }
 
-    std::vector<VkPhysicalDevice> physical_devices(physical_device_count);
+    R2D::McVector<VkPhysicalDevice> physical_devices(physical_device_count);
     result = vkEnumeratePhysicalDevices(instance_, &physical_device_count, physical_devices.data());
     if (result != VK_SUCCESS) {
         return false;

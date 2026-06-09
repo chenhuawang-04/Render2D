@@ -8,7 +8,8 @@ Render2D is a C++23, component-first, Vulkan-native rendering module. The curren
 2. **Components are Strict POD.** Components are trivial, standard-layout, trivially copyable, and aggregate. They do not own resources and do not contain `std::string`, `std::vector`, `std::span`, RAII wrappers, constructors, destructors, or virtual functions.
 3. **Systems do not own ECS storage.** Production systems consume and write component streams through non-owning boundaries such as `std::span`.
 4. **Provider/Dim are compile-time tags.** The current valid domain is `VulkanNativeProvider + Dim2`.
-5. **Native runtime owns backend lifetimes.** ECS stores POD handles/IDs. Runtime tables own and validate backend slots behind those refs.
+5. **Memory is centralized.** Render2D-owned dynamic CPU arrays use `Render2D::McVector` backed by MemoryCenter/Vector_New; Vulkan buffer/image backing memory is allocated and synchronized through `VulkanMemoryCenterAllocator`.
+6. **Native runtime owns backend lifetimes.** ECS stores POD handles/IDs. Runtime tables own and validate backend slots behind those refs.
 
 ## Current data pipeline
 
@@ -56,7 +57,7 @@ This keeps systems reusable when the temporary test ECS is replaced by the host 
 
 ## Temporary test ECS
 
-The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration.
+The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration. Its backing arrays use `Render2D::McVector`, but the storage itself remains test-only.
 
 ## Native runtime
 
@@ -95,10 +96,10 @@ Implemented Vulkan-backed runtimes:
 - `VulkanCommandRuntime` - Vulkan command pool and command buffer lifecycle owner behind `NativeCommandBufferRef`.
 - `VulkanSyncRuntime` - real semaphore/fence lifecycle behind `FrameSync`.
 - `VulkanSubmitRuntime` - real `vkQueueSubmit` using resolved command buffers and frame sync.
-- `VulkanResourceRuntime` - real buffer/image/image-view allocation, upload/readback, copies, and image layout tracking.
+- `VulkanResourceRuntime` - real buffer/image/image-view lifecycle, MemoryCenter-backed GPU allocation, upload/readback, copies, and image layout tracking.
 - `VulkanDescriptorRuntime` - descriptor pool, descriptor set layout, set allocation, and descriptor array updates.
 - `VulkanPipelineRuntime` - shader module creation, pipeline cache, dynamic-rendering pipeline layout/pipeline creation.
-- `VulkanUploadRingRuntime` - persistent mapped, frame-segmented upload ring; slices are not reusable until the frame is completed.
+- `VulkanUploadRingRuntime` - MemoryCenter-backed persistent mapped, frame-segmented upload ring; slices are not reusable until the frame is completed.
 - `VulkanDynamicRenderEncoder` - records dynamic rendering, pipeline bind, direct draw, and indirect draw.
 
 These runtime classes are not ECS storage. They own backend slot lifecycle metadata, validate generations, reject stale references, reuse slots, and keep Vulkan handles out of ECS components.
@@ -130,14 +131,13 @@ Implemented:
 - Stage 8A CPU-side encode/submit contract through `NativeCommandBufferRef`, `NativeCommandRuntime`, `EncodeSystem`, and `SubmitSystem`
 - Stage 8B Vulkan command pool / command buffer lifecycle through `VulkanCommandRuntime`
 - Stage 8C Vulkan sync and queue submit through `VulkanSyncRuntime` and `VulkanSubmitRuntime`
-- Stage 8D Vulkan buffers/images, upload/readback, copies, and layout transitions through `VulkanResourceRuntime`
+- Stage 8D Vulkan buffers/images, MemoryCenter allocation, upload/readback, copies, and layout transitions through `VulkanResourceRuntime`
 - Stage 8E descriptors, shader modules, pipeline cache, and dynamic-rendering pipeline creation through `VulkanDescriptorRuntime` and `VulkanPipelineRuntime`
-- Stage 8F persistent mapped upload ring with frame-slot reuse protection through `VulkanUploadRingRuntime`
+- Stage 8F MemoryCenter-backed persistent mapped upload ring with frame-slot reuse protection through `VulkanUploadRingRuntime`
 - Stage 8G offscreen dynamic-rendering smoke through `VulkanDynamicRenderEncoder`
 
 Not implemented yet:
 
-- MemoryCenter-backed Vulkan allocation
 - deferred destroy queues
 - swapchain creation, image acquire, present, and window-visible output
 - production sprite instance shader/data layout

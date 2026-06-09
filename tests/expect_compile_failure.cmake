@@ -19,6 +19,15 @@ if(DEFINED EXTRA_INCLUDE_DIRS)
         endif()
     endforeach()
 endif()
+if(DEFINED VECTOR_NEW_INCLUDE_DIR AND NOT VECTOR_NEW_INCLUDE_DIR STREQUAL "")
+    list(APPEND extra_include_args -I "${VECTOR_NEW_INCLUDE_DIR}")
+endif()
+if(DEFINED MEMORY_CENTER_INCLUDE_DIR AND NOT MEMORY_CENTER_INCLUDE_DIR STREQUAL "")
+    list(APPEND extra_include_args -I "${MEMORY_CENTER_INCLUDE_DIR}")
+endif()
+if(DEFINED MIMALLOC_INCLUDE_DIR AND NOT MIMALLOC_INCLUDE_DIR STREQUAL "")
+    list(APPEND extra_include_args -I "${MIMALLOC_INCLUDE_DIR}")
+endif()
 
 execute_process(
     COMMAND "${CXX_COMPILER}" -std=c++23 -I "${INCLUDE_DIR}" ${extra_include_args} -c "${SOURCE_FILE}" -o "${OUTPUT_FILE}"

@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+#include "Render2D/Memory/VulkanMemoryCenterAllocator.hpp"
+
 #include "Render2D/Component/Frame.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 
@@ -8,7 +11,6 @@
 #include <cstddef>
 #include <cstring>
 #include <type_traits>
-#include <vector>
 
 namespace Render2D {
 
@@ -59,7 +61,13 @@ public:
             frame_count = config_.frame_count;
             frame_segment_size = segment_size;
             usage_flags = config_.usage_flags | static_cast<U32>(VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-            vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
+            if (!memory_allocator.initialize({
+                    .physical_device = physical_device,
+                    .device = device,
+                })) {
+                shutdown();
+                return makeResult(NativeStatusCode::InvalidInput, 0U, 0U);
+            }
 
             NativeStatusCode create_code = createNativeBuffer();
             if (create_code != NativeStatusCode::Ok) {
@@ -91,28 +99,23 @@ public:
     void shutdown() noexcept
     {
         if (device != VK_NULL_HANDLE) {
-            if (mapped_memory != nullptr) {
-                vkUnmapMemory(device, memory);
-            }
             if (buffer != VK_NULL_HANDLE) {
                 vkDestroyBuffer(device, buffer, nullptr);
             }
-            if (memory != VK_NULL_HANDLE) {
-                vkFreeMemory(device, memory, nullptr);
-            }
+            memory_allocator.deallocate(allocation);
+            memory_allocator.shutdown();
         }
 
         frame_slots.clear();
         physical_device = VK_NULL_HANDLE;
         device = VK_NULL_HANDLE;
         buffer = VK_NULL_HANDLE;
-        memory = VK_NULL_HANDLE;
+        allocation = {};
         mapped_memory = nullptr;
         byte_capacity = 0U;
         frame_count = 0U;
         frame_segment_size = 0U;
         usage_flags = 0U;
-        memory_properties = {};
         last_vulkan_result = VK_SUCCESS;
     }
 
@@ -182,6 +185,9 @@ public:
 
         auto* destination = static_cast<std::byte*>(mapped_memory) + slice_.offset + destination_offset_;
         std::memcpy(destination, data_, static_cast<Usize>(byte_count_));
+        if (!memory_allocator.flushMappedRange(allocation, slice_.offset + destination_offset_, byte_count_)) {
+            return makeResult(mapMemoryCenterStatus(memory_allocator.lastStatus()), slice_.ring_id, slice_.generation);
+        }
         return makeResult(NativeStatusCode::Ok, slice_.ring_id, slice_.generation);
     }
 
@@ -224,7 +230,7 @@ public:
         return physical_device != VK_NULL_HANDLE &&
             device != VK_NULL_HANDLE &&
             buffer != VK_NULL_HANDLE &&
-            memory != VK_NULL_HANDLE &&
+            allocation.valid() &&
             mapped_memory != nullptr;
     }
 
@@ -292,6 +298,32 @@ private:
         }
     }
 
+    static NativeStatusCode mapMemoryCenterStatus(
+        Center::Memory::Vulkan::VulkanAllocStatus status_) noexcept
+    {
+        switch (status_) {
+        case Center::Memory::Vulkan::VulkanAllocStatus::ok:
+            return NativeStatusCode::Ok;
+        case Center::Memory::Vulkan::VulkanAllocStatus::backend_allocate_failed:
+        case Center::Memory::Vulkan::VulkanAllocStatus::backend_deallocate_failed:
+        case Center::Memory::Vulkan::VulkanAllocStatus::map_failed:
+        case Center::Memory::Vulkan::VulkanAllocStatus::out_of_capacity:
+            return NativeStatusCode::OutOfMemory;
+        case Center::Memory::Vulkan::VulkanAllocStatus::invalid_size:
+        case Center::Memory::Vulkan::VulkanAllocStatus::invalid_alignment:
+        case Center::Memory::Vulkan::VulkanAllocStatus::invalid_memory_type_bits:
+        case Center::Memory::Vulkan::VulkanAllocStatus::invalid_memory_type_index:
+        case Center::Memory::Vulkan::VulkanAllocStatus::backend_memory_type_mismatch:
+        case Center::Memory::Vulkan::VulkanAllocStatus::bind_failed:
+        case Center::Memory::Vulkan::VulkanAllocStatus::unsupported_backend_feature:
+        case Center::Memory::Vulkan::VulkanAllocStatus::range_overflow:
+        case Center::Memory::Vulkan::VulkanAllocStatus::not_found:
+        case Center::Memory::Vulkan::VulkanAllocStatus::debug_validation_failed:
+        default:
+            return NativeStatusCode::InvalidInput;
+        }
+    }
+
     static U32 nextGeneration(U32 generation_) noexcept
     {
         return generation_ == 0xFFFFFFFFU ? kFirstGeneration : generation_ + 1U;
@@ -328,51 +360,13 @@ private:
 
         VkMemoryRequirements requirements{};
         vkGetBufferMemoryRequirements(device, buffer, &requirements);
-        U32 memory_type_index = 0U;
-        if (!findMemoryType(
-                requirements.memoryTypeBits,
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                memory_type_index)) {
-            return NativeStatusCode::InvalidInput;
+        allocation = memory_allocator.allocateAndBindBuffer(buffer, requirements, NativeMemoryDomain::Upload);
+        if (!allocation.valid() || allocation.mappedData() == nullptr) {
+            return mapMemoryCenterStatus(memory_allocator.lastStatus());
         }
 
-        const VkMemoryAllocateInfo allocate_info{
-            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .pNext = nullptr,
-            .allocationSize = requirements.size,
-            .memoryTypeIndex = memory_type_index,
-        };
-        vk_result = vkAllocateMemory(device, &allocate_info, nullptr, &memory);
-        last_vulkan_result = vk_result;
-        if (vk_result != VK_SUCCESS) {
-            return mapVulkanResult(vk_result);
-        }
-
-        vk_result = vkBindBufferMemory(device, buffer, memory, 0U);
-        last_vulkan_result = vk_result;
-        if (vk_result != VK_SUCCESS) {
-            return mapVulkanResult(vk_result);
-        }
-
-        vk_result = vkMapMemory(device, memory, 0U, byte_capacity, 0U, &mapped_memory);
-        last_vulkan_result = vk_result;
-        return mapVulkanResult(vk_result);
-    }
-
-    bool findMemoryType(
-        U32 memory_type_bits_,
-        VkMemoryPropertyFlags required_flags_,
-        U32& out_memory_type_index_) const noexcept
-    {
-        for (U32 index = 0U; index < memory_properties.memoryTypeCount; ++index) {
-            const bool allowed = (memory_type_bits_ & (1U << index)) != 0U;
-            const auto flags = memory_properties.memoryTypes[index].propertyFlags;
-            if (allowed && (flags & required_flags_) == required_flags_) {
-                out_memory_type_index_ = index;
-                return true;
-            }
-        }
-        return false;
+        mapped_memory = allocation.mappedData();
+        return NativeStatusCode::Ok;
     }
 
     bool isLiveSlice(const UploadRingSlice<Provider, Dim>& slice_) const noexcept
@@ -389,13 +383,13 @@ private:
             slice_.offset - slot.base_offset <= frame_segment_size - slice_.byte_count;
     }
 
-    std::vector<FrameSlot> frame_slots;
+    McVector<FrameSlot> frame_slots;
     VkPhysicalDevice physical_device = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE;
     VkBuffer buffer = VK_NULL_HANDLE;
-    VkDeviceMemory memory = VK_NULL_HANDLE;
+    VulkanMemoryCenterAllocator memory_allocator;
+    VulkanMemoryAllocation allocation{};
     void* mapped_memory = nullptr;
-    VkPhysicalDeviceMemoryProperties memory_properties{};
     VkResult last_vulkan_result = VK_SUCCESS;
     U64 byte_capacity = 0U;
     U64 frame_segment_size = 0U;

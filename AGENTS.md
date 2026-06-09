@@ -15,7 +15,7 @@ The build expects a Vulkan SDK and local dependency source trees for `MemoryCent
 
 ## Coding Style & Naming Conventions
 
-Use modern C++23 with no compiler extensions. Keep headers under the `Render2D` namespace and prefer small, POD-friendly types for component-facing APIs. Follow existing formatting: 4-space indentation in CMake continuation blocks, braces on a new line for C++ functions, PascalCase for public types/concepts such as `StrictPodComponent`, and lower_snake_case for target names such as `render2d_compile_smoke`. Strict warnings are enabled (`/W4 /WX` or `-Wall -Wextra -Wpedantic -Werror`), so fix warnings rather than suppressing them.
+Use modern C++23 with no compiler extensions. Keep headers under the `Render2D` namespace and prefer small, POD-friendly types for component-facing APIs. Use `Render2D::McVector<T>` for Render2D-owned dynamic arrays; do not introduce `std::vector` in project source. Follow existing formatting: 4-space indentation in CMake continuation blocks, braces on a new line for C++ functions, PascalCase for public types/concepts such as `StrictPodComponent`, and lower_snake_case for target names such as `render2d_compile_smoke`. Strict warnings are enabled (`/W4 /WX` or `-Wall -Wextra -Wpedantic -Werror`), so fix warnings rather than suppressing them.
 
 ## Testing Guidelines
 

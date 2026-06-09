@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+
 #include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 
 #include <vulkan/vulkan.h>
 
 #include <type_traits>
-#include <vector>
 
 namespace Render2D {
 
@@ -436,8 +437,8 @@ private:
         return slot.occupied != 0U && slot.generation.value == frame_sync_.generation;
     }
 
-    std::vector<SyncSlot> sync_slots;
-    std::vector<U32> free_sync_ids;
+    McVector<SyncSlot> sync_slots;
+    McVector<U32> free_sync_ids;
     VkDevice device = VK_NULL_HANDLE;
     VkResult last_vulkan_result = VK_SUCCESS;
     U32 fence_create_flags = 0U;

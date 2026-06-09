@@ -188,5 +188,8 @@ add_test(NAME render2d.negative_non_pod_component
         -D OUTPUT_FILE=${CMAKE_CURRENT_BINARY_DIR}/negative_non_pod_component.obj
         -D INCLUDE_DIR=${PROJECT_SOURCE_DIR}/include
         -D EXTRA_INCLUDE_DIRS=${Vulkan_INCLUDE_DIR}
+        -D VECTOR_NEW_INCLUDE_DIR=${RENDER2D_VECTOR_NEW_INCLUDE_DIR}
+        -D MEMORY_CENTER_INCLUDE_DIR=${RENDER2D_MEMORY_CENTER_SOURCE_DIR}/include
+        -D MIMALLOC_INCLUDE_DIR=${RENDER2D_MEMORY_CENTER_SOURCE_DIR}/third_party/mimalloc/include
         -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_compile_failure.cmake
 )

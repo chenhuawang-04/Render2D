@@ -1,14 +1,17 @@
 #pragma once
 
+#include "Render2D/Memory/RenderVector.hpp"
+#include "Render2D/Memory/VulkanMemoryCenterAllocator.hpp"
+
 #include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 
 #include <vulkan/vulkan.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <type_traits>
-#include <vector>
 
 namespace Render2D {
 
@@ -42,7 +45,14 @@ public:
 
             physical_device = config_.physical_device;
             device = config_.device;
-            vkGetPhysicalDeviceMemoryProperties(physical_device, &memory_properties);
+            if (!memory_allocator.initialize({
+                    .physical_device = physical_device,
+                    .device = device,
+                })) {
+                physical_device = VK_NULL_HANDLE;
+                device = VK_NULL_HANDLE;
+                return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::Unknown, 0U, 0U);
+            }
             return makeResult(NativeStatusCode::Ok, NativeObjectKind::Unknown, 0U, 0U);
         }
     }
@@ -56,6 +66,7 @@ public:
             for (auto& slot : image_slots) {
                 destroyImageSlot(slot);
             }
+            memory_allocator.shutdown();
         }
 
         buffer_slots.clear();
@@ -67,7 +78,6 @@ public:
         physical_device = VK_NULL_HANDLE;
         device = VK_NULL_HANDLE;
         last_vulkan_result = VK_SUCCESS;
-        memory_properties = {};
     }
 
     NativeCapacityResult reserveBuffers(U32 capacity_)
@@ -162,44 +172,22 @@ public:
 
             VkMemoryRequirements requirements{};
             vkGetBufferMemoryRequirements(device, buffer, &requirements);
-            U32 memory_type_index = 0U;
-            if (!findMemoryType(requirements.memoryTypeBits, memoryFlagsForDomain(memory_domain_), memory_type_index)) {
+            VulkanMemoryAllocation allocation = memory_allocator.allocateAndBindBuffer(buffer, requirements, memory_domain_);
+            if (!allocation.valid()) {
                 vkDestroyBuffer(device, buffer, nullptr);
-                return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::Buffer, 0U, 0U);
-            }
-
-            VkMemoryAllocateInfo allocate_info{
-                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                .pNext = nullptr,
-                .allocationSize = requirements.size,
-                .memoryTypeIndex = memory_type_index,
-            };
-            VkDeviceMemory memory = VK_NULL_HANDLE;
-            vk_result = vkAllocateMemory(device, &allocate_info, nullptr, &memory);
-            last_vulkan_result = vk_result;
-            if (vk_result != VK_SUCCESS) {
-                vkDestroyBuffer(device, buffer, nullptr);
-                return makeResult(mapVulkanResult(vk_result), NativeObjectKind::Buffer, 0U, 0U);
-            }
-
-            vk_result = vkBindBufferMemory(device, buffer, memory, 0U);
-            last_vulkan_result = vk_result;
-            if (vk_result != VK_SUCCESS) {
-                vkFreeMemory(device, memory, nullptr);
-                vkDestroyBuffer(device, buffer, nullptr);
-                return makeResult(mapVulkanResult(vk_result), NativeObjectKind::Buffer, 0U, 0U);
+                return makeResult(mapMemoryCenterStatus(memory_allocator.lastStatus()), NativeObjectKind::Buffer, 0U, 0U);
             }
 
             U32 buffer_id = 0U;
             if (!acquireBufferSlot(buffer_id)) {
-                vkFreeMemory(device, memory, nullptr);
                 vkDestroyBuffer(device, buffer, nullptr);
+                memory_allocator.deallocate(allocation);
                 return makeResult(NativeStatusCode::OutOfCapacity, NativeObjectKind::Buffer, 0U, 0U);
             }
 
             auto& slot = buffer_slots[buffer_id];
             slot.buffer = buffer;
-            slot.memory = memory;
+            slot.allocation = allocation;
             slot.byte_size = byte_size_;
             slot.occupied = 1U;
             slot.ref = {
@@ -264,32 +252,10 @@ public:
 
             VkMemoryRequirements requirements{};
             vkGetImageMemoryRequirements(device, image, &requirements);
-            U32 memory_type_index = 0U;
-            if (!findMemoryType(requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, memory_type_index)) {
+            VulkanMemoryAllocation allocation = memory_allocator.allocateAndBindImage(image, requirements);
+            if (!allocation.valid()) {
                 vkDestroyImage(device, image, nullptr);
-                return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::Image, 0U, 0U);
-            }
-
-            VkMemoryAllocateInfo allocate_info{
-                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                .pNext = nullptr,
-                .allocationSize = requirements.size,
-                .memoryTypeIndex = memory_type_index,
-            };
-            VkDeviceMemory memory = VK_NULL_HANDLE;
-            vk_result = vkAllocateMemory(device, &allocate_info, nullptr, &memory);
-            last_vulkan_result = vk_result;
-            if (vk_result != VK_SUCCESS) {
-                vkDestroyImage(device, image, nullptr);
-                return makeResult(mapVulkanResult(vk_result), NativeObjectKind::Image, 0U, 0U);
-            }
-
-            vk_result = vkBindImageMemory(device, image, memory, 0U);
-            last_vulkan_result = vk_result;
-            if (vk_result != VK_SUCCESS) {
-                vkFreeMemory(device, memory, nullptr);
-                vkDestroyImage(device, image, nullptr);
-                return makeResult(mapVulkanResult(vk_result), NativeObjectKind::Image, 0U, 0U);
+                return makeResult(mapMemoryCenterStatus(memory_allocator.lastStatus()), NativeObjectKind::Image, 0U, 0U);
             }
 
             VkImageView image_view = VK_NULL_HANDLE;
@@ -317,23 +283,23 @@ public:
             vk_result = vkCreateImageView(device, &view_info, nullptr, &image_view);
             last_vulkan_result = vk_result;
             if (vk_result != VK_SUCCESS) {
-                vkFreeMemory(device, memory, nullptr);
                 vkDestroyImage(device, image, nullptr);
+                memory_allocator.deallocate(allocation);
                 return makeResult(mapVulkanResult(vk_result), NativeObjectKind::Image, 0U, 0U);
             }
 
             U32 image_id = 0U;
             if (!acquireImageSlot(image_id)) {
                 vkDestroyImageView(device, image_view, nullptr);
-                vkFreeMemory(device, memory, nullptr);
                 vkDestroyImage(device, image, nullptr);
+                memory_allocator.deallocate(allocation);
                 return makeResult(NativeStatusCode::OutOfCapacity, NativeObjectKind::Image, 0U, 0U);
             }
 
             auto& slot = image_slots[image_id];
             slot.image = image;
             slot.image_view = image_view;
-            slot.memory = memory;
+            slot.allocation = allocation;
             slot.layout = VK_IMAGE_LAYOUT_UNDEFINED;
             slot.occupied = 1U;
             slot.ref = {
@@ -368,16 +334,16 @@ public:
             return makeResult(NativeStatusCode::Ok, NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
         }
 
-        void* mapped = nullptr;
         const auto& slot = buffer_slots[ref_.buffer_id];
-        VkResult vk_result = vkMapMemory(device, slot.memory, offset_, byte_count_, 0U, &mapped);
-        last_vulkan_result = vk_result;
-        if (vk_result != VK_SUCCESS) {
-            return makeResult(mapVulkanResult(vk_result), NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
+        if (slot.allocation.mappedData() == nullptr) {
+            return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
         }
 
+        auto* mapped = slot.allocation.mappedData() + static_cast<Usize>(offset_);
         std::memcpy(mapped, data_, static_cast<Usize>(byte_count_));
-        vkUnmapMemory(device, slot.memory);
+        if (!memory_allocator.flushMappedRange(slot.allocation, offset_, byte_count_)) {
+            return makeResult(mapMemoryCenterStatus(memory_allocator.lastStatus()), NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
+        }
         return makeResult(NativeStatusCode::Ok, NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
     }
 
@@ -397,16 +363,16 @@ public:
             return makeResult(NativeStatusCode::Ok, NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
         }
 
-        void* mapped = nullptr;
         const auto& slot = buffer_slots[ref_.buffer_id];
-        VkResult vk_result = vkMapMemory(device, slot.memory, offset_, byte_count_, 0U, &mapped);
-        last_vulkan_result = vk_result;
-        if (vk_result != VK_SUCCESS) {
-            return makeResult(mapVulkanResult(vk_result), NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
+        if (slot.allocation.mappedData() == nullptr) {
+            return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
         }
 
+        if (!memory_allocator.invalidateMappedRange(slot.allocation, offset_, byte_count_)) {
+            return makeResult(mapMemoryCenterStatus(memory_allocator.lastStatus()), NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
+        }
+        const auto* mapped = slot.allocation.mappedData() + static_cast<Usize>(offset_);
         std::memcpy(data_, mapped, static_cast<Usize>(byte_count_));
-        vkUnmapMemory(device, slot.memory);
         return makeResult(NativeStatusCode::Ok, NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
     }
 
@@ -681,7 +647,7 @@ private:
         BufferRef<Provider, Dim> ref;
         NativeGeneration generation;
         VkBuffer buffer;
-        VkDeviceMemory memory;
+        VulkanMemoryAllocation allocation;
         U64 byte_size;
         U32 occupied;
     };
@@ -691,7 +657,7 @@ private:
         NativeGeneration generation;
         VkImage image;
         VkImageView image_view;
-        VkDeviceMemory memory;
+        VulkanMemoryAllocation allocation;
         VkImageLayout layout;
         U32 occupied;
     };
@@ -727,6 +693,32 @@ private:
         }
     }
 
+    static NativeStatusCode mapMemoryCenterStatus(
+        Center::Memory::Vulkan::VulkanAllocStatus status_) noexcept
+    {
+        switch (status_) {
+        case Center::Memory::Vulkan::VulkanAllocStatus::ok:
+            return NativeStatusCode::Ok;
+        case Center::Memory::Vulkan::VulkanAllocStatus::backend_allocate_failed:
+        case Center::Memory::Vulkan::VulkanAllocStatus::backend_deallocate_failed:
+        case Center::Memory::Vulkan::VulkanAllocStatus::map_failed:
+        case Center::Memory::Vulkan::VulkanAllocStatus::out_of_capacity:
+            return NativeStatusCode::OutOfMemory;
+        case Center::Memory::Vulkan::VulkanAllocStatus::invalid_size:
+        case Center::Memory::Vulkan::VulkanAllocStatus::invalid_alignment:
+        case Center::Memory::Vulkan::VulkanAllocStatus::invalid_memory_type_bits:
+        case Center::Memory::Vulkan::VulkanAllocStatus::invalid_memory_type_index:
+        case Center::Memory::Vulkan::VulkanAllocStatus::backend_memory_type_mismatch:
+        case Center::Memory::Vulkan::VulkanAllocStatus::bind_failed:
+        case Center::Memory::Vulkan::VulkanAllocStatus::unsupported_backend_feature:
+        case Center::Memory::Vulkan::VulkanAllocStatus::range_overflow:
+        case Center::Memory::Vulkan::VulkanAllocStatus::not_found:
+        case Center::Memory::Vulkan::VulkanAllocStatus::debug_validation_failed:
+        default:
+            return NativeStatusCode::InvalidInput;
+        }
+    }
+
     static U32 nextGeneration(U32 generation_) noexcept
     {
         return generation_ == 0xFFFFFFFFU ? kFirstGeneration : generation_ + 1U;
@@ -740,36 +732,6 @@ private:
         } else {
             return static_cast<U64>(handle_);
         }
-    }
-
-    static VkMemoryPropertyFlags memoryFlagsForDomain(NativeMemoryDomain domain_) noexcept
-    {
-        switch (domain_) {
-        case NativeMemoryDomain::DeviceLocal:
-            return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        case NativeMemoryDomain::Upload:
-        case NativeMemoryDomain::Readback:
-        case NativeMemoryDomain::Transient:
-        case NativeMemoryDomain::Unknown:
-        default:
-            return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        }
-    }
-
-    bool findMemoryType(
-        U32 memory_type_bits_,
-        VkMemoryPropertyFlags required_flags_,
-        U32& out_memory_type_index_) const noexcept
-    {
-        for (U32 index = 0U; index < memory_properties.memoryTypeCount; ++index) {
-            const bool allowed = (memory_type_bits_ & (1U << index)) != 0U;
-            const auto flags = memory_properties.memoryTypes[index].propertyFlags;
-            if (allowed && (flags & required_flags_) == required_flags_) {
-                out_memory_type_index_ = index;
-                return true;
-            }
-        }
-        return false;
     }
 
     bool hasAvailableBufferSlot() const noexcept
@@ -799,7 +761,7 @@ private:
                 .ref = {},
                 .generation = {.value = kFirstGeneration},
                 .buffer = VK_NULL_HANDLE,
-                .memory = VK_NULL_HANDLE,
+                .allocation = {},
                 .byte_size = 0U,
                 .occupied = 0U,
             });
@@ -827,7 +789,7 @@ private:
                 .generation = {.value = kFirstGeneration},
                 .image = VK_NULL_HANDLE,
                 .image_view = VK_NULL_HANDLE,
-                .memory = VK_NULL_HANDLE,
+                .allocation = {},
                 .layout = VK_IMAGE_LAYOUT_UNDEFINED,
                 .occupied = 0U,
             });
@@ -868,11 +830,9 @@ private:
         if (slot_.buffer != VK_NULL_HANDLE) {
             vkDestroyBuffer(device, slot_.buffer, nullptr);
         }
-        if (slot_.memory != VK_NULL_HANDLE) {
-            vkFreeMemory(device, slot_.memory, nullptr);
-        }
+        memory_allocator.deallocate(slot_.allocation);
         slot_.buffer = VK_NULL_HANDLE;
-        slot_.memory = VK_NULL_HANDLE;
+        slot_.allocation = {};
         slot_.byte_size = 0U;
     }
 
@@ -884,12 +844,10 @@ private:
         if (slot_.image != VK_NULL_HANDLE) {
             vkDestroyImage(device, slot_.image, nullptr);
         }
-        if (slot_.memory != VK_NULL_HANDLE) {
-            vkFreeMemory(device, slot_.memory, nullptr);
-        }
+        memory_allocator.deallocate(slot_.allocation);
         slot_.image = VK_NULL_HANDLE;
         slot_.image_view = VK_NULL_HANDLE;
-        slot_.memory = VK_NULL_HANDLE;
+        slot_.allocation = {};
         slot_.layout = VK_IMAGE_LAYOUT_UNDEFINED;
     }
 
@@ -928,13 +886,13 @@ private:
         return slot.occupied != 0U && slot.generation.value == ref_.generation;
     }
 
-    std::vector<BufferSlot> buffer_slots;
-    std::vector<ImageSlot> image_slots;
-    std::vector<U32> free_buffer_ids;
-    std::vector<U32> free_image_ids;
+    McVector<BufferSlot> buffer_slots;
+    McVector<ImageSlot> image_slots;
+    McVector<U32> free_buffer_ids;
+    McVector<U32> free_image_ids;
     VkPhysicalDevice physical_device = VK_NULL_HANDLE;
     VkDevice device = VK_NULL_HANDLE;
-    VkPhysicalDeviceMemoryProperties memory_properties{};
+    VulkanMemoryCenterAllocator memory_allocator;
     VkResult last_vulkan_result = VK_SUCCESS;
     U32 active_buffer_count = 0U;
     U32 active_image_count = 0U;

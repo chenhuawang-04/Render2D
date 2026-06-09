@@ -7,7 +7,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `.clang-tidy` - Project clang-tidy configuration adapted from the Melosyne style rules.
 - `.gitignore` - Ignores CMake/Ninja build output, user files, and generated compiler artifacts.
 - `AGENTS.md` - Contributor guide for this repository.
-- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, dependencies, warnings, tests, and benchmarks.
+- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, MemoryCenter/Vector_New/fast_math/Vulkan dependencies, warnings, tests, and benchmarks.
 - `CMakePresets.json` - Default `clang-ninja-debug` configure/build/test preset.
 - `Plan.md` - Long-term implementation plan and phase tracking.
 
@@ -72,20 +72,22 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanCommandRuntime.hpp` - Vulkan command pool and command buffer lifecycle runtime behind `NativeCommandBufferRef`.
 - `include/Render2D/Native/VulkanSyncRuntime.hpp` - Vulkan semaphore/fence lifecycle runtime behind `FrameSync`.
 - `include/Render2D/Native/VulkanSubmitRuntime.hpp` - Vulkan queue submit runtime for resolved command buffers and frame sync.
-- `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with upload/readback and copy helpers.
+- `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with MemoryCenter-backed GPU allocation, upload/readback, and copy helpers.
 - `include/Render2D/Native/VulkanDescriptorRuntime.hpp` - Vulkan descriptor pool, set layout, set allocation, and descriptor update runtime.
 - `include/Render2D/Native/VulkanPipelineRuntime.hpp` - Vulkan shader module, pipeline cache, pipeline layout, and dynamic-rendering pipeline runtime.
-- `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - Persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
+- `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - MemoryCenter-backed persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
 - `include/Render2D/Native/VulkanRenderEncoder.hpp` - Dynamic rendering encoder for direct and indirect draw recording.
 
 ### Memory and Storage
 
-- `include/Render2D/Memory/RenderMemoryTags.hpp` - Memory domain tag types.
+- `include/Render2D/Memory/RenderMemoryTags.hpp` - Render2D memory-domain aliases mapped to MemoryCenter customer tags.
+- `include/Render2D/Memory/RenderVector.hpp` - Project-wide `Render2D::McVector<T>` alias backed by Vector_New `mc_vector` and MemoryCenter.
+- `include/Render2D/Memory/VulkanMemoryCenterAllocator.hpp` - Vulkan buffer/image allocation and mapped-range synchronization wrapper over MemoryCenter Vulkan adaptors.
 - `include/Render2D/Storage/StorageFwd.hpp` - Forward declaration for future runtime storage. ECS storage is intentionally not public production API.
 
 ## Tests
 
-- `tests/CMakeLists.txt` - Test target registration.
+- `tests/CMakeLists.txt` - Test target registration, including manual negative-compile include wiring for MemoryCenter and Vector_New.
 - `tests/compile_smoke.cpp` - Umbrella compile smoke and broad static assertions.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
@@ -105,7 +107,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
-- `tests/expect_compile_failure.cmake` - CMake script that validates negative compile tests.
+- `tests/expect_compile_failure.cmake` - CMake script that validates negative compile tests with Render2D dependency include paths.
 - `tests/support/TemporaryEcsStorage.hpp` - Test-only temporary ECS storage. This is not production ECS.
 - `tests/support/ComponentStreamView.hpp` - Test-only view helpers for temporary ECS storage.
 - `tests/support/VulkanSmokeContext.hpp` - Optional Vulkan instance/device/queue setup helper for smoke tests.
@@ -123,6 +125,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/PROJECT_INDEX.md` - This file.
 - `docs/ProjectMergeTODO.md` - Host-engine merge notes and migration constraints.
 - `docs/adr/2026-06-08-component-first-vulkan-native-render2d.md` - Initial ADR for component-first Vulkan-native architecture.
+- `docs/adr/2026-06-09-memorycenter-mcvector-runtime-memory.md` - ADR for MemoryCenter/McVector CPU runtime storage and Vulkan GPU allocation.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.
