@@ -11,6 +11,8 @@ namespace R2DT = Render2D::TestSupport;
 using Provider = R2D::VulkanNativeProvider;
 using Dim = R2D::Dim2;
 using Text = R2D::Text<Provider, Dim>;
+using TextState = R2D::TextState<Provider, Dim>;
+using TextDirtyRange = R2D::TextDirtyRange<Provider, Dim>;
 using Utf8Slice = R2D::Utf8Slice<Provider, Dim>;
 using FontRef = R2D::FontRef<Provider, Dim>;
 using FontAtlasRef = R2D::FontAtlasRef<Provider, Dim>;
@@ -31,6 +33,8 @@ consteval void requireTextComponent()
 int main()
 {
     requireTextComponent<Text>();
+    requireTextComponent<TextState>();
+    requireTextComponent<TextDirtyRange>();
     requireTextComponent<Utf8Slice>();
     requireTextComponent<FontRef>();
     requireTextComponent<FontAtlasRef>();
@@ -56,6 +60,31 @@ int main()
         .flags = 0U,
     };
     static_assert(kText.utf8_size == kUtf8Slice.byte_count);
+
+    constexpr TextState kTextState{
+        .source_id = kText.source_id,
+        .font_id = kText.font_id,
+        .utf8_buffer_id = kText.utf8_buffer_id,
+        .utf8_offset = kText.utf8_offset,
+        .utf8_size = kText.utf8_size,
+        .color_rgba8 = kText.color_rgba8,
+        .pixel_size = kText.pixel_size,
+        .layer = kText.layer,
+        .flags = kText.flags,
+        .glyph_first = 0U,
+        .glyph_count = kText.utf8_size,
+    };
+    static_assert(kTextState.glyph_count == kText.utf8_size);
+
+    constexpr TextDirtyRange kDirtyRange{
+        .source_text_index = 0U,
+        .previous_glyph_first = 0U,
+        .previous_glyph_count = 0U,
+        .new_glyph_first = 0U,
+        .new_glyph_count = kText.utf8_size,
+        .flags = R2D::kTextDirtyCreatedFlag,
+    };
+    static_assert(kDirtyRange.new_glyph_count == kText.utf8_size);
 
     R2DT::FrameComponentStorage<Provider, Dim, GlyphRun> glyph_runs;
     glyph_runs.reserve(1U);

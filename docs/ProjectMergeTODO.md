@@ -140,7 +140,7 @@ Merge rule:
 - UTF-8 backing buffers, font files, shaping caches, atlas images, and glyph raster data remain outside ECS components;
 - glyph systems should pass only ids, ranges, atlas rects, positions, colors, sort keys, and flags through ECS.
 
-Stage 9B now provides deterministic placeholder glyph run/instance systems. Still not implemented: real UTF-8 decoding, font shaping, atlas packing, sampled-image descriptor policy, and Vulkan text draw integration.
+Stage 9 is now complete for the dependency-free ECS pipeline: `TextDirtySystem` emits `TextDirtyRange[]`, dirty glyph run/instance update paths rebuild only changed ranges, and `GlyphBatchSystem` emits regular `DrawCommand[]` over `GlyphInstance[]`. Still not implemented: real UTF-8 decoding, font shaping, atlas packing, sampled-image descriptor policy, and production Vulkan text shader/descriptor integration.
 
 
 ## 12. FreeType is vendored but dormant
@@ -151,7 +151,16 @@ Current rule:
 
 - do not include FreeType headers from Render2D public headers;
 - do not add FreeType to CMake until a dedicated font runtime stage starts;
-- keep Stage 9B glyph systems deterministic and dependency-free;
+- keep Stage 9 glyph systems deterministic and dependency-free until a dedicated font runtime stage;
 - when FreeType is enabled later, keep all FreeType handles, faces, glyph slots, and atlas ownership outside ECS components.
 
 License note: FreeType offers FTL or GPLv2+ choices; choose and document the project policy before shipping or linking it.
+
+## 13. Stage 9 text pipeline remains dependency-free
+
+Stage 9 intentionally does not link FreeType. Its purpose is to lock the ECS-facing text pipeline shape:
+
+- host ECS owns `Text`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`, and generated `DrawCommand` streams;
+- unchanged `Text` entries can skip glyph run/instance rebuild through dirty ranges;
+- `GlyphBatchSystem` converts glyph runs into the same draw-command path used by sprites;
+- future FreeType/shaping/atlas code must update backing font runtime data outside ECS components.

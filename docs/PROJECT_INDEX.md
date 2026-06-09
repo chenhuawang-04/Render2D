@@ -37,7 +37,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Component/Transform.hpp` - `Transform` and `WorldTransform`.
 - `include/Render2D/Component/Bounds.hpp` - `LocalBounds` and `WorldBounds`.
 - `include/Render2D/Component/Sprite.hpp` - Sprite-facing components and render references.
-- `include/Render2D/Component/Text.hpp` - Text input, UTF-8 slice, font atlas, glyph run, and glyph instance POD components.
+- `include/Render2D/Component/Text.hpp` - Text input, text dirty state/range, UTF-8 slice, font atlas, glyph run, and glyph instance POD components.
 - `include/Render2D/Component/Camera.hpp` - Camera input component.
 - `include/Render2D/Component/Command.hpp` - Visibility, sorting, draw command, and `CommandBuffer` descriptor components.
 - `include/Render2D/Component/Batch.hpp` - `BatchCommand`.
@@ -55,7 +55,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/CommandBufferSystem.hpp` - Builds and clears POD `CommandBuffer` range descriptors.
 - `include/Render2D/System/EncodeSystem.hpp` - CPU-only encode contract from `CommandBuffer` ranges to `NativeCommandBufferRef`.
 - `include/Render2D/System/SubmitSystem.hpp` - CPU-only submit contract from native command refs and `FrameSync` to `NativeSubmitCommand`.
-- `include/Render2D/System/TextSystem.hpp` - Deterministic Stage 9B glyph-run and glyph-instance build systems using `GlyphBuildConfig`.
+- `include/Render2D/System/TextSystem.hpp` - Stage 9 text dirty detection, dirty glyph-run/instance updates, and glyph-to-DrawCommand batching using `GlyphBuildConfig` / `GlyphDrawConfig`.
 
 ### Native
 
@@ -94,6 +94,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
 - `tests/text_glyph_components_test.cpp` - Text/Glyph Strict POD component contract and temporary stream storage behavior.
 - `tests/text_glyph_system_test.cpp` - Stage 9B glyph-run and glyph-instance system behavior and error paths.
+- `tests/text_stage9_pipeline_test.cpp` - Full Stage 9 text dirty, dirty glyph update, glyph draw command, and batch pipeline behavior.
 - `tests/native_components_test.cpp` - Native POD ECS component contract checks.
 - `tests/native_runtime_contract_test.cpp` - Native runtime type/result POD contract checks.
 - `tests/native_resource_runtime_test.cpp` - Buffer/image native slot table stale-reference and generation reuse checks.
@@ -131,6 +132,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-memorycenter-mcvector-runtime-memory.md` - ADR for MemoryCenter/McVector CPU runtime storage and Vulkan GPU allocation.
 - `docs/adr/2026-06-09-text-glyph-pod-components.md` - ADR for Text/Glyph Strict POD data contracts.
 - `docs/adr/2026-06-09-freetype-vendor-and-test-glyph-systems.md` - ADR for dormant FreeType vendor source and deterministic Stage 9B glyph systems.
+- `docs/adr/2026-06-09-stage9-text-dirty-glyph-pipeline.md` - ADR for Stage 9 text dirty ranges, dirty glyph updates, and glyph draw-command batching.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

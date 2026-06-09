@@ -97,6 +97,38 @@ int main()
     assert(glyph_instances[2U].glyph_id == 34U);
     assert(glyph_instances[2U].layer == 5U);
 
+    constexpr std::array<GlyphRun, 1U> kOffsetRuns{{
+        {
+            .source_text_index = 0U,
+            .glyph_first = 4U,
+            .glyph_count = 2U,
+            .atlas_id = 9U,
+            .atlas_generation = 7U,
+            .flags = 0U,
+        },
+    }};
+    std::array<GlyphInstance, 6U> offset_instances{};
+    result = R2D::GlyphInstanceBuildSystem<Provider, Dim>::run(
+        kOffsetRuns,
+        kTexts,
+        kConfig,
+        offset_instances);
+    assert(result.code == R2D::SystemStatusCode::Ok);
+    assert(result.read_count == kOffsetRuns.size());
+    assert(result.write_count == offset_instances.size());
+    assert(offset_instances[4U].glyph_run_index == 0U);
+    assert(offset_instances[4U].glyph_id == 36U);
+    assert(offset_instances[5U].glyph_id == 37U);
+    assert(offset_instances[5U].position_x == 10.0F);
+
+    std::array<GlyphInstance, 5U> short_offset_instances{};
+    result = R2D::GlyphInstanceBuildSystem<Provider, Dim>::run(
+        kOffsetRuns,
+        kTexts,
+        kConfig,
+        short_offset_instances);
+    assert(result.code == R2D::SystemStatusCode::InsufficientCapacity);
+
     std::array<GlyphRun, 1U> short_runs{};
     result = R2D::GlyphRunBuildSystem<Provider, Dim>::run(kTexts, kAtlases, short_runs);
     assert(result.code == R2D::SystemStatusCode::InsufficientCapacity);

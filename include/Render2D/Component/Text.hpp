@@ -19,6 +19,31 @@ struct Text {
 };
 
 template<class Provider, class Dim>
+struct TextState {
+    U32 source_id;
+    U32 font_id;
+    U32 utf8_buffer_id;
+    U32 utf8_offset;
+    U32 utf8_size;
+    U32 color_rgba8;
+    float pixel_size;
+    U32 layer;
+    U32 flags;
+    U32 glyph_first;
+    U32 glyph_count;
+};
+
+template<class Provider, class Dim>
+struct TextDirtyRange {
+    U32 source_text_index;
+    U32 previous_glyph_first;
+    U32 previous_glyph_count;
+    U32 new_glyph_first;
+    U32 new_glyph_count;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
 struct Utf8Slice {
     U32 buffer_id;
     U32 byte_offset;
@@ -67,6 +92,20 @@ struct ComponentTraits<Provider, Dim, Text<Provider, Dim>> {
     static constexpr bool kSupported =
         SupportedRenderDomain<Provider, Dim> &&
         StrictPodComponent<Text<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, TextState<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<TextState<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, TextDirtyRange<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<TextDirtyRange<Provider, Dim>>;
 };
 
 template<class Provider, class Dim>

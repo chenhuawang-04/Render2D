@@ -1,61 +1,57 @@
-﻿# ECS Component Streams
+# ECS Component Streams
 
-Render2D ?? component data streams + systems?Entity ???? identity/index??? component ??????
+Render2D treats render data as component streams plus stateless systems. An entity may be only an identity/index; component streams can also exist as derived frame data without one entity per record.
 
-## ????
+## Stream pipeline
 
 ```text
-Transform[]
-Sprite[]
-Text[]
-Camera[]
-    ->
-WorldTransform[]
-WorldBounds[]
-VisibleItem[]
-SortedItem[]
+Sprite path:
+Transform[] / Sprite[] / Camera[]
+    -> WorldTransform[]
+    -> WorldBounds[]
+    -> VisibleItem[]
+    -> DrawCommand[]
+
+Text path:
+Text[] + TextState[] + FontAtlasRef[]
+    -> TextDirtyRange[]
+    -> GlyphRun[]
+    -> GlyphInstance[]
+    -> DrawCommand[]
+
 DrawCommand[]
-BatchCommand[]
-UploadCommand[]
-NativeSubmitCommand[]
+    -> BatchCommand[]
+    -> CommandBuffer[]
+    -> NativeCommandBufferRef[]
+    -> NativeSubmitCommand[]
 ```
 
-??????????? ECS component???? Strict POD ??????? ECS ????????????
+Every stream above is an ECS component stream and every component remains Strict POD.
 
-## ?? Storage ??
+## Component / Storage / System boundary
 
-?????? `ComponentStreamStorage` / `FrameComponentStorage` / `PersistentComponentStorage` ??? tests / bench ??? ECS ??????? component ? system ???
+- **Component**: Strict POD data record. It may store ids, handles, offsets, counts, flags, ranges, and scalar data only.
+- **Storage**: owning memory or runtime table. Current `ComponentStreamStorage`, `FrameComponentStorage`, and `PersistentComponentStorage` are test-only ECS scaffolding under `tests/support/`.
+- **System**: stateless component-stream transform. Systems use `std::span` as call boundaries only; `std::span` is not allowed as a component field.
 
-??????? Render2D ????? ECS??????????????? storage ???????? ECS ? dense storage / view / query ???
-
-## Component / Storage / System ??
-
-- Component?Strict POD ?????????????????????? native ?????
-- Storage???????? ECS ??? native/resource runtime ???storage ???? component?
-- System?? component stream ? component stream ??????
-
-`CommandBuffer<Provider, Dim>` ? ECS component????? POD descriptor???? frame/index/range??? command ??????? test-only temporary ECS storage???????? ECS ???
-
-## System 调用边界
-
-生产 System 使用 std::span 接收输入和输出 component stream。std::span 只作为函数参数边界，不允许作为 component 字段。这样 system 不依赖临时 Storage，也不依赖具体 ECS 实现。
-
-
-## CommandBuffer descriptor
-
-CommandBuffer<Provider, Dim> 是 ECS component，但只保存 draw / batch / upload / native submit 的 offset/count range。它不拥有真实 command arrays。当前通过 CommandBufferBuildSystem 生成，通过 CommandBufferClearSystem 清零 descriptor。
-
-
+`CommandBuffer<Provider, Dim>` is an ECS component, but only a POD descriptor containing draw/batch/upload/native-submit ranges. It does not own command arrays.
 
 ## Text / Glyph component streams
 
-Stage 9A introduces only Strict POD data streams for text:
+Stage 9 text data is also ECS-owned POD data:
 
 ```text
-Text[] + Utf8Slice[] + FontAtlasRef[]
-    -> GlyphRun[]
-    -> GlyphInstance[]
-    -> future DrawCommand[] / BatchCommand[]
+Text[]
+TextState[]
+TextDirtyRange[]
+GlyphRun[]
+GlyphInstance[]
 ```
 
-`Text`, `Utf8Slice`, `FontAtlasRef`, `GlyphRun`, and `GlyphInstance` are ECS components. They do not own strings, glyph caches, atlas images, or font resources. Backing storage and future shaping/atlas systems remain outside the component contract. Stage 9B adds deterministic test systems that expand UTF-8 byte counts into placeholder glyph runs and instances; this is not real shaping.
+`TextDirtySystem` compares `Text[]` against previous `TextState[]`, writes next `TextState[]`, and emits only changed `TextDirtyRange[]` entries. `GlyphRunBuildSystem::runDirty` and `GlyphInstanceBuildSystem::runDirty` update only those ranges, so static text does not need to rebuild glyph data every frame.
+
+`GlyphBatchSystem` converts `GlyphRun[]` plus `FontAtlasRef[]` into regular `DrawCommand[]` entries whose `instance_first/instance_count` point into `GlyphInstance[]`. The existing `BatchSystem` then merges compatible glyph draws with the normal draw-command path.
+
+## FreeType boundary
+
+FreeType is vendored under `third_party/freetype/` but is not linked. Future font runtime work may use it for decoding/rasterization, but FreeType handles, font faces, glyph slots, atlas images, and caches must remain outside ECS components.

@@ -1684,6 +1684,12 @@
 
   9B status (done): Deterministic test glyph systems are complete. `GlyphRunBuildSystem` maps `Text[]` to `GlyphRun[]` by font atlas id and UTF-8 byte count, while `GlyphInstanceBuildSystem` expands runs into placeholder `GlyphInstance[]` using `GlyphBuildConfig`. FreeType has been copied to `third_party/freetype` for future integration but is not connected to CMake or runtime yet.
 
+  9C status (done): `TextDirtySystem` is complete. It compares `Text[]` with previous `TextState[]`, writes next `TextState[]`, and emits `TextDirtyRange[]` so unchanged static text does not need glyph rebuild work.
+
+  9D status (done): Dirty update paths are complete. `GlyphRunBuildSystem::runDirty` and `GlyphInstanceBuildSystem::runDirty` update only dirty text/glyph ranges while preserving host-ECS-owned streams.
+
+  9E status (done): `GlyphBatchSystem` is complete. Glyph runs are converted into regular `DrawCommand[]` ranges over `GlyphInstance[]`, then enter the existing `BatchSystem` pipeline.
+
 
 
   目标：文本也保持 Strict POD component stream。
@@ -1695,6 +1701,10 @@
 
 
   Text
+
+  TextState
+
+  TextDirtyRange
 
   Utf8Slice
 

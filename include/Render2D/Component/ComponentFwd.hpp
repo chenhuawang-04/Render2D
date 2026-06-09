@@ -15,6 +15,12 @@ template<class Provider, class Dim>
 struct Text;
 
 template<class Provider, class Dim>
+struct TextState;
+
+template<class Provider, class Dim>
+struct TextDirtyRange;
+
+template<class Provider, class Dim>
 struct Utf8Slice;
 
 template<class Provider, class Dim>

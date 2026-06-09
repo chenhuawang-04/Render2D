@@ -14,13 +14,26 @@ Render2D is a C++23, component-first, Vulkan-native rendering module. The curren
 ## Current data pipeline
 
 ```text
-Transform[] / Sprite[] / Text[] / Utf8Slice[] / Camera[]
+Sprite path:
+Transform[] / Sprite[] / Camera[]
     -> TransformSystem
     -> BoundsSystem
     -> CullingSystem
     -> CommandBuildSystem
+    -> DrawCommand[]
+
+Text path:
+Text[] + TextState[] + FontAtlasRef[]
+    -> TextDirtySystem
+    -> TextDirtyRange[]
+    -> GlyphRunBuildSystem
+    -> GlyphInstanceBuildSystem
+    -> GlyphBatchSystem
+    -> DrawCommand[]
+
+DrawCommand[]
     -> BatchSystem
-    -> Text/Glyph POD streams
+    -> BatchCommand[]
     -> CommandBufferBuildSystem
     -> CommandBuffer[]
     -> EncodeSystem
@@ -36,7 +49,7 @@ The CPU component pipeline remains ECS-driven. Stage 8 now attaches Vulkan comma
 The component layer defines Strict POD ECS records:
 
 - Scene/input components: `Transform`, `Sprite`, `Text`, `Utf8Slice`, `Camera`, `LocalBounds`, `VisibilityMask`, `RenderLayer`, `MaterialRef`, `TextureRef`, `FontRef`, `FontAtlasRef`.
-- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `GlyphRun`, `GlyphInstance`.
+- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`.
 - Command components: `DrawCommand`, `BatchCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
 - Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `BufferRef`, `UploadSlice`.
@@ -55,6 +68,8 @@ Systems are stateless template types. They:
 - do not call Vulkan.
 
 This keeps systems reusable when the temporary test ECS is replaced by the host engine ECS.
+
+Stage 9 text systems are dependency-free and deterministic. `TextDirtySystem` emits dirty glyph ranges, `GlyphRunBuildSystem` and `GlyphInstanceBuildSystem` can update only those ranges, and `GlyphBatchSystem` emits regular `DrawCommand[]` entries over `GlyphInstance[]`. Real UTF-8 decoding, shaping, rasterization, atlas packing, and FreeType linkage are deferred to a dedicated font runtime stage.
 
 ## Temporary test ECS
 

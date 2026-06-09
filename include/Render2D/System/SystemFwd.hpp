@@ -24,10 +24,16 @@ template<class Provider, class Dim>
 struct BatchSystem;
 
 template<class Provider, class Dim>
+struct TextDirtySystem;
+
+template<class Provider, class Dim>
 struct GlyphRunBuildSystem;
 
 template<class Provider, class Dim>
 struct GlyphInstanceBuildSystem;
+
+template<class Provider, class Dim>
+struct GlyphBatchSystem;
 
 template<class Provider, class Dim>
 struct UploadSystem;
