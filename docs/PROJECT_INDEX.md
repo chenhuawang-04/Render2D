@@ -70,6 +70,13 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/SwapchainRuntime.hpp` - CPU-side swapchain state slot runtime.
 - `include/Render2D/Native/CommandRuntime.hpp` - CPU-side native command buffer ref slot runtime.
 - `include/Render2D/Native/VulkanCommandRuntime.hpp` - Vulkan command pool and command buffer lifecycle runtime behind `NativeCommandBufferRef`.
+- `include/Render2D/Native/VulkanSyncRuntime.hpp` - Vulkan semaphore/fence lifecycle runtime behind `FrameSync`.
+- `include/Render2D/Native/VulkanSubmitRuntime.hpp` - Vulkan queue submit runtime for resolved command buffers and frame sync.
+- `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with upload/readback and copy helpers.
+- `include/Render2D/Native/VulkanDescriptorRuntime.hpp` - Vulkan descriptor pool, set layout, set allocation, and descriptor update runtime.
+- `include/Render2D/Native/VulkanPipelineRuntime.hpp` - Vulkan shader module, pipeline cache, pipeline layout, and dynamic-rendering pipeline runtime.
+- `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - Persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
+- `include/Render2D/Native/VulkanRenderEncoder.hpp` - Dynamic rendering encoder for direct and indirect draw recording.
 
 ### Memory and Storage
 
@@ -89,11 +96,20 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/native_command_runtime_test.cpp` - Native command buffer ref slot lifecycle, stale-reference, and reuse checks.
 - `tests/encode_submit_system_test.cpp` - CPU-only EncodeSystem and SubmitSystem contract checks.
 - `tests/vulkan_command_runtime_test.cpp` - Optional Vulkan command pool / command buffer lifecycle smoke test.
+- `tests/vulkan_sync_runtime_test.cpp` - Optional Vulkan semaphore/fence lifecycle smoke test.
+- `tests/vulkan_submit_runtime_test.cpp` - Optional Vulkan queue submit smoke test.
+- `tests/vulkan_resource_runtime_test.cpp` - Optional Vulkan buffer/image/upload/readback/copy lifecycle smoke test.
+- `tests/vulkan_descriptor_runtime_test.cpp` - Optional Vulkan descriptor pool/set/layout/update lifecycle smoke test.
+- `tests/vulkan_pipeline_runtime_test.cpp` - Optional Vulkan shader module, pipeline cache, and dynamic-rendering pipeline lifecycle smoke test.
+- `tests/vulkan_upload_ring_runtime_test.cpp` - Optional Vulkan persistent upload ring frame-slot reuse smoke test.
+- `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
 - `tests/expect_compile_failure.cmake` - CMake script that validates negative compile tests.
 - `tests/support/TemporaryEcsStorage.hpp` - Test-only temporary ECS storage. This is not production ECS.
 - `tests/support/ComponentStreamView.hpp` - Test-only view helpers for temporary ECS storage.
+- `tests/support/VulkanSmokeContext.hpp` - Optional Vulkan instance/device/queue setup helper for smoke tests.
+- `tests/support/FullScreenTriangleShaders.hpp` - Embedded SPIR-V for the offscreen full-screen triangle smoke test.
 
 ## Benchmarks
 

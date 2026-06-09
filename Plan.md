@@ -1582,6 +1582,16 @@
 
   8B status (done): VulkanCommandRuntime is complete for real VkCommandPool and VkCommandBuffer lifecycle. It creates/destroys command pools, allocates/resolves/begins/ends/resets/releases command buffers behind NativeCommandBufferRef, keeps id + generation validation, and still does not record draw commands or submit queues.
 
+  8C status (done): VulkanSyncRuntime and VulkanSubmitRuntime are complete for real VkSemaphore/VkFence lifecycle and vkQueueSubmit. FrameSync now carries sync_id + generation and stale sync references are rejected.
+
+  8D status (done): VulkanResourceRuntime is complete for real VkBuffer/VkImage/VkImageView lifetimes, host-visible upload/readback buffers, device-local buffers/images, buffer copy, image layout transition, image-to-buffer readback, and stale BufferRef/ImageRef rejection.
+
+  8E status (done): VulkanDescriptorRuntime and VulkanPipelineRuntime are complete for descriptor pool/set/layout allocation, descriptor array updates, shader module creation, pipeline cache, dynamic-rendering graphics pipeline creation, and PipelineRef id + generation validation.
+
+  8F status (done): VulkanUploadRingRuntime is complete as a persistent mapped, frame-segmented upload ring. UploadRingSlice is Strict POD and now includes generation; a frame slot cannot be reused until completeFrame is called after GPU completion.
+
+  8G status (done): VulkanDynamicRenderEncoder records dynamic rendering, viewport/scissor, pipeline bind, direct draw, and indirect draw from UploadRingSlice. The offscreen smoke test renders a magenta full-screen sprite into an R8G8B8A8 image and verifies readback bytes.
+
 
 
   目标：把 BatchCommand 编码为 Vulkan command buffer。
@@ -2029,7 +2039,6 @@
   9. Vulkan RAII 生命周期由 storage/runtime/system 处理。
 
   10. 性能先通过 Null CPU pipeline benchmark 验证，再进入 Vulkan。
-
 
 
 

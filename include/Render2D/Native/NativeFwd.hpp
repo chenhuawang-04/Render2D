@@ -3,6 +3,14 @@
 namespace Render2D {
 
 struct VulkanCommandRuntimeConfig;
+struct VulkanDescriptorRuntimeConfig;
+struct VulkanGraphicsPipelineConfig;
+struct VulkanDynamicRenderEncoderConfig;
+struct VulkanPipelineRuntimeConfig;
+struct VulkanResourceRuntimeConfig;
+struct VulkanSyncRuntimeConfig;
+struct VulkanSubmitRuntimeConfig;
+struct VulkanUploadRingRuntimeConfig;
 
 template<class Provider, class Dim>
 struct DeviceHandle;
@@ -63,6 +71,27 @@ class NativeCommandRuntime;
 
 template<class Provider, class Dim>
 class VulkanCommandRuntime;
+
+template<class Provider, class Dim>
+class VulkanDescriptorRuntime;
+
+template<class Provider, class Dim>
+class VulkanPipelineRuntime;
+
+template<class Provider, class Dim>
+class VulkanDynamicRenderEncoder;
+
+template<class Provider, class Dim>
+class VulkanResourceRuntime;
+
+template<class Provider, class Dim>
+class VulkanSyncRuntime;
+
+template<class Provider, class Dim>
+class VulkanSubmitRuntime;
+
+template<class Provider, class Dim>
+class VulkanUploadRingRuntime;
 
 template<class Provider, class Dim>
 class DescriptorStorage;

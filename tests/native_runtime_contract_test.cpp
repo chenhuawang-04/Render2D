@@ -23,6 +23,14 @@ int main()
     requireNativePodContract<R2D::NativeResult>();
     requireNativePodContract<R2D::NativeCapacityResult>();
     requireNativePodContract<R2D::VulkanCommandRuntimeConfig>();
+    requireNativePodContract<R2D::VulkanDescriptorRuntimeConfig>();
+    requireNativePodContract<R2D::VulkanDynamicRenderEncoderConfig>();
+    requireNativePodContract<R2D::VulkanGraphicsPipelineConfig>();
+    requireNativePodContract<R2D::VulkanPipelineRuntimeConfig>();
+    requireNativePodContract<R2D::VulkanResourceRuntimeConfig>();
+    requireNativePodContract<R2D::VulkanSyncRuntimeConfig>();
+    requireNativePodContract<R2D::VulkanSubmitRuntimeConfig>();
+    requireNativePodContract<R2D::VulkanUploadRingRuntimeConfig>();
 
     static_assert(std::is_enum_v<R2D::NativeStatusCode>);
     static_assert(std::is_enum_v<R2D::NativeObjectKind>);

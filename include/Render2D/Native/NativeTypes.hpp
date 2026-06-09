@@ -16,6 +16,7 @@ enum class NativeStatusCode : U8 {
     SwapchainOutOfDate = 6,
     StaleReference = 7,
     UnsupportedDomain = 8,
+    Timeout = 9,
 };
 
 enum class NativeObjectKind : U8 {

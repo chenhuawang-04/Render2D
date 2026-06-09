@@ -43,6 +43,7 @@ ImageRef::image_id + ImageRef::generation
 BufferRef::buffer_id + BufferRef::generation
 DescriptorSlice::descriptor_set_id + DescriptorSlice::generation
 NativeCommandBufferRef::command_buffer_id + NativeCommandBufferRef::generation
+UploadRingSlice::ring_id + UploadRingSlice::generation
 ```
 
 ## CPU-side runtime skeletons
@@ -56,7 +57,6 @@ Implemented runtime skeletons:
 - `NativeDescriptorRuntime<Provider, Dim>` - reserves, allocates, resolves, releases, and reuses `DescriptorSlice` slots.
 - `NativeSwapchainRuntime<Provider, Dim>` - reserves, creates, resolves, resizes, releases, and reuses `SwapchainState` slots.
 - `NativeCommandRuntime<Provider, Dim>` - reserves, creates, resolves, releases, and reuses CPU-only `NativeCommandBufferRef` slots.
-- `VulkanCommandRuntime<Provider, Dim>` - creates/destroys `VkCommandPool`, allocates/resolves/begins/ends/resets/releases `VkCommandBuffer` objects behind `NativeCommandBufferRef`.
 
 All slot-backed runtimes validate generation values and return `NativeStatusCode::StaleReference` for stale ECS references.
 
@@ -80,16 +80,70 @@ This stage only produces ECS-visible POD descriptors. It does not call `vkBeginC
 
 It still exposes only `NativeCommandBufferRef` to ECS. Real `VkCommandBuffer` handles stay inside the native runtime.
 
-## Non-goals in this stage
+## Stage 8C Vulkan sync and submit
 
-Current CPU-only native stages do not implement:
+Implemented Vulkan sync/submit contracts:
 
-- Vulkan object creation or destruction
-- descriptor pool/set allocation
+- `VulkanSyncRuntime<Provider, Dim>` owns `VkSemaphore` and `VkFence` objects behind `FrameSync`.
+- `VulkanSubmitRuntime<Provider, Dim>` resolves `NativeCommandBufferRef[]` and `FrameSync`, then calls `vkQueueSubmit`.
+
+`FrameSync` now carries `sync_id + generation` so stale frame sync records are rejected after release/reuse.
+
+## Stage 8D Vulkan resources and upload/readback
+
+`VulkanResourceRuntime<Provider, Dim>` owns real resources behind POD refs:
+
+- `VkBuffer` + `VkDeviceMemory` behind `BufferRef`
+- `VkImage` + `VkImageView` + `VkDeviceMemory` behind `ImageRef`
+- host-visible upload/readback buffer writes and reads
+- device-local buffers/images
+- buffer copy, buffer barriers, image layout transitions, and image-to-buffer readback
+
+ECS still sees only `BufferRef` and `ImageRef`.
+
+## Stage 8E descriptors and pipelines
+
+Implemented Vulkan descriptor/pipeline contracts:
+
+- `VulkanDescriptorRuntime<Provider, Dim>` owns descriptor pool, descriptor set layout, descriptor sets, and descriptor array updates.
+- `VulkanPipelineRuntime<Provider, Dim>` owns pipeline cache, pipeline layouts, graphics pipelines, and shader module creation/destruction.
+
+`DescriptorSlice` and `PipelineRef` remain POD records with generation validation.
+
+## Stage 8F upload ring lifetime
+
+`VulkanUploadRingRuntime<Provider, Dim>` owns a persistent mapped upload buffer split into frame segments. It emits `UploadRingSlice` records with `ring_id + generation`.
+
+Safety rule:
+
+```text
+beginFrame -> allocate/write UploadRingSlice -> submit -> fence complete -> completeFrame
+```
+
+A frame segment cannot be reused before `completeFrame`, and old slices become stale after completion.
+
+## Stage 8G dynamic rendering encoder
+
+`VulkanDynamicRenderEncoder<Provider, Dim>` records Vulkan draw commands:
+
+- transitions an offscreen color target to `COLOR_ATTACHMENT_OPTIMAL`;
+- begins dynamic rendering;
+- sets viewport/scissor;
+- binds the dynamic-rendering pipeline;
+- records direct `vkCmdDraw` or indirect `vkCmdDrawIndirect`;
+- ends dynamic rendering.
+
+The smoke test uses the upload ring to hold `VkDrawIndirectCommand`, renders a magenta full-screen sprite-like triangle into an offscreen `R8G8B8A8` image, copies it to a readback buffer, and verifies the bytes.
+
+## Remaining non-goals
+
+The current implementation still does not implement:
+
 - swapchain creation or image acquisition
-- real fences, semaphores, or command pools
-- draw command recording with `vkCmd*`
+- present/window-visible output
 - MemoryCenter Vulkan allocation
 - deferred destroy queues
+- production sprite instance shader/data layout
+- production texture atlas and sampled-image policy
 
-The current runtime and encode/submit skeletons are CPU-only contracts that prepare the API boundary for later Vulkan-backed implementation.
+The current offscreen smoke path is intentionally windowless so it can run as a deterministic CTest target.

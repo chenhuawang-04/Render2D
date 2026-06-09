@@ -42,6 +42,8 @@ struct FrameSync {
     U32 render_finished_semaphore_id;
     U32 in_flight_fence_id;
     U32 flags;
+    U32 sync_id;
+    U32 generation;
 };
 
 template<class Provider, class Dim>

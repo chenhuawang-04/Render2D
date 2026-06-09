@@ -1,6 +1,6 @@
 # Render2D Architecture
 
-Render2D is a C++23, component-first, Vulkan-native rendering module. The current implementation focuses on strict data contracts, CPU-side systems, native POD references, and benchmarkable pipeline behavior before integrating real Vulkan object creation.
+Render2D is a C++23, component-first, Vulkan-native rendering module. The current implementation keeps ECS-visible data as Strict POD streams while native runtimes own Vulkan object lifetimes behind `id + generation` references.
 
 ## Core principles
 
@@ -27,7 +27,7 @@ Transform[] / Sprite[] / Text[] / Camera[]
     -> NativeSubmitCommand[]
 ```
 
-The component pipeline remains CPU-driven. Stage 8A builds encode/submit descriptors, and Stage 8B adds real Vulkan command pool / command buffer lifecycle behind `NativeCommandBufferRef`. No draw commands or queue submit are recorded yet.
+The CPU component pipeline remains ECS-driven. Stage 8 now attaches Vulkan command, sync, submit, resource, descriptor, pipeline, upload-ring, and dynamic-rendering encoder runtimes behind POD references. The offscreen smoke path records an indirect full-screen triangle draw and validates readback.
 
 ## Component layer
 
@@ -58,7 +58,7 @@ This keeps systems reusable when the temporary test ECS is replaced by the host 
 
 The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration.
 
-## Native runtime skeleton
+## Native runtime
 
 Native references exposed to ECS use compact IDs plus generation counters:
 
@@ -77,6 +77,7 @@ ImageRef::image_id + ImageRef::generation
 BufferRef::buffer_id + BufferRef::generation
 DescriptorSlice::descriptor_set_id + DescriptorSlice::generation
 NativeCommandBufferRef::command_buffer_id + NativeCommandBufferRef::generation
+UploadRingSlice::ring_id + UploadRingSlice::generation
 ```
 
 Implemented CPU-side runtime skeletons:
@@ -88,9 +89,19 @@ Implemented CPU-side runtime skeletons:
 - `NativeDescriptorRuntime` - descriptor slice slot table.
 - `NativeSwapchainRuntime` - swapchain state slot table and resize generation bump.
 - `NativeCommandRuntime` - CPU-only native command buffer reference slot table.
-- `VulkanCommandRuntime` - Vulkan command pool and command buffer lifecycle owner behind `NativeCommandBufferRef`.
 
-These runtime classes are not ECS storage. They own backend slot lifecycle metadata, validate generations, reject stale references, and reuse slots. They still do not call Vulkan and do not allocate real GPU resources.
+Implemented Vulkan-backed runtimes:
+
+- `VulkanCommandRuntime` - Vulkan command pool and command buffer lifecycle owner behind `NativeCommandBufferRef`.
+- `VulkanSyncRuntime` - real semaphore/fence lifecycle behind `FrameSync`.
+- `VulkanSubmitRuntime` - real `vkQueueSubmit` using resolved command buffers and frame sync.
+- `VulkanResourceRuntime` - real buffer/image/image-view allocation, upload/readback, copies, and image layout tracking.
+- `VulkanDescriptorRuntime` - descriptor pool, descriptor set layout, set allocation, and descriptor array updates.
+- `VulkanPipelineRuntime` - shader module creation, pipeline cache, dynamic-rendering pipeline layout/pipeline creation.
+- `VulkanUploadRingRuntime` - persistent mapped, frame-segmented upload ring; slices are not reusable until the frame is completed.
+- `VulkanDynamicRenderEncoder` - records dynamic rendering, pipeline bind, direct draw, and indirect draw.
+
+These runtime classes are not ECS storage. They own backend slot lifecycle metadata, validate generations, reject stale references, reuse slots, and keep Vulkan handles out of ECS components.
 
 ## Benchmarking
 
@@ -118,13 +129,17 @@ Implemented:
 - CPU-side Stage 7 native runtime skeletons for frame, device, queue, buffer, image, pipeline, descriptor, and swapchain records
 - Stage 8A CPU-side encode/submit contract through `NativeCommandBufferRef`, `NativeCommandRuntime`, `EncodeSystem`, and `SubmitSystem`
 - Stage 8B Vulkan command pool / command buffer lifecycle through `VulkanCommandRuntime`
+- Stage 8C Vulkan sync and queue submit through `VulkanSyncRuntime` and `VulkanSubmitRuntime`
+- Stage 8D Vulkan buffers/images, upload/readback, copies, and layout transitions through `VulkanResourceRuntime`
+- Stage 8E descriptors, shader modules, pipeline cache, and dynamic-rendering pipeline creation through `VulkanDescriptorRuntime` and `VulkanPipelineRuntime`
+- Stage 8F persistent mapped upload ring with frame-slot reuse protection through `VulkanUploadRingRuntime`
+- Stage 8G offscreen dynamic-rendering smoke through `VulkanDynamicRenderEncoder`
 
 Not implemented yet:
 
-- Vulkan object creation/destruction
 - MemoryCenter-backed Vulkan allocation
 - deferred destroy queues
-- real descriptor pool/set allocation
-- upload ring implementation
-- real Vulkan draw command recording
-- real Vulkan queue submit/present
+- swapchain creation, image acquire, present, and window-visible output
+- production sprite instance shader/data layout
+- production texture atlas / sampled-image descriptor policy
+- RenderDoc automation; current capture target is the offscreen Vulkan smoke executable

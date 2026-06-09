@@ -98,6 +98,76 @@ render2d_apply_strict_warnings(render2d_vulkan_command_runtime_test)
 
 add_test(NAME render2d.vulkan_command_runtime COMMAND render2d_vulkan_command_runtime_test)
 
+add_executable(render2d_vulkan_sync_runtime_test
+    vulkan_sync_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_sync_runtime_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_sync_runtime_test)
+
+add_test(NAME render2d.vulkan_sync_runtime COMMAND render2d_vulkan_sync_runtime_test)
+
+add_executable(render2d_vulkan_submit_runtime_test
+    vulkan_submit_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_submit_runtime_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_submit_runtime_test)
+
+add_test(NAME render2d.vulkan_submit_runtime COMMAND render2d_vulkan_submit_runtime_test)
+
+add_executable(render2d_vulkan_resource_runtime_test
+    vulkan_resource_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_resource_runtime_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_resource_runtime_test)
+
+add_test(NAME render2d.vulkan_resource_runtime COMMAND render2d_vulkan_resource_runtime_test)
+
+add_executable(render2d_vulkan_descriptor_runtime_test
+    vulkan_descriptor_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_descriptor_runtime_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_descriptor_runtime_test)
+
+add_test(NAME render2d.vulkan_descriptor_runtime COMMAND render2d_vulkan_descriptor_runtime_test)
+
+add_executable(render2d_vulkan_pipeline_runtime_test
+    vulkan_pipeline_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_pipeline_runtime_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_pipeline_runtime_test)
+
+add_test(NAME render2d.vulkan_pipeline_runtime COMMAND render2d_vulkan_pipeline_runtime_test)
+
+add_executable(render2d_vulkan_upload_ring_runtime_test
+    vulkan_upload_ring_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_upload_ring_runtime_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_upload_ring_runtime_test)
+
+add_test(NAME render2d.vulkan_upload_ring_runtime COMMAND render2d_vulkan_upload_ring_runtime_test)
+
+add_executable(render2d_vulkan_dynamic_render_encoder_test
+    vulkan_dynamic_render_encoder_test.cpp
+)
+target_link_libraries(render2d_vulkan_dynamic_render_encoder_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_dynamic_render_encoder_test)
+
+add_test(NAME render2d.vulkan_dynamic_render_encoder COMMAND render2d_vulkan_dynamic_render_encoder_test)
+
 add_executable(render2d_temporary_ecs_storage_test
     temporary_ecs_storage_test.cpp
 )

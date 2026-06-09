@@ -24,6 +24,7 @@ struct UploadRingSlice {
     U64 byte_count;
     U32 ring_id;
     U32 frame_index;
+    U32 generation;
 };
 
 template<class Provider, class Dim>

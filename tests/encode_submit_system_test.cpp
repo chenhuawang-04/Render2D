@@ -136,6 +136,8 @@ void testSubmitSystem()
         .render_finished_semaphore_id = 11U,
         .in_flight_fence_id = 12U,
         .flags = 13U,
+        .sync_id = 14U,
+        .generation = 15U,
     };
     std::array<NativeSubmitCommand, 1U> submits{};
 

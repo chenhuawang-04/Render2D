@@ -54,6 +54,8 @@ public:
                 .render_finished_semaphore_id = currentSlotIndex(),
                 .in_flight_fence_id = currentSlotIndex(),
                 .flags = 0U,
+                .sync_id = currentSlotIndex(),
+                .generation = 1U,
             };
             return makeResult(NativeStatusCode::Ok);
         }
