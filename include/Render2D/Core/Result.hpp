@@ -19,6 +19,13 @@ struct SystemResult {
     U32 write_count;
 };
 
+inline constexpr Usize kMaxSystemResultCount = static_cast<Usize>(0xFFFFFFFFU);
+
+[[nodiscard]] constexpr bool isSystemResultCountRepresentable(Usize count_) noexcept
+{
+    return count_ <= kMaxSystemResultCount;
+}
+
 static_assert(std::is_trivial_v<SystemResult>);
 static_assert(std::is_standard_layout_v<SystemResult>);
 static_assert(std::is_trivially_copyable_v<SystemResult>);

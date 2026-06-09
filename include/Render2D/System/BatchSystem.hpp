@@ -19,6 +19,10 @@ struct BatchSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
+            if (!isSystemResultCountRepresentable(draw_commands_.size()) ||
+                !isSystemResultCountRepresentable(batch_commands_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
             if (draw_commands_.empty()) {
                 return {.code = SystemStatusCode::Ok, .read_count = 0U, .write_count = 0U};
             }

@@ -5,7 +5,6 @@
 #include "Render2D/Core/Result.hpp"
 #include "Render2D/Meta/Domain.hpp"
 
-#include <limits>
 #include <span>
 
 namespace Render2D {
@@ -20,6 +19,11 @@ struct BoundsSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
+            if (!isSystemResultCountRepresentable(world_transforms_.size()) ||
+                !isSystemResultCountRepresentable(local_bounds_.size()) ||
+                !isSystemResultCountRepresentable(world_bounds_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
             if (world_transforms_.size() != local_bounds_.size()) {
                 const Usize read_count = world_transforms_.size() < local_bounds_.size() ?
                     world_transforms_.size() :
@@ -63,7 +67,10 @@ struct BoundsSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
-            if (dirty_items_.size() > (std::numeric_limits<U32>::max)()) {
+            if (!isSystemResultCountRepresentable(world_transforms_.size()) ||
+                !isSystemResultCountRepresentable(local_bounds_.size()) ||
+                !isSystemResultCountRepresentable(dirty_items_.size()) ||
+                !isSystemResultCountRepresentable(world_bounds_.size())) {
                 return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
             }
 

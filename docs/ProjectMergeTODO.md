@@ -274,3 +274,28 @@ Completed merge-relevant performance/runtime items:
 - per-thread Vulkan command pool runtime.
 
 Future work belongs to a new stage, especially ThreadCenter-backed text work, parallel batch/sort tail stages, swapchain/window presentation, deferred destroy queues, and production font/atlas integration.
+
+## 21. Component stream sizes are U32-bounded
+
+Render2D component ranges, indices, and `SystemResult` counts use `U32`.
+
+Merge rule:
+
+- host ECS streams handed to Render2D systems must have at most `0xFFFFFFFF` elements;
+- systems reject non-representable stream sizes with `SystemStatusCode::InvalidInput`;
+- split larger host-engine datasets before calling Render2D systems;
+- do not widen component indices without a deliberate component contract migration.
+
+## 22. Threaded CPU pipeline should be threshold-gated
+
+Stage 10H benchmark evidence shows ThreadCenter overhead is not free:
+
+- 10k high-visibility sprite workloads were slower through the threaded runtime on the local Perf benchmark;
+- 10k low-visibility was near parity and should be treated as noise-sensitive rather than a guaranteed win;
+- 100k sprite workloads showed benefit, about 1.11x high visibility and 1.11x low visibility on the recorded run.
+
+Merge rule:
+
+- keep single-thread systems as the default small-workload path;
+- enable `ThreadedCpuPipelineRuntime` only when host-side workload size justifies scheduling and merge overhead;
+- tune `worker_count` and `min_items_per_task` per platform.

@@ -222,6 +222,36 @@ Interpretation:
 - CPU-only sort cost is visible, so sorting is now an explicit runtime choice instead of always-on.
 - Native renderer stages can use sorted paths when reduced batch/native submit count outweighs sort cost.
 
+## Stage 10H Threaded CPU Pipeline Result
+
+Stage 10H adds `ThreadedCpuPipelineRuntime`, a ThreadCenter-backed sprite CPU pipeline facade. The benchmark now records reference single-thread pipeline time against the threaded runtime using the same component streams.
+
+Build and run:
+
+```powershell
+cmake --preset clang-ninja-perf
+cmake --build --preset clang-ninja-perf
+.\scripts\run_threaded_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeLarge -Quiet
+```
+
+- Captured UTC: 2026-06-09T12:39:10Z
+- Build tree: `build_perf`
+- Correctness gate: benchmark verifies reference/threaded visible/draw/batch counts match per frame.
+
+| Scenario | Sprites | Visibility | Workers | Visible | Draws | Batches | Reference ms | Threaded ms | Speedup |
+|---|---:|---|---:|---:|---:|---:|---:|---:|---:|
+| `threaded_sprite_high_10k_w1` | 10000 | high | 1 | 10000 | 10000 | 79 | 0.161787500 | 0.311262500 | 0.519778322 |
+| `threaded_sprite_high_10k_w4` | 10000 | high | 4 | 10000 | 10000 | 79 | 0.166350000 | 0.396900000 | 0.419123205 |
+| `threaded_sprite_low_10k_w4` | 10000 | low | 4 | 1250 | 1250 | 79 | 0.109525000 | 0.106937500 | 1.024196376 |
+| `threaded_sprite_high_100k_w4` | 100000 | high | 4 | 100000 | 100000 | 782 | 1.968775000 | 1.779437500 | 1.106403007 |
+| `threaded_sprite_low_100k_w4` | 100000 | low | 4 | 12500 | 12500 | 782 | 1.004175000 | 0.901937500 | 1.113353198 |
+
+Interpretation:
+
+- 10k high-visibility workloads are slower through ThreadCenter because scheduling, chunk scratch, and merge overhead dominate; 10k low-visibility is near parity on this local run and should be treated as noise-sensitive.
+- 100k sprite workloads begin to benefit: about 1.11x high visibility and 1.11x low visibility on this local run.
+- The threaded runtime should remain opt-in and threshold-gated by workload size; the single-thread systems remain the small-workload reference path.
+
 ## Stage 10I Upload/Descriptor Compaction Result
 
 Stage 10I adds:

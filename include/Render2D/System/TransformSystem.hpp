@@ -4,7 +4,6 @@
 #include "Render2D/Core/Result.hpp"
 #include "Render2D/Meta/Domain.hpp"
 
-#include <limits>
 #include <span>
 
 namespace Render2D {
@@ -18,6 +17,10 @@ struct TransformSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
+            if (!isSystemResultCountRepresentable(transforms_.size()) ||
+                !isSystemResultCountRepresentable(world_transforms_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
             if (world_transforms_.size() < transforms_.size()) {
                 return {
                     .code = SystemStatusCode::InsufficientCapacity,
@@ -49,7 +52,9 @@ struct TransformSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
-            if (dirty_items_.size() > (std::numeric_limits<U32>::max)()) {
+            if (!isSystemResultCountRepresentable(transforms_.size()) ||
+                !isSystemResultCountRepresentable(dirty_items_.size()) ||
+                !isSystemResultCountRepresentable(world_transforms_.size())) {
                 return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
             }
 

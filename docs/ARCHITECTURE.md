@@ -11,6 +11,7 @@ Render2D is a C++23, component-first, Vulkan-native rendering module. The curren
 5. **Memory is centralized.** Render2D-owned dynamic CPU arrays use `Render2D::McVector` backed by MemoryCenter/Vector_New; Vulkan buffer/image backing memory is allocated and synchronized through `VulkanMemoryCenterAllocator`.
 6. **Math is centralized through fast_math.** Render2D math aliases (`Vec2`, `Mat3`, `Aabb2`) are `MMath` Strict POD types, and render math systems call fast_math free functions.
 7. **Native runtime owns backend lifetimes.** ECS stores POD handles/IDs. Runtime tables own and validate backend slots behind those refs.
+8. **Stream sizes are U32-bounded.** Component indices, ranges, and `SystemResult` counts are `U32`; systems reject component streams whose sizes cannot be represented by `U32`.
 
 ## Current data pipeline
 
@@ -156,7 +157,7 @@ cmake --build build
 .\build\bench\render2d_null_cpu_bench.exe --scenario mixed --sprites 10000 --texts 2048 --frames 8 --warmup 2
 ```
 
-It reports active counts and average pass timings for sprite systems, text dirty/glyph systems, batching, and command buffer descriptor build. The Stage 10B standard suite is run with `scripts/run_null_cpu_benchmarks.ps1` and documented in `docs/architecture/BENCHMARK_BASELINE.md`. Stage 10C records the fast_math migration delta there: 10k sprite bounds dropped from about 3.64 ms to about 0.55 ms on the local Debug benchmark. Stage 10D adds a RelWithDebInfo Perf preset, release-like test assertion handling, dirty-transform scenarios, and large/huge local benchmark suites so later single-thread and ThreadCenter work has stable evidence. Stage 10E adds dirty-index Transform/Bounds updates and a zero-rotation transform fast path.
+It reports active counts and average pass timings for sprite systems, text dirty/glyph systems, batching, and command buffer descriptor build. The Stage 10B standard suite is run with `scripts/run_null_cpu_benchmarks.ps1` and documented in `docs/architecture/BENCHMARK_BASELINE.md`. Stage 10C records the fast_math migration delta there: 10k sprite bounds dropped from about 3.64 ms to about 0.55 ms on the local Debug benchmark. Stage 10D adds a RelWithDebInfo Perf preset, release-like test assertion handling, dirty-transform scenarios, and large/huge local benchmark suites so later single-thread and ThreadCenter work has stable evidence. Stage 10E adds dirty-index Transform/Bounds updates and a zero-rotation transform fast path. Stage 10H adds `scripts/run_threaded_cpu_benchmarks.ps1` and `render2d_threaded_cpu_pipeline_bench`, which show ThreadCenter overhead on small high-visibility runs and benefit on 100k sprite runs.
 
 Stage 10I also adds `render2d_upload_descriptor_compaction_bench`, a Perf benchmark for synthetic upload and descriptor stream compaction. The local 65,536-item run compacts each stream to 16,384 records and records average upload/descriptor compaction times in `BENCHMARK_BASELINE.md`.
 

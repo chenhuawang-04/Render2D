@@ -5,7 +5,6 @@
 #include "Render2D/Meta/Domain.hpp"
 
 #include <array>
-#include <limits>
 #include <span>
 
 namespace Render2D {
@@ -21,7 +20,10 @@ struct DrawSortSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
-            if (draw_commands_.size() > (std::numeric_limits<U32>::max)()) {
+            if (!isSystemResultCountRepresentable(draw_commands_.size()) ||
+                !isSystemResultCountRepresentable(sorted_draw_commands_.size()) ||
+                !isSystemResultCountRepresentable(scratch_a_.size()) ||
+                !isSystemResultCountRepresentable(scratch_b_.size())) {
                 return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
             }
             if (sorted_draw_commands_.size() < draw_commands_.size() ||

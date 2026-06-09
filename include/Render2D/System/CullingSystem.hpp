@@ -22,6 +22,11 @@ struct CullingSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
+            if (!isSystemResultCountRepresentable(world_bounds_.size()) ||
+                !isSystemResultCountRepresentable(visibility_masks_.size()) ||
+                !isSystemResultCountRepresentable(visible_items_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
             if (!visibility_masks_.empty() && visibility_masks_.size() != world_bounds_.size()) {
                 return {
                     .code = SystemStatusCode::InvalidInput,

@@ -2122,4 +2122,6 @@
 第十阶段结论：
 
 - Stage 10 已完成；
+- 审查补强：10H 已新增 threaded CPU pipeline benchmark，记录 10k overhead 与 100k speedup；
+- 审查补强：系统入口与 ThreadedCpuPipelineRuntime 统一增加 U32 stream-size representable 校验；
 - 后续 text 并行、parallel batch/sort、swapchain/present、deferred destroy、真实字体/atlas 集成，进入新阶段处理。

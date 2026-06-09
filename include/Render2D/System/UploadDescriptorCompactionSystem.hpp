@@ -18,6 +18,10 @@ struct UploadCoalesceSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
+            if (!isSystemResultCountRepresentable(upload_commands_.size()) ||
+                !isSystemResultCountRepresentable(coalesced_upload_commands_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
             if (upload_commands_.empty()) {
                 return {.code = SystemStatusCode::Ok, .read_count = 0U, .write_count = 0U};
             }
@@ -109,6 +113,10 @@ struct DescriptorCompactionSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
+            if (!isSystemResultCountRepresentable(descriptor_slices_.size()) ||
+                !isSystemResultCountRepresentable(compacted_slices_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
             if (descriptor_slices_.empty()) {
                 return {.code = SystemStatusCode::Ok, .read_count = 0U, .write_count = 0U};
             }

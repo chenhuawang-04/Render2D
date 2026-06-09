@@ -116,12 +116,13 @@ ctest --test-dir build --output-on-failure
 cmake --preset clang-ninja-perf
 cmake --build --preset clang-ninja-perf
 ctest --preset clang-ninja-perf
+.\scripts\run_threaded_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeLarge -Quiet
 clang-tidy -p build tests\threaded_cpu_pipeline_test.cpp tests\thread_center_dependency_test.cpp --quiet
 git diff --check
 clang-tidy --verify-config --config-file=.clang-tidy
 ```
 
-Current result: build/test/tidy passed on 2026-06-09. `ThreadedCpuPipelineRuntime` parallelizes Transform, Bounds, Culling, and CommandBuild over deterministic chunks, merges visible items in chunk order, and keeps BatchSystem single-threaded as the current correctness-preserving tail stage.
+Current result: build/test/tidy passed on 2026-06-09. `ThreadedCpuPipelineRuntime` parallelizes Transform, Bounds, Culling, and CommandBuild over deterministic chunks, merges visible items in chunk order, and keeps BatchSystem single-threaded as the current correctness-preserving tail stage. The threaded benchmark now records small-workload overhead and large-workload benefit: 10k high-visibility runs are slower on this local run, 10k low-visibility is near parity, and 100k four-worker high/low visibility reaches about 1.11x / 1.11x speedup.
 
 ## Stage 10I Verification Commands
 
@@ -164,4 +165,4 @@ clang-tidy --verify-config --config-file=.clang-tidy
 git diff --check
 ```
 
-Current result: Debug tests passed 30/30 and Perf tests passed 38/38 on 2026-06-09. Final clang-tidy, `.clang-tidy` verification, `git diff --check`, `std::vector` scan, direct Vulkan memory API scan, and old-math scan passed.
+Current result: Debug tests passed 30/30 and Perf tests passed 39/39 on 2026-06-09 after benchmark reinforcement. The reinforcement pass adds `render2d_threaded_cpu_pipeline_bench` and the `render2d.threaded_cpu_pipeline_bench_smoke` Perf CTest. Final clang-tidy, `.clang-tidy` verification, `git diff --check`, `std::vector` scan, direct Vulkan memory API scan, and old-math scan passed after reinforcement.

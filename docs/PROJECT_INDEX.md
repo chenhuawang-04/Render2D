@@ -134,6 +134,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 ## Scripts
 
 - `scripts/run_null_cpu_benchmarks.ps1` - Runs standard, dirty-transform, sorted, large, and huge local Null CPU benchmark suites; supports `-BuildDir` for Debug/Perf trees and writes timestamped CSV/Markdown reports.
+- `scripts/run_threaded_cpu_benchmarks.ps1` - Runs Stage 10H ThreadCenter-backed sprite CPU pipeline benchmark scenarios and writes timestamped CSV/Markdown reports.
 
 ## Benchmarks
 
@@ -141,6 +142,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `bench/bench_smoke.cpp` - Minimal benchmark target smoke.
 - `bench/null_cpu_bench.cpp` - Deterministic CPU-only sprite/text/mixed ECS pipeline benchmark.
 - `bench/upload_descriptor_compaction_bench.cpp` - Stage 10I Perf benchmark for synthetic upload-command coalescing and descriptor-slice compaction.
+- `bench/threaded_cpu_pipeline_bench.cpp` - Stage 10H Perf benchmark comparing single-thread sprite CPU reference against `ThreadedCpuPipelineRuntime`.
 - `bench/support/BenchmarkFramework.hpp` - Shared benchmark config parsing, timing accumulation, and text/CSV report helpers.
 
 ## Documentation

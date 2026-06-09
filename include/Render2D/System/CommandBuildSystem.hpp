@@ -20,6 +20,11 @@ struct CommandBuildSystem {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
+            if (!isSystemResultCountRepresentable(visible_items_.size()) ||
+                !isSystemResultCountRepresentable(sprites_.size()) ||
+                !isSystemResultCountRepresentable(draw_commands_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
             if (draw_commands_.size() < visible_items_.size()) {
                 return {
                     .code = SystemStatusCode::InsufficientCapacity,

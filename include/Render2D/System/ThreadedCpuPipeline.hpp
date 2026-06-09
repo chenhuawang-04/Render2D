@@ -19,7 +19,6 @@
 #include <thread_center/thread_center.hpp>
 
 #include <atomic>
-#include <limits>
 #include <span>
 
 namespace Render2D {
@@ -111,7 +110,10 @@ public:
                 visibility_masks_,
                 sprites_,
                 world_transforms_,
-                world_bounds_);
+                world_bounds_,
+                visible_items_,
+                draw_commands_,
+                batch_commands_);
             if (validation_code != SystemStatusCode::Ok) {
                 result.code = validation_code;
                 return result;
@@ -201,20 +203,26 @@ private:
         return result_.code == SystemStatusCode::Ok;
     }
 
-    [[nodiscard]] static auto maxU32Size() noexcept -> Usize
-    {
-        return static_cast<Usize>((std::numeric_limits<U32>::max)());
-    }
-
     [[nodiscard]] static auto validateSpriteInputs(
         std::span<const TransformType> transforms_,
         std::span<const LocalBoundsType> local_bounds_,
         std::span<const VisibilityMaskType> visibility_masks_,
         std::span<const SpriteType> sprites_,
         std::span<WorldTransformType> world_transforms_,
-        std::span<WorldBoundsType> world_bounds_) noexcept -> SystemStatusCode
+        std::span<WorldBoundsType> world_bounds_,
+        std::span<VisibleItemType> visible_items_,
+        std::span<DrawCommandType> draw_commands_,
+        std::span<BatchCommandType> batch_commands_) noexcept -> SystemStatusCode
     {
-        if (transforms_.size() > maxU32Size()) {
+        if (!isSystemResultCountRepresentable(transforms_.size()) ||
+            !isSystemResultCountRepresentable(local_bounds_.size()) ||
+            !isSystemResultCountRepresentable(visibility_masks_.size()) ||
+            !isSystemResultCountRepresentable(sprites_.size()) ||
+            !isSystemResultCountRepresentable(world_transforms_.size()) ||
+            !isSystemResultCountRepresentable(world_bounds_.size()) ||
+            !isSystemResultCountRepresentable(visible_items_.size()) ||
+            !isSystemResultCountRepresentable(draw_commands_.size()) ||
+            !isSystemResultCountRepresentable(batch_commands_.size())) {
             return SystemStatusCode::InvalidInput;
         }
         if (transforms_.size() != local_bounds_.size() || transforms_.size() > sprites_.size()) {
