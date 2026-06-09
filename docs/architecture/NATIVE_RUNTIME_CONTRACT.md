@@ -147,6 +147,19 @@ A frame segment cannot be reused before `completeFrame`, and old slices become s
 
 The smoke test uses the upload ring to hold `VkDrawIndirectCommand`, renders a magenta full-screen sprite-like triangle into an offscreen `R8G8B8A8` image, copies it to a readback buffer, and verifies the bytes.
 
+## Stage 11A/11D frame-present records and deferred destroy
+
+Stage 11 introduces ECS-visible POD records for the future window-visible frame loop:
+
+- `SwapchainImageRef`
+- `AcquiredImage`
+- `PresentCommand`
+- `DeferredDestroyCommand`
+
+These records carry IDs, generations, frame indices, sync ids, flags, and non-owning handle snapshots only. They do not own Vulkan lifetimes.
+
+`NativeDeferredDestroyRuntime<Provider, Dim>` owns a runtime queue of `DeferredDestroyCommand` records in `McVector`. It validates commands, applies an optional safe frame lag, preserves FIFO ordering among drained commands, and refuses to mutate the queue when the caller-provided output span is too small. The queue decides when a record is safe to release; the actual Vulkan destruction still happens through the native runtime that owns the resource slot.
+
 ## Runtime memory policy
 
 Render2D runtime-owned dynamic arrays use `Render2D::McVector<T>` instead of `std::vector`. Vulkan resource and upload-ring backing memory is owned through `VulkanMemoryCenterAllocator`, which wraps MemoryCenter Vulkan adaptors and centralizes allocation, binding, persistent mapping, flushing, invalidation, and deallocation.
@@ -159,7 +172,6 @@ The current implementation still does not implement:
 
 - swapchain creation or image acquisition
 - present/window-visible output
-- deferred destroy queues
 - production sprite instance shader/data layout
 - production texture atlas and sampled-image policy
 

@@ -299,3 +299,25 @@ Merge rule:
 - keep single-thread systems as the default small-workload path;
 - enable `ThreadedCpuPipelineRuntime` only when host-side workload size justifies scheduling and merge overhead;
 - tune `worker_count` and `min_items_per_task` per platform.
+
+## 23. Deferred destroy is a runtime queue, not ECS ownership
+
+Stage 11 adds `DeferredDestroyCommand` as an ECS-visible POD record and `NativeDeferredDestroyRuntime` as the runtime-owned pending queue.
+
+Merge rule:
+
+- host ECS may store `DeferredDestroyCommand[]`, but it does not own backend destruction;
+- actual Vulkan release must still go through the native runtime that owns the resource slot;
+- drain deferred commands only after the retire frame is reached or the relevant fence is known complete;
+- keep IDs/generations in every deferred command so stale releases can be rejected by the target runtime.
+
+## 24. Frame/present components are POD state records
+
+Stage 11 adds `SwapchainImageRef`, `AcquiredImage`, and `PresentCommand`.
+
+Merge rule:
+
+- window and surface ownership remain in the host engine;
+- component records carry swapchain/image/frame/sync IDs and generations only;
+- Vulkan handle fields are non-owning snapshots for native resolution/debugging, not lifetime authority;
+- acquire/present runtime integration must preserve these records without adding production ECS storage inside Render2D.

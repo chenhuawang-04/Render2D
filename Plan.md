@@ -2125,3 +2125,20 @@
 - 审查补强：10H 已新增 threaded CPU pipeline benchmark，记录 10k overhead 与 100k speedup；
 - 审查补强：系统入口与 ThreadedCpuPipelineRuntime 统一增加 U32 stream-size representable 校验；
 - 后续 text 并行、parallel batch/sort、swapchain/present、deferred destroy、真实字体/atlas 集成，进入新阶段处理。
+
+## 2026-06-09 第十一阶段进度
+
+- [x] 11A：Native frame/present/deferred-destroy POD component contracts 完成
+- [x] 11D：`NativeDeferredDestroyRuntime` deferred destroy queue 完成
+- [ ] 11B：Vulkan swapchain runtime
+- [ ] 11C：Acquire / Present runtime
+- [ ] 11E：swapchain acquire/present smoke 与状态测试
+- [ ] 11F：第十一阶段文档与验证收口
+
+11A/11D 边界说明：
+
+- `SwapchainImageRef`、`AcquiredImage`、`PresentCommand`、`DeferredDestroyCommand` 都是 Strict POD component；
+- 它们只携带 id / generation / frame / sync / flag 和非 owning handle snapshot；
+- `NativeDeferredDestroyRuntime` 是 runtime queue，不是 ECS storage；
+- runtime 使用 `McVector` 保存 pending destroy commands；
+- 实际 Vulkan 资源销毁仍由对应 native runtime 执行，deferred queue 只决定何时可以安全释放。

@@ -36,6 +36,39 @@ struct SwapchainState {
 };
 
 template<class Provider, class Dim>
+struct SwapchainImageRef {
+    U64 image_handle;
+    U64 image_view_handle;
+    U32 swapchain_id;
+    U32 image_index;
+    U32 width;
+    U32 height;
+    U32 format;
+    U32 generation;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
+struct AcquiredImage {
+    U32 swapchain_id;
+    U32 image_index;
+    U32 frame_index;
+    U32 sync_id;
+    U32 generation;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
+struct PresentCommand {
+    U32 swapchain_id;
+    U32 image_index;
+    U32 wait_sync_id;
+    U32 frame_index;
+    U32 generation;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
 struct FrameSync {
     U32 frame_index;
     U32 image_available_semaphore_id;
@@ -44,6 +77,18 @@ struct FrameSync {
     U32 flags;
     U32 sync_id;
     U32 generation;
+};
+
+template<class Provider, class Dim>
+struct DeferredDestroyCommand {
+    U64 handle;
+    U64 aux_handle;
+    U32 object_kind;
+    U32 object_id;
+    U32 generation;
+    U32 retire_frame_index;
+    U32 flags;
+    U32 reserved;
 };
 
 template<class Provider, class Dim>
@@ -122,10 +167,38 @@ struct ComponentTraits<Provider, Dim, SwapchainState<Provider, Dim>> {
 };
 
 template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, SwapchainImageRef<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<SwapchainImageRef<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, AcquiredImage<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<AcquiredImage<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, PresentCommand<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<PresentCommand<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
 struct ComponentTraits<Provider, Dim, FrameSync<Provider, Dim>> {
     static constexpr bool kSupported =
         SupportedRenderDomain<Provider, Dim> &&
         StrictPodComponent<FrameSync<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, DeferredDestroyCommand<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<DeferredDestroyCommand<Provider, Dim>>;
 };
 
 template<class Provider, class Dim>

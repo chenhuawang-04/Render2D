@@ -23,7 +23,19 @@ template<class Provider, class Dim>
 struct SwapchainState;
 
 template<class Provider, class Dim>
+struct SwapchainImageRef;
+
+template<class Provider, class Dim>
+struct AcquiredImage;
+
+template<class Provider, class Dim>
+struct PresentCommand;
+
+template<class Provider, class Dim>
 struct FrameSync;
+
+template<class Provider, class Dim>
+struct DeferredDestroyCommand;
 
 template<class Provider, class Dim>
 struct NativeCommandBufferRef;
@@ -66,6 +78,9 @@ class NativeDeviceRuntime;
 
 template<class Provider, class Dim>
 class NativeSwapchainRuntime;
+
+template<class Provider, class Dim>
+class NativeDeferredDestroyRuntime;
 
 template<class Provider, class Dim>
 class NativeCommandRuntime;

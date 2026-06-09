@@ -64,7 +64,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 ### Native
 
 - `include/Render2D/Native/NativeFwd.hpp` - Forward declarations for native components and runtime types.
-- `include/Render2D/Native/NativeComponents.hpp` - Native POD ECS components such as `BufferRef`, `ImageRef`, `PipelineRef`, `NativeCommandBufferRef`, `DeviceHandle`, and `SwapchainState`.
+- `include/Render2D/Native/NativeComponents.hpp` - Native POD ECS components such as `BufferRef`, `ImageRef`, `PipelineRef`, `NativeCommandBufferRef`, `DeviceHandle`, `SwapchainState`, `AcquiredImage`, `PresentCommand`, and `DeferredDestroyCommand`.
 - `include/Render2D/Native/NativeTypes.hpp` - Native runtime POD type contracts: status codes, object kinds, memory domains, IDs, generations, handles, and byte ranges.
 - `include/Render2D/Native/NativeResult.hpp` - POD result records for native runtime APIs.
 - `include/Render2D/Native/FrameRuntime.hpp` - CPU-side frame-in-flight runtime skeleton.
@@ -74,6 +74,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/DescriptorRuntime.hpp` - CPU-side descriptor slice slot runtime.
 - `include/Render2D/Native/SwapchainRuntime.hpp` - CPU-side swapchain state slot runtime.
 - `include/Render2D/Native/CommandRuntime.hpp` - CPU-side native command buffer ref slot runtime.
+- `include/Render2D/Native/DeferredDestroyRuntime.hpp` - Stage 11 runtime queue for frame-safe deferred resource retirement using `McVector`.
 - `include/Render2D/Native/VulkanCommandRuntime.hpp` - Vulkan command pool and command buffer lifecycle runtime behind `NativeCommandBufferRef`.
 - `include/Render2D/Native/VulkanThreadCommandRuntime.hpp` - Stage 10J per-thread Vulkan command pool runtime behind `NativeCommandBufferRef`.
 - `include/Render2D/Native/VulkanSyncRuntime.hpp` - Vulkan semaphore/fence lifecycle runtime behind `FrameSync`.
@@ -109,6 +110,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/text_stage9_pipeline_test.cpp` - Full Stage 9 text dirty, dirty glyph update, glyph draw command, and batch pipeline behavior.
 - `tests/native_components_test.cpp` - Native POD ECS component contract checks.
 - `tests/native_runtime_contract_test.cpp` - Native runtime type/result POD contract checks.
+- `tests/native_deferred_destroy_runtime_test.cpp` - Stage 11 deferred destroy queue validation for safe-lag enqueue, capacity, drain ordering, and frame-index wrap.
 - `tests/native_resource_runtime_test.cpp` - Buffer/image native slot table stale-reference and generation reuse checks.
 - `tests/native_runtime_skeleton_test.cpp` - Frame/device/queue/pipeline/descriptor/swapchain runtime skeleton lifecycle checks.
 - `tests/native_command_runtime_test.cpp` - Native command buffer ref slot lifecycle, stale-reference, and reuse checks.
@@ -159,6 +161,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-threadcenter-runtime-infrastructure.md` - ADR for embedding ThreadCenter as an internal runtime/system dependency only.
 - `docs/adr/2026-06-09-threaded-cpu-pipeline-runtime.md` - ADR for ThreadCenter-backed deterministic CPU pipeline runtime execution.
 - `docs/adr/2026-06-09-stage10-stream-compaction-thread-command-runtime.md` - ADR for Stage 10I upload/descriptor compaction and Stage 10J per-thread Vulkan command pools.
+- `docs/adr/2026-06-09-stage11-frame-present-deferred-destroy.md` - ADR for Stage 11 frame/present POD contracts and the deferred destroy runtime queue.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.
@@ -167,6 +170,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/architecture/NULL_CPU_BENCHMARK.md` - CPU-only benchmark design and usage.
 - `docs/architecture/BENCHMARK_BASELINE.md` - Stage 10 benchmark scenarios, runner usage, Debug/Perf captures, and optimization gate rule.
 - `docs/architecture/STAGE10_PERFORMANCE_TODO.md` - Stage 10 completion checklist, ThreadCenter boundary, and remaining performance work items.
+- `docs/architecture/STAGE11_NATIVE_FRAME_TODO.md` - Stage 11 native frame-loop checklist covering frame/present contracts, deferred destroy, swapchain acquire, and present.
 
 
 ## Third-party source snapshots

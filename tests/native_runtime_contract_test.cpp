@@ -22,6 +22,8 @@ int main()
     requireNativePodContract<R2D::NativeByteRange>();
     requireNativePodContract<R2D::NativeResult>();
     requireNativePodContract<R2D::NativeCapacityResult>();
+    requireNativePodContract<R2D::NativeDeferredDestroyDrainResult>();
+    requireNativePodContract<R2D::NativeDeferredDestroyRuntimeConfig>();
     requireNativePodContract<R2D::VulkanCommandRuntimeConfig>();
     requireNativePodContract<R2D::VulkanDescriptorRuntimeConfig>();
     requireNativePodContract<R2D::VulkanDynamicRenderEncoderConfig>();

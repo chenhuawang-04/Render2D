@@ -72,6 +72,10 @@ static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::BatchCommand<Pro
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::UploadCommand<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::NativeSubmitCommand<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::NativeCommandBufferRef<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SwapchainImageRef<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::AcquiredImage<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::PresentCommand<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::DeferredDestroyCommand<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::FrameIndex<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::FrameArenaState<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::CommandBuffer<Provider, Dim>>);

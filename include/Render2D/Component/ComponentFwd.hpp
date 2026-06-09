@@ -95,4 +95,16 @@ struct DescriptorSlice;
 template<class Provider, class Dim>
 struct FenceState;
 
+template<class Provider, class Dim>
+struct SwapchainImageRef;
+
+template<class Provider, class Dim>
+struct AcquiredImage;
+
+template<class Provider, class Dim>
+struct PresentCommand;
+
+template<class Provider, class Dim>
+struct DeferredDestroyCommand;
+
 } // namespace Render2D

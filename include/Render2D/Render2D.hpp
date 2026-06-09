@@ -22,6 +22,7 @@
 #include "Render2D/Meta/Domain.hpp"
 #include "Render2D/Meta/Provider.hpp"
 #include "Render2D/Native/CommandRuntime.hpp"
+#include "Render2D/Native/DeferredDestroyRuntime.hpp"
 #include "Render2D/Native/DescriptorRuntime.hpp"
 #include "Render2D/Native/DeviceRuntime.hpp"
 #include "Render2D/Native/FrameRuntime.hpp"

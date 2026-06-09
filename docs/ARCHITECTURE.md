@@ -132,6 +132,7 @@ Implemented CPU-side runtime skeletons:
 - `NativeDescriptorRuntime` - descriptor slice slot table.
 - `NativeSwapchainRuntime` - swapchain state slot table and resize generation bump.
 - `NativeCommandRuntime` - CPU-only native command buffer reference slot table.
+- `NativeDeferredDestroyRuntime` - runtime-owned queue for frame-safe deferred resource retirement.
 
 Implemented Vulkan-backed runtimes:
 
@@ -192,11 +193,12 @@ Implemented:
 - Stage 10I stream compaction: `UploadCoalesceSystem`, `DescriptorCompactionSystem`, tests, and benchmark coverage
 - Stage 10J per-thread Vulkan command runtime: one command pool per runtime thread slot with runtime-only ownership metadata
 - Stage 10K Stage 10 closeout: final checklist, ADR, project index, and verification documentation
+- Stage 11A native frame/present POD contracts: `SwapchainImageRef`, `AcquiredImage`, `PresentCommand`, and `DeferredDestroyCommand`
+- Stage 11D deferred destroy foundation: `NativeDeferredDestroyRuntime` queues retire commands and drains only frame-safe records
 
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
-- deferred destroy queues
 - swapchain creation, image acquire, present, and window-visible output
 - production sprite instance shader/data layout
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
