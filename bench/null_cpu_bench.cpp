@@ -18,6 +18,7 @@ using Provider = R2D::VulkanNativeProvider;
 using Dim = R2D::Dim2;
 using Transform = R2D::Transform<Provider, Dim>;
 using WorldTransform = R2D::WorldTransform<Provider, Dim>;
+using TransformDirtyItem = R2D::TransformDirtyItem<Provider, Dim>;
 using LocalBounds = R2D::LocalBounds<Provider, Dim>;
 using WorldBounds = R2D::WorldBounds<Provider, Dim>;
 using VisibilityMask = R2D::VisibilityMask<Provider, Dim>;
@@ -59,6 +60,7 @@ struct ActiveCounts {
 struct BenchState {
     R2D::McVector<Transform> transforms;
     R2D::McVector<WorldTransform> world_transforms;
+    R2D::McVector<TransformDirtyItem> dirty_transforms;
     R2D::McVector<LocalBounds> local_bounds;
     R2D::McVector<WorldBounds> world_bounds;
     R2D::McVector<VisibilityMask> visibility_masks;
@@ -77,6 +79,7 @@ struct BenchState {
     R2D::McVector<BatchCommand> batch_commands;
     R2D::McVector<CommandBuffer> command_buffers;
 
+    bool sprite_spatial_initialized = false;
     bool text_state_initialized = false;
 };
 
@@ -221,6 +224,7 @@ void fillTextInputs(const R2DB::BenchmarkConfig& config_, BenchState& state_) no
 
     state.transforms.resize(counts_.sprite_count);
     state.world_transforms.resize(counts_.sprite_count);
+    state.dirty_transforms.resize(counts_.sprite_count);
     state.local_bounds.resize(counts_.sprite_count);
     state.world_bounds.resize(counts_.sprite_count);
     state.visibility_masks.resize(counts_.sprite_count);
@@ -275,23 +279,30 @@ void mutateDirtyTexts(
     }
 }
 
-void mutateDirtyTransforms(
+[[nodiscard]] R2D::U32 mutateDirtyTransforms(
     const R2DB::BenchmarkConfig& config_,
     R2D::U32 frame_index_,
     BenchState& state_) noexcept
 {
     if (config_.dirty_transform_stride == 0U || state_.transforms.empty()) {
-        return;
+        return 0U;
     }
 
     const auto stride = static_cast<R2D::Usize>(config_.dirty_transform_stride);
     const auto first = static_cast<R2D::Usize>(frame_index_ % config_.dirty_transform_stride);
     const float frame_delta = static_cast<float>((frame_index_ & 0xFU) + 1U) * 0.001F;
+    R2D::U32 dirty_count = 0U;
     for (R2D::Usize index = first; index < state_.transforms.size(); index += stride) {
         state_.transforms[index].position_x += frame_delta;
         state_.transforms[index].position_y -= frame_delta;
         state_.transforms[index].rotation_radians += frame_delta;
+        state_.dirty_transforms[dirty_count] = {
+            .source_index = static_cast<R2D::U32>(index),
+            .flags = 0U,
+        };
+        ++dirty_count;
     }
+    return dirty_count;
 }
 
 void copyTextStates(BenchState& state_) noexcept
@@ -308,10 +319,21 @@ void copyTextStates(BenchState& state_) noexcept
     BenchState& state_,
     R2DB::BenchmarkTotals& frame_totals_)
 {
-    mutateDirtyTransforms(config_, frame_index_, state_);
+    const R2D::U32 dirty_transform_count = mutateDirtyTransforms(config_, frame_index_, state_);
+    const std::span<const TransformDirtyItem> dirty_transform_items{
+        state_.dirty_transforms.data(),
+        dirty_transform_count,
+    };
+    const bool use_dirty_spatial_path =
+        state_.sprite_spatial_initialized && config_.dirty_transform_stride != 0U;
 
     auto start = std::chrono::steady_clock::now();
-    auto result = R2D::TransformSystem<Provider, Dim>::run(state_.transforms, state_.world_transforms);
+    auto result = use_dirty_spatial_path ?
+        R2D::TransformSystem<Provider, Dim>::runDirty(
+            state_.transforms,
+            dirty_transform_items,
+            state_.world_transforms) :
+        R2D::TransformSystem<Provider, Dim>::run(state_.transforms, state_.world_transforms);
     auto end = std::chrono::steady_clock::now();
     frame_totals_.times.transform_ms += R2DB::elapsedMs(start, end);
     if (!isOk(result)) {
@@ -319,15 +341,22 @@ void copyTextStates(BenchState& state_) noexcept
     }
 
     start = std::chrono::steady_clock::now();
-    result = R2D::BoundsSystem<Provider, Dim>::run(
-        state_.world_transforms,
-        state_.local_bounds,
-        state_.world_bounds);
+    result = use_dirty_spatial_path ?
+        R2D::BoundsSystem<Provider, Dim>::runDirty(
+            state_.world_transforms,
+            state_.local_bounds,
+            dirty_transform_items,
+            state_.world_bounds) :
+        R2D::BoundsSystem<Provider, Dim>::run(
+            state_.world_transforms,
+            state_.local_bounds,
+            state_.world_bounds);
     end = std::chrono::steady_clock::now();
     frame_totals_.times.bounds_ms += R2DB::elapsedMs(start, end);
     if (!isOk(result)) {
         return reportSystemFailure("bounds", result);
     }
+    state_.sprite_spatial_initialized = true;
 
     start = std::chrono::steady_clock::now();
     result = R2D::CullingSystem<Provider, Dim>::run(

@@ -34,7 +34,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Component/ComponentFwd.hpp` - Forward declarations for ECS components.
 - `include/Render2D/Component/StrictPod.hpp` - Strict POD component concept and validation helper.
 - `include/Render2D/Component/ComponentTraits.hpp` - Supported component trait and `SupportedRenderComponent` concept.
-- `include/Render2D/Component/Transform.hpp` - `Transform` and `WorldTransform`; derived transforms store fast_math `Mat3`.
+- `include/Render2D/Component/Transform.hpp` - `Transform`, `WorldTransform`, and `TransformDirtyItem`; derived transforms store fast_math `Mat3`.
 - `include/Render2D/Component/Bounds.hpp` - `LocalBounds` and `WorldBounds`; bounds store fast_math `Aabb2`.
 - `include/Render2D/Component/Sprite.hpp` - Sprite-facing components and render references.
 - `include/Render2D/Component/Text.hpp` - Text input, text dirty state/range, UTF-8 slice, font atlas, glyph run, and glyph instance POD components.
@@ -47,8 +47,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 ### System
 
 - `include/Render2D/System/SystemFwd.hpp` - Forward declarations for CPU systems.
-- `include/Render2D/System/TransformSystem.hpp` - Converts `Transform[]` to `WorldTransform[]`.
-- `include/Render2D/System/BoundsSystem.hpp` - Converts local bounds plus world transforms to world bounds.
+- `include/Render2D/System/TransformSystem.hpp` - Converts `Transform[]` to `WorldTransform[]`, including dirty-index updates and a zero-rotation fast path.
+- `include/Render2D/System/BoundsSystem.hpp` - Converts local bounds plus world transforms to world bounds, including dirty-index updates.
 - `include/Render2D/System/CullingSystem.hpp` - Produces `VisibleItem[]` using camera bounds and visibility masks.
 - `include/Render2D/System/CommandBuildSystem.hpp` - Builds `DrawCommand[]` from visible items and sprites.
 - `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands.
@@ -92,6 +92,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/compile_smoke.cpp` - Umbrella compile smoke and broad static assertions.
 - `tests/test_harness_test.cpp` - Self-test for the lightweight test assertion harness.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
+- `tests/transform_dirty_system_test.cpp` - Sparse dirty transform/bounds update coverage.
 - `tests/bounds_system_test.cpp` - fast_math AABB transform regression coverage for translation, scale, rotation, shear, and error paths.
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
 - `tests/text_glyph_components_test.cpp` - Text/Glyph Strict POD component contract and temporary stream storage behavior.

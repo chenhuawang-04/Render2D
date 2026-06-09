@@ -1768,6 +1768,9 @@
   10D status (done): benchmark/profile harness is complete. Added RelWithDebInfo `clang-ninja-perf`, release-like test assertion handling, dirty-transform benchmark mutation, `-BuildDir`, `-IncludeDirtyTransform`, `-IncludeLarge`, and `-IncludeHuge` runner support. Stage 10 completion TODO and verification are tracked in `docs/architecture/STAGE10_PERFORMANCE_TODO.md`.
 
 
+  10E status (done): single-thread Transform/Bounds hot path is optimized. Added Strict POD `TransformDirtyItem`, `TransformSystem::runDirty`, `BoundsSystem::runDirty`, benchmark dirty-index feeding, and a zero-rotation transform fast path. Perf 10k static transform is now about 3.0x-3.9x faster; dirty transform/bounds scenarios now update sparse indices instead of full spatial streams.
+
+
 
   SIMD bounds/culling
 
@@ -2070,7 +2073,6 @@
   9. Vulkan RAII 生命周期由 storage/runtime/system 处理。
 
   10. 性能先通过 Null CPU pipeline benchmark 验证，再进入 Vulkan。
-
 
 
 

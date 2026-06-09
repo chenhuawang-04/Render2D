@@ -9,6 +9,9 @@ template<class Provider, class Dim>
 struct WorldTransform;
 
 template<class Provider, class Dim>
+struct TransformDirtyItem;
+
+template<class Provider, class Dim>
 struct Sprite;
 
 template<class Provider, class Dim>

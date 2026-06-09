@@ -190,3 +190,15 @@ Merge rule:
 - keep single-thread systems as the deterministic correctness reference;
 - multi-thread paths must write per-thread streams and merge deterministically;
 - host ECS still owns component streams.
+
+## 16. TransformDirtyItem is an ECS-visible component
+
+Stage 10E adds `TransformDirtyItem<Provider, Dim>` as a Strict POD dirty-index component.
+
+Merge rule:
+
+- host ECS owns and fills dirty transform item streams;
+- each item addresses a transform/world-bounds slot by `source_index`;
+- Render2D dirty systems consume this stream but do not own ECS storage;
+- `TransformSystem::run` and `BoundsSystem::run` remain full-stream correctness references;
+- `runDirty` is only valid after a full initialization pass has populated `WorldTransform[]` and `WorldBounds[]`.

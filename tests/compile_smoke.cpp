@@ -45,6 +45,7 @@ static_assert(std::is_same_v<R2D::Aabb2, MMath::Aabb2>);
 
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Transform<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::WorldTransform<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TransformDirtyItem<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Sprite<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Text<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TextState<Provider, Dim>>);

@@ -22,6 +22,12 @@ struct WorldTransform {
 };
 
 template<class Provider, class Dim>
+struct TransformDirtyItem {
+    U32 source_index;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
 struct ComponentTraits<Provider, Dim, Transform<Provider, Dim>> {
     static constexpr bool kSupported =
         SupportedRenderDomain<Provider, Dim> &&
@@ -33,6 +39,13 @@ struct ComponentTraits<Provider, Dim, WorldTransform<Provider, Dim>> {
     static constexpr bool kSupported =
         SupportedRenderDomain<Provider, Dim> &&
         StrictPodComponent<WorldTransform<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, TransformDirtyItem<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<TransformDirtyItem<Provider, Dim>>;
 };
 
 } // namespace Render2D

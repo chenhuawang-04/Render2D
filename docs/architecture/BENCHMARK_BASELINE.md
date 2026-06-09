@@ -158,6 +158,35 @@ Perf large/huge switch checks also passed locally:
 - `.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeDirtyTransform -IncludeLarge -Quiet` produced 11 scenarios.
 - `.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeHuge -Quiet` produced 7 scenarios.
 
+## Stage 10E Single-Thread Transform/Bounds Result
+
+Stage 10E adds:
+
+- `TransformDirtyItem` as a Strict POD ECS-visible dirty-index component.
+- `TransformSystem::runDirty` and `BoundsSystem::runDirty` for sparse transform/bounds updates.
+- a zero-rotation `TransformSystem` fast path that avoids trigonometry for common static sprites.
+
+Culling and command-build loops were measured, but no code change was retained there because the attempted micro-optimization did not show stable benefit.
+
+- Captured UTC: 2026-06-09T08:56:21Z
+- Build tree: `build_perf`
+- Command: `.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeDirtyTransform -Quiet`
+- Correctness gate: `ctest --preset clang-ninja-perf` passed 32/32.
+
+| Scenario | Dirty Xform | Transform ms | Bounds ms | Culling ms | Sprite Cmd ms | Batch ms |
+|---|---:|---:|---:|---:|---:|---:|
+| `sprite_high_10k` | 0 | 0.026075 | 0.0447875 | 0.03075 | 0.0291125 | 0.0277875 |
+| `sprite_low_10k` | 0 | 0.0238125 | 0.042875 | 0.0093875 | 0.0067625 | 0.0029375 |
+| `mixed_10k_2k` | 0 | 0.0304875 | 0.0454875 | 0.031175 | 0.031575 | 0.0343125 |
+| `sprite_dirty_transform_10k` | 4 | 0.117062 | 0.0216125 | 0.0316 | 0.0301125 | 0.029975 |
+| `mixed_dirty_transform_10k_2k` | 4 | 0.097375 | 0.015925 | 0.0294 | 0.029425 | 0.03295 |
+
+Perf delta against the Stage 10D Perf capture:
+
+- Static 10k transform: about 3.0x-3.9x faster from zero-rotation fast path.
+- Dirty 10k transform: about 1.5x-1.8x faster from dirty-index updates.
+- Dirty 10k bounds: about 2.1x-2.8x faster from dirty-index updates.
+
 ## Gate Rule
 
 Before any Stage 10 optimization is accepted:
