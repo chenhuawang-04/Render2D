@@ -15,6 +15,15 @@ template<class Provider, class Dim>
 struct Sprite;
 
 template<class Provider, class Dim>
+struct SpriteVertex;
+
+template<class Provider, class Dim>
+struct SpriteInstance;
+
+template<class Provider, class Dim>
+struct SpriteDrawPacket;
+
+template<class Provider, class Dim>
 struct Text;
 
 template<class Provider, class Dim>

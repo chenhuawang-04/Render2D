@@ -2175,3 +2175,21 @@
 - Vulkan swapchain runtime、acquire/present runtime、deferred destroy queue、acquire-to-present state flow 已完成；
 - Debug 34/34、Perf 43/43、clang-tidy、diff check、约束扫描均通过；
 - host-window visible capture 仍属于宿主集成证明，不改变 Render2D 不拥有窗口/surface 的边界。
+
+## 2026-06-09 第十二阶段进度
+
+- [x] 12A：Sprite GPU-facing POD component contracts 完成
+- [x] 12B：`SpriteInstanceBuildSystem` 完成
+- [ ] 12C：MemoryCenter-backed Sprite instance GPU upload path
+- [ ] 12D：Sprite pipeline / descriptor layout
+- [ ] 12E：offscreen real sprite render smoke
+- [ ] 12F：第十二阶段文档与验证收口
+
+12A/12B 边界说明：
+
+- 新增 `SpriteVertex`、`SpriteInstance`、`SpriteDrawPacket`，全部是 Strict POD component；
+- `SpriteInstance` 使用 2D affine 2x3 float layout，避免把完整 3x3 矩阵上传到 GPU instance stream；
+- `SpriteInstanceBuildSystem` 输入 `DrawCommand[]`、`WorldTransform[]`、`Sprite[]`；
+- 输出 `SpriteInstance[]`，按 `DrawCommand::instance_first` 写入，支持 sorted draw command 仍引用原 instance slot；
+- 系统只做 component -> component 转换，不分配、不调用 Vulkan、不持有 ECS storage；
+- 当前完成 CPU-side GPU instance 数据准备，真实 GPU upload / pipeline / offscreen sprite draw 留到 12C-12E。

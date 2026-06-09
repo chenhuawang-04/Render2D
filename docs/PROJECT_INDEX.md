@@ -36,7 +36,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Component/ComponentTraits.hpp` - Supported component trait and `SupportedRenderComponent` concept.
 - `include/Render2D/Component/Transform.hpp` - `Transform`, `WorldTransform`, and `TransformDirtyItem`; derived transforms store fast_math `Mat3`.
 - `include/Render2D/Component/Bounds.hpp` - `LocalBounds` and `WorldBounds`; bounds store fast_math `Aabb2`.
-- `include/Render2D/Component/Sprite.hpp` - Sprite-facing components and render references.
+- `include/Render2D/Component/Sprite.hpp` - Sprite-facing components, GPU-facing sprite POD records, and render references.
 - `include/Render2D/Component/Text.hpp` - Text input, text dirty state/range, UTF-8 slice, font atlas, glyph run, and glyph instance POD components.
 - `include/Render2D/Component/Camera.hpp` - Camera input component.
 - `include/Render2D/Component/Command.hpp` - Visibility, sorting, draw command, and `CommandBuffer` descriptor components.
@@ -51,6 +51,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/BoundsSystem.hpp` - Converts local bounds plus world transforms to world bounds, including dirty-index updates.
 - `include/Render2D/System/CullingSystem.hpp` - Produces `VisibleItem[]` using camera bounds and visibility masks.
 - `include/Render2D/System/CommandBuildSystem.hpp` - Builds `DrawCommand[]` from visible items and sprites.
+- `include/Render2D/System/SpriteInstanceSystem.hpp` - Stage 12B component-stream system building `SpriteInstance[]` from draw commands, world transforms, and sprites.
 - `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands.
 - `include/Render2D/System/SortKey.hpp` - Packed draw sort/batch key helpers.
 - `include/Render2D/System/SortSystem.hpp` - Stable radix sort over `DrawCommand.sort_key` using caller-owned scratch spans.
@@ -104,6 +105,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/threaded_cpu_pipeline_test.cpp` - Stage 10H single-thread equivalence and deterministic chunk merge coverage for `ThreadedCpuPipelineRuntime`.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/draw_sort_system_test.cpp` - Packed sort key, radix draw sort, batch merge, and collision-safety coverage.
+- `tests/sprite_instance_system_test.cpp` - Stage 12B Sprite GPU instance component contract and build-system coverage.
 - `tests/upload_descriptor_compaction_test.cpp` - Stage 10I upload coalescing, descriptor compaction, in-place, capacity, invalid-input, and unsupported-domain coverage.
 - `tests/transform_dirty_system_test.cpp` - Sparse dirty transform/bounds update coverage.
 - `tests/bounds_system_test.cpp` - fast_math AABB transform regression coverage for translation, scale, rotation, shear, and error paths.
@@ -171,6 +173,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-stage11-vulkan-swapchain-runtime.md` - ADR for Stage 11B host-surface-first Vulkan swapchain runtime ownership.
 - `docs/adr/2026-06-09-stage11-vulkan-acquire-present-runtime.md` - ADR for Stage 11C Vulkan acquire/present runtime ownership and ECS sync-generation records.
 - `docs/adr/2026-06-09-stage11-acquire-present-state-flow.md` - ADR for Stage 11E acquire-to-present component flow and headless result mapping coverage.
+- `docs/adr/2026-06-09-stage12-sprite-gpu-instance-contract.md` - ADR for Stage 12A/12B sprite GPU-facing POD records and instance build system.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

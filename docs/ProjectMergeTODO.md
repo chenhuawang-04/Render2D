@@ -369,3 +369,15 @@ Merge rule:
 - keep window/surface ownership in the host;
 - use Render2D runtime APIs only to resolve ids/generations into Vulkan objects and perform backend operations;
 - run host-side visible capture separately if you need swapchain/window proof.
+
+## 29. Sprite GPU instance data is still ECS component data
+
+Stage 12 adds `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, and `SpriteInstanceBuildSystem`.
+
+Merge rule:
+
+- host ECS may own `SpriteInstance[]` exactly like other component streams;
+- `SpriteInstanceBuildSystem` writes by `DrawCommand::instance_first`, so sorted draw commands can preserve stable instance references;
+- the 2D affine data is stored as six floats, not a runtime object and not a Vulkan handle;
+- GPU upload must treat `SpriteInstance[]` as source component data and use MemoryCenter-backed buffers in the runtime path;
+- pipeline/descriptors/shaders remain runtime concerns, not ECS ownership.

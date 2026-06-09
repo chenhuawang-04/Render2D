@@ -78,6 +78,19 @@ render2d_apply_strict_warnings(render2d_draw_sort_system_test)
 
 add_test(NAME render2d.draw_sort_system COMMAND render2d_draw_sort_system_test)
 
+add_executable(render2d_sprite_instance_system_test
+    sprite_instance_system_test.cpp
+)
+target_link_libraries(render2d_sprite_instance_system_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_sprite_instance_system_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_sprite_instance_system_test)
+
+add_test(NAME render2d.sprite_instance_system COMMAND render2d_sprite_instance_system_test)
+
 add_executable(render2d_upload_descriptor_compaction_test
     upload_descriptor_compaction_test.cpp
 )

@@ -50,6 +50,9 @@ static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Transform<Provid
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::WorldTransform<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TransformDirtyItem<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Sprite<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteVertex<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteInstance<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteDrawPacket<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Text<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TextState<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TextDirtyRange<Provider, Dim>>);

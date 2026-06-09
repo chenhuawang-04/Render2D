@@ -15,6 +15,9 @@ template<class Provider, class Dim>
 struct CommandBuildSystem;
 
 template<class Provider, class Dim>
+struct SpriteInstanceBuildSystem;
+
+template<class Provider, class Dim>
 struct CommandBufferBuildSystem;
 
 template<class Provider, class Dim>

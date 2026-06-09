@@ -63,7 +63,7 @@ The CPU component pipeline remains ECS-driven. Stage 8 now attaches Vulkan comma
 The component layer defines Strict POD ECS records:
 
 - Scene/input components: `Transform`, `Sprite`, `Text`, `Utf8Slice`, `Camera`, `LocalBounds`, `VisibilityMask`, `RenderLayer`, `MaterialRef`, `TextureRef`, `FontRef`, `FontAtlasRef`.
-- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`.
+- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`.
 - Command components: `DrawCommand`, `BatchCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
 - Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `BufferRef`, `UploadSlice`.
@@ -96,6 +96,8 @@ Stage 10H adds `ThreadedCpuPipelineRuntime`, a ThreadCenter-backed runtime facad
 Stage 10I adds allocation-free stream compaction for native-bound data. `UploadCoalesceSystem` merges adjacent contiguous `UploadCommand[]` records with the same resource/kind/flags, and `DescriptorCompactionSystem` merges adjacent contiguous `DescriptorSlice[]` records with the same descriptor set/generation. These outputs remain ECS component streams and are not native storage.
 
 Stage 10J adds `VulkanThreadCommandRuntime`, a Vulkan-native runtime that owns one command pool per runtime thread slot. It allocates command buffers from the requested thread pool and returns ordinary `NativeCommandBufferRef` id/generation records; thread ownership stays in runtime metadata and does not enter ECS components.
+
+Stage 12A/12B starts the production sprite GPU path. `SpriteVertex`, `SpriteInstance`, and `SpriteDrawPacket` are Strict POD component records. `SpriteInstanceBuildSystem` converts `DrawCommand[]`, `WorldTransform[]`, and `Sprite[]` into `SpriteInstance[]`, writing each record at `DrawCommand::instance_first` so sorted draw commands can keep stable instance references. It does not allocate and does not call Vulkan.
 
 ## Temporary test ECS
 
@@ -201,12 +203,13 @@ Implemented:
 - Stage 11D deferred destroy foundation: `NativeDeferredDestroyRuntime` queues retire commands and drains only frame-safe records
 - Stage 11E acquire/present state coverage: `PresentCommandBuildSystem`, acquire/present result mapping tests, and present-side swapchain image-index validation
 - Stage 11F native frame-loop closeout: final documentation, merge guidance, and Debug/Perf verification
+- Stage 12A/12B sprite GPU instance contracts: `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, and `SpriteInstanceBuildSystem`
 
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
 - host-engine window-visible capture automation
-- production sprite instance shader/data layout
+- Sprite instance GPU upload, descriptor layout, pipeline, and real offscreen sprite draw
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
 - production texture atlas / sampled-image descriptor policy
 - Vulkan text draw integration
