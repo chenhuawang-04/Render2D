@@ -345,3 +345,27 @@ Merge rule:
 - `PresentCommand` must carry `wait_sync_id + wait_sync_generation`;
 - do not store raw semaphores or queues in ECS components;
 - stale sync or stale swapchain records must be rejected before calling Vulkan.
+
+## 27. Acquire-to-present is a component-stream transform
+
+Stage 11E adds `PresentCommandBuildSystem`.
+
+Merge rule:
+
+- host ECS stores `AcquiredImage[]` and `PresentCommand[]`;
+- Render2D only transforms spans and never owns production ECS storage;
+- invalid acquired records with zero swapchain or sync generation must be rejected before presentation;
+- present runtime must resolve the current `SwapchainState` and validate image index before returning/presenting;
+- window-visible capture remains a host-engine integration proof because window/surface ownership is external.
+
+## 28. Stage 11 native frame boundary is complete
+
+Stage 11F closes the native frame-loop boundary.
+
+Merge rule:
+
+- integrate Render2D as a backend runtime behind your engine ECS;
+- migrate the POD component streams directly into the host ECS;
+- keep window/surface ownership in the host;
+- use Render2D runtime APIs only to resolve ids/generations into Vulkan objects and perform backend operations;
+- run host-side visible capture separately if you need swapchain/window proof.

@@ -227,6 +227,19 @@ render2d_apply_strict_warnings(render2d_encode_submit_system_test)
 
 add_test(NAME render2d.encode_submit_system COMMAND render2d_encode_submit_system_test)
 
+add_executable(render2d_present_command_system_test
+    present_command_system_test.cpp
+)
+target_link_libraries(render2d_present_command_system_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_present_command_system_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_present_command_system_test)
+
+add_test(NAME render2d.present_command_system COMMAND render2d_present_command_system_test)
+
 add_executable(render2d_vulkan_command_runtime_test
     vulkan_command_runtime_test.cpp
 )

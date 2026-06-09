@@ -185,6 +185,21 @@ The runtime owns created image views and only destroys the swapchain handle when
 
 `AcquiredImage` and `PresentCommand` store sync generations. They still store no Vulkan semaphore or queue handles.
 
+## Stage 11E acquire/present state flow
+
+`PresentCommandBuildSystem<Provider, Dim>` is the ECS-side bridge from acquisition to presentation:
+
+- input: `AcquiredImage[]`;
+- output: `PresentCommand[]`;
+- behavior: copy swapchain id, image index, frame index, swapchain generation, sync id, sync generation, and flags;
+- invalid state: zero swapchain generation or zero sync generation.
+
+The system is a pure component-stream transform and does not allocate or retain ECS storage.
+
+`mapVulkanAcquirePresentResult` classifies `VK_ERROR_OUT_OF_DATE_KHR` and `VK_ERROR_SURFACE_LOST_KHR` as `NativeStatusCode::SwapchainOutOfDate`. `VulkanPresentRuntime::acquireNextImage` and `VulkanPresentRuntime::present` resolve the complete `SwapchainState` and reject out-of-range image indices as invalid input.
+
+The automated stage remains host-window-free. Window-visible capture must be supplied by the host engine because Render2D deliberately does not own windows or `VkSurfaceKHR`.
+
 ## Runtime memory policy
 
 Render2D runtime-owned dynamic arrays use `Render2D::McVector<T>` instead of `std::vector`. Vulkan resource and upload-ring backing memory is owned through `VulkanMemoryCenterAllocator`, which wraps MemoryCenter Vulkan adaptors and centralizes allocation, binding, persistent mapping, flushing, invalidation, and deallocation.

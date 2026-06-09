@@ -15,6 +15,27 @@ namespace Render2D {
 inline constexpr U32 kVulkanAcquireImageSuboptimal = 1U << 0U;
 inline constexpr U32 kVulkanPresentSuboptimal = 1U << 0U;
 
+[[nodiscard]] inline NativeStatusCode mapVulkanAcquirePresentResult(VkResult result_) noexcept
+{
+    switch (result_) {
+    case VK_SUCCESS:
+    case VK_SUBOPTIMAL_KHR:
+        return NativeStatusCode::Ok;
+    case VK_TIMEOUT:
+        return NativeStatusCode::Timeout;
+    case VK_ERROR_OUT_OF_DATE_KHR:
+    case VK_ERROR_SURFACE_LOST_KHR:
+        return NativeStatusCode::SwapchainOutOfDate;
+    case VK_ERROR_OUT_OF_HOST_MEMORY:
+    case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+        return NativeStatusCode::OutOfMemory;
+    case VK_ERROR_DEVICE_LOST:
+        return NativeStatusCode::DeviceLost;
+    default:
+        return NativeStatusCode::InvalidInput;
+    }
+}
+
 struct VulkanPresentRuntimeConfig {
     VkDevice device;
     VkQueue present_queue;
@@ -66,9 +87,17 @@ public:
                 return makeResult(NativeStatusCode::InvalidInput);
             }
 
-            VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-            NativeResult result = swapchain_runtime_.resolveNativeSwapchain(
+            SwapchainState<Provider, Dim> resolved_state{};
+            NativeResult result = swapchain_runtime_.resolveSwapchainState(
                 swapchain_state_,
+                resolved_state);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+
+            VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+            result = swapchain_runtime_.resolveNativeSwapchain(
+                resolved_state,
                 swapchain);
             if (result.code != NativeStatusCode::Ok) {
                 return result;
@@ -95,18 +124,24 @@ public:
                 VK_NULL_HANDLE,
                 &image_index);
             last_vulkan_result = vk_result;
-            const NativeStatusCode code = mapVulkanResult(vk_result);
+            const NativeStatusCode code = mapVulkanAcquirePresentResult(vk_result);
             if (code != NativeStatusCode::Ok) {
                 return makeResult(code);
             }
+            if (image_index >= resolved_state.image_count) {
+                return makeResult(
+                    NativeStatusCode::InvalidInput,
+                    resolved_state.swapchain_id,
+                    resolved_state.generation);
+            }
 
             out_image_ = {
-                .swapchain_id = swapchain_state_.swapchain_id,
+                .swapchain_id = resolved_state.swapchain_id,
                 .image_index = image_index,
                 .frame_index = frame_sync_.frame_index,
                 .sync_id = frame_sync_.sync_id,
                 .sync_generation = frame_sync_.generation,
-                .generation = swapchain_state_.generation,
+                .generation = resolved_state.generation,
                 .flags = vk_result == VK_SUBOPTIMAL_KHR ?
                     (flags_ | kVulkanAcquireImageSuboptimal) :
                     flags_,
@@ -127,7 +162,7 @@ public:
                 return makeResult(NativeStatusCode::InvalidInput);
             }
 
-            const SwapchainState<Provider, Dim> state{
+            const SwapchainState<Provider, Dim> requested_state{
                 .handle = 0U,
                 .swapchain_id = command_.swapchain_id,
                 .image_first = 0U,
@@ -138,8 +173,22 @@ public:
                 .generation = command_.generation,
                 .flags = 0U,
             };
+            SwapchainState<Provider, Dim> resolved_state{};
+            NativeResult result = swapchain_runtime_.resolveSwapchainState(
+                requested_state,
+                resolved_state);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+            if (command_.image_index >= resolved_state.image_count) {
+                return makeResult(
+                    NativeStatusCode::InvalidInput,
+                    command_.swapchain_id,
+                    command_.generation);
+            }
+
             VkSwapchainKHR swapchain = VK_NULL_HANDLE;
-            NativeResult result = swapchain_runtime_.resolveNativeSwapchain(state, swapchain);
+            result = swapchain_runtime_.resolveNativeSwapchain(resolved_state, swapchain);
             if (result.code != NativeStatusCode::Ok) {
                 return result;
             }
@@ -182,7 +231,7 @@ public:
 
             const VkResult vk_result = vkQueuePresentKHR(present_queue, &present_info);
             last_vulkan_result = vk_result == VK_SUCCESS ? present_result : vk_result;
-            return makeResult(mapVulkanResult(last_vulkan_result));
+            return makeResult(mapVulkanAcquirePresentResult(last_vulkan_result));
         }
     }
 
@@ -199,33 +248,20 @@ public:
 private:
     static NativeResult makeResult(NativeStatusCode code_) noexcept
     {
+        return makeResult(code_, 0U, 0U);
+    }
+
+    static NativeResult makeResult(
+        NativeStatusCode code_,
+        U32 object_id_,
+        U32 generation_) noexcept
+    {
         return {
             .code = code_,
             .object_kind = NativeObjectKind::Swapchain,
-            .object_id = {.value = 0U},
-            .generation = {.value = 0U},
+            .object_id = {.value = object_id_},
+            .generation = {.value = generation_},
         };
-    }
-
-    static NativeStatusCode mapVulkanResult(VkResult result_) noexcept
-    {
-        switch (result_) {
-        case VK_SUCCESS:
-        case VK_SUBOPTIMAL_KHR:
-            return NativeStatusCode::Ok;
-        case VK_TIMEOUT:
-            return NativeStatusCode::Timeout;
-        case VK_ERROR_OUT_OF_DATE_KHR:
-        case VK_ERROR_SURFACE_LOST_KHR:
-            return NativeStatusCode::SwapchainOutOfDate;
-        case VK_ERROR_OUT_OF_HOST_MEMORY:
-        case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-            return NativeStatusCode::OutOfMemory;
-        case VK_ERROR_DEVICE_LOST:
-            return NativeStatusCode::DeviceLost;
-        default:
-            return NativeStatusCode::InvalidInput;
-        }
     }
 
     static bool isPresentCommandValid(const PresentCommand<Provider, Dim>& command_) noexcept

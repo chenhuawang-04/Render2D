@@ -199,11 +199,13 @@ Implemented:
 - Stage 11B Vulkan swapchain runtime: host-provided surface or adopted swapchain, image query, image-view ownership, and POD swapchain/image refs
 - Stage 11C Vulkan acquire/present runtime: `vkAcquireNextImageKHR`, `AcquiredImage`, `PresentCommand`, and `vkQueuePresentKHR`
 - Stage 11D deferred destroy foundation: `NativeDeferredDestroyRuntime` queues retire commands and drains only frame-safe records
+- Stage 11E acquire/present state coverage: `PresentCommandBuildSystem`, acquire/present result mapping tests, and present-side swapchain image-index validation
+- Stage 11F native frame-loop closeout: final documentation, merge guidance, and Debug/Perf verification
 
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
-- window-visible present smoke
+- host-engine window-visible capture automation
 - production sprite instance shader/data layout
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
 - production texture atlas / sampled-image descriptor policy

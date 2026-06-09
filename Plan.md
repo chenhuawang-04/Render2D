@@ -2132,8 +2132,8 @@
 - [x] 11D：`NativeDeferredDestroyRuntime` deferred destroy queue 完成
 - [x] 11B：Vulkan swapchain runtime 完成
 - [x] 11C：Acquire / Present runtime 完成
-- [ ] 11E：swapchain acquire/present smoke 与状态测试
-- [ ] 11F：第十一阶段文档与验证收口
+- [x] 11E：swapchain acquire/present smoke 与状态测试完成
+- [x] 11F：第十一阶段文档与验证收口完成
 
 11A/11D 边界说明：
 
@@ -2158,4 +2158,20 @@
 - runtime 通过 `VulkanSwapchainRuntime` 解析 swapchain；
 - runtime 通过 `VulkanSyncRuntime` 解析 `FrameSync`；
 - `AcquiredImage` / `PresentCommand` 增加 sync generation，避免 stale sync 被误用；
-- 当前自动化测试保持 headless state-level；真实 window-visible present smoke 留到 11E。
+- 当前自动化测试保持 headless state-level。
+
+11E 边界说明：
+
+- `PresentCommandBuildSystem` 把 ECS 中的 `AcquiredImage[]` 转换为 `PresentCommand[]`；
+- 系统只做 component -> component 转换，不持有 storage；
+- `VulkanPresentRuntime` 公开 acquire/present 结果映射，并在 acquire/present 路径解析完整 `SwapchainState` 检查 image index；
+- out-of-date / surface-lost 映射到 `NativeStatusCode::SwapchainOutOfDate`；
+- 默认 CTest 仍不创建窗口；host-engine window-visible capture 作为宿主集成验证，不进入 Render2D 的窗口所有权。
+
+第十一阶段结论：
+
+- Stage 11 已完成；
+- frame/present/deferred destroy POD component contracts 已完成；
+- Vulkan swapchain runtime、acquire/present runtime、deferred destroy queue、acquire-to-present state flow 已完成；
+- Debug 34/34、Perf 43/43、clang-tidy、diff check、约束扫描均通过；
+- host-window visible capture 仍属于宿主集成证明，不改变 Render2D 不拥有窗口/surface 的边界。

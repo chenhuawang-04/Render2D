@@ -40,6 +40,42 @@ void testInvalidInitialize(R2DT::TestContext& context_)
     R2D_TEST_CHECK(context_, !runtime.isInitialized());
 }
 
+void testAcquirePresentResultMapping(R2DT::TestContext& context_)
+{
+    R2D_TEST_CHECK_EQ(
+        context_,
+        R2D::mapVulkanAcquirePresentResult(VK_SUCCESS),
+        R2D::NativeStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(
+        context_,
+        R2D::mapVulkanAcquirePresentResult(VK_SUBOPTIMAL_KHR),
+        R2D::NativeStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(
+        context_,
+        R2D::mapVulkanAcquirePresentResult(VK_TIMEOUT),
+        R2D::NativeStatusCode::Timeout);
+    R2D_TEST_CHECK_EQ(
+        context_,
+        R2D::mapVulkanAcquirePresentResult(VK_ERROR_OUT_OF_DATE_KHR),
+        R2D::NativeStatusCode::SwapchainOutOfDate);
+    R2D_TEST_CHECK_EQ(
+        context_,
+        R2D::mapVulkanAcquirePresentResult(VK_ERROR_SURFACE_LOST_KHR),
+        R2D::NativeStatusCode::SwapchainOutOfDate);
+    R2D_TEST_CHECK_EQ(
+        context_,
+        R2D::mapVulkanAcquirePresentResult(VK_ERROR_OUT_OF_DEVICE_MEMORY),
+        R2D::NativeStatusCode::OutOfMemory);
+    R2D_TEST_CHECK_EQ(
+        context_,
+        R2D::mapVulkanAcquirePresentResult(VK_ERROR_DEVICE_LOST),
+        R2D::NativeStatusCode::DeviceLost);
+    R2D_TEST_CHECK_EQ(
+        context_,
+        R2D::mapVulkanAcquirePresentResult(VK_ERROR_INITIALIZATION_FAILED),
+        R2D::NativeStatusCode::InvalidInput);
+}
+
 void testStaleAcquireAndPresent(
     R2DT::TestContext& context_,
     const Render2DTest::VulkanSmokeContext& vulkan_context_)
@@ -143,6 +179,7 @@ void testUnsupportedDomain(
 {
     R2DT::TestContext context{};
     testInvalidInitialize(context);
+    testAcquirePresentResultMapping(context);
 
     Render2DTest::VulkanSmokeContext vulkan_context{};
     if (!Render2DTest::createVulkanSmokeContext(vulkan_context)) {

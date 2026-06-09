@@ -58,6 +58,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/CommandBufferSystem.hpp` - Builds and clears POD `CommandBuffer` range descriptors.
 - `include/Render2D/System/EncodeSystem.hpp` - CPU-only encode contract from `CommandBuffer` ranges to `NativeCommandBufferRef`.
 - `include/Render2D/System/SubmitSystem.hpp` - CPU-only submit contract from native command refs and `FrameSync` to `NativeSubmitCommand`.
+- `include/Render2D/System/PresentSystem.hpp` - Stage 11E component-stream system converting `AcquiredImage[]` to `PresentCommand[]`.
 - `include/Render2D/System/TextSystem.hpp` - Stage 9 text dirty detection, dirty glyph-run/instance updates, and glyph-to-DrawCommand batching using `GlyphBuildConfig` / `GlyphDrawConfig`.
 - `include/Render2D/System/ThreadedCpuPipeline.hpp` - Stage 10H ThreadCenter-backed runtime facade for deterministic chunked sprite CPU pipeline execution. It is not included by the umbrella header because consumers must link `render2d_thread_runtime_support`.
 
@@ -83,7 +84,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with MemoryCenter-backed GPU allocation, upload/readback, and copy helpers.
 - `include/Render2D/Native/VulkanDescriptorRuntime.hpp` - Vulkan descriptor pool, set layout, set allocation, and descriptor update runtime.
 - `include/Render2D/Native/VulkanPipelineRuntime.hpp` - Vulkan shader module, pipeline cache, pipeline layout, and dynamic-rendering pipeline runtime.
-- `include/Render2D/Native/VulkanPresentRuntime.hpp` - Stage 11C acquire/present runtime using `vkAcquireNextImageKHR` and `vkQueuePresentKHR`.
+- `include/Render2D/Native/VulkanPresentRuntime.hpp` - Stage 11C/11E acquire/present runtime using `vkAcquireNextImageKHR`, `vkQueuePresentKHR`, result mapping, and swapchain image-index validation.
 - `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - MemoryCenter-backed persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
 - `include/Render2D/Native/VulkanRenderEncoder.hpp` - Dynamic rendering encoder for direct and indirect draw recording.
 
@@ -117,6 +118,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/native_runtime_skeleton_test.cpp` - Frame/device/queue/pipeline/descriptor/swapchain runtime skeleton lifecycle checks.
 - `tests/native_command_runtime_test.cpp` - Native command buffer ref slot lifecycle, stale-reference, and reuse checks.
 - `tests/encode_submit_system_test.cpp` - CPU-only EncodeSystem and SubmitSystem contract checks.
+- `tests/present_command_system_test.cpp` - Stage 11E `AcquiredImage[]` to `PresentCommand[]` component-stream conversion coverage.
 - `tests/vulkan_command_runtime_test.cpp` - Optional Vulkan command pool / command buffer lifecycle smoke test.
 - `tests/vulkan_thread_command_runtime_test.cpp` - Optional Stage 10J per-thread Vulkan command pool / command buffer ownership smoke test.
 - `tests/vulkan_sync_runtime_test.cpp` - Optional Vulkan semaphore/fence lifecycle smoke test.
@@ -125,7 +127,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_resource_runtime_test.cpp` - Optional Vulkan buffer/image/upload/readback/copy lifecycle smoke test.
 - `tests/vulkan_descriptor_runtime_test.cpp` - Optional Vulkan descriptor pool/set/layout/update lifecycle smoke test.
 - `tests/vulkan_pipeline_runtime_test.cpp` - Optional Vulkan shader module, pipeline cache, and dynamic-rendering pipeline lifecycle smoke test.
-- `tests/vulkan_present_runtime_test.cpp` - Stage 11C headless acquire/present runtime tests for invalid init, stale refs, invalid commands, and unsupported domains.
+- `tests/vulkan_present_runtime_test.cpp` - Stage 11C/11E headless acquire/present runtime tests for invalid init, stale refs, result mapping, invalid commands, and unsupported domains.
 - `tests/vulkan_upload_ring_runtime_test.cpp` - Optional Vulkan persistent upload ring frame-slot reuse smoke test.
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
@@ -168,6 +170,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-stage11-frame-present-deferred-destroy.md` - ADR for Stage 11 frame/present POD contracts and the deferred destroy runtime queue.
 - `docs/adr/2026-06-09-stage11-vulkan-swapchain-runtime.md` - ADR for Stage 11B host-surface-first Vulkan swapchain runtime ownership.
 - `docs/adr/2026-06-09-stage11-vulkan-acquire-present-runtime.md` - ADR for Stage 11C Vulkan acquire/present runtime ownership and ECS sync-generation records.
+- `docs/adr/2026-06-09-stage11-acquire-present-state-flow.md` - ADR for Stage 11E acquire-to-present component flow and headless result mapping coverage.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

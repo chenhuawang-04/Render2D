@@ -53,4 +53,7 @@ struct EncodeSystem;
 template<class Provider, class Dim>
 struct SubmitSystem;
 
+template<class Provider, class Dim>
+struct PresentCommandBuildSystem;
+
 } // namespace Render2D
