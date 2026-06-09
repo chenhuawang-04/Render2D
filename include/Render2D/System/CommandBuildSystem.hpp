@@ -4,6 +4,7 @@
 #include "Render2D/Component/Sprite.hpp"
 #include "Render2D/Core/Result.hpp"
 #include "Render2D/Meta/Domain.hpp"
+#include "Render2D/System/SortKey.hpp"
 
 #include <span>
 
@@ -48,7 +49,7 @@ struct CommandBuildSystem {
                     .index_count = 6U,
                     .instance_first = static_cast<U32>(index),
                     .instance_count = 1U,
-                    .sort_key = visible_items_[index].sort_key,
+                    .sort_key = makeDrawSortKey(sprite.layer, sprite.material_id, sprite.texture_id, sprite.flags),
                     .layer = sprite.layer,
                     .flags = sprite.flags,
                 };

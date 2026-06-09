@@ -4,6 +4,7 @@
 #include "Render2D/Component/Command.hpp"
 #include "Render2D/Core/Result.hpp"
 #include "Render2D/Meta/Domain.hpp"
+#include "Render2D/System/SortKey.hpp"
 
 #include <span>
 
@@ -64,10 +65,7 @@ private:
         const DrawCommand<Provider, Dim>& left_,
         const DrawCommand<Provider, Dim>& right_) noexcept
     {
-        return left_.material_id == right_.material_id &&
-            left_.texture_id == right_.texture_id &&
-            left_.layer == right_.layer &&
-            left_.flags == right_.flags;
+        return drawCommandsHaveEqualBatchKey(left_, right_);
     }
 
     static BatchCommand<Provider, Dim> makeBatch(

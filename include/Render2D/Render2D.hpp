@@ -47,6 +47,8 @@
 #include "Render2D/System/CommandBuildSystem.hpp"
 #include "Render2D/System/CullingSystem.hpp"
 #include "Render2D/System/EncodeSystem.hpp"
+#include "Render2D/System/SortKey.hpp"
+#include "Render2D/System/SortSystem.hpp"
 #include "Render2D/System/SubmitSystem.hpp"
 #include "Render2D/System/SystemFwd.hpp"
 #include "Render2D/System/TextSystem.hpp"

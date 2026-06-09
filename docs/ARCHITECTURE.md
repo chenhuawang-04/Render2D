@@ -33,6 +33,8 @@ Text[] + TextState[] + FontAtlasRef[]
     -> DrawCommand[]
 
 DrawCommand[]
+    -> DrawSortSystem (optional)
+    -> DrawCommand[]
     -> BatchSystem
     -> BatchCommand[]
     -> CommandBufferBuildSystem
@@ -73,6 +75,8 @@ This keeps systems reusable when the temporary test ECS is replaced by the host 
 Stage 9 text systems are dependency-free and deterministic. `TextDirtySystem` emits dirty glyph ranges, `GlyphRunBuildSystem` and `GlyphInstanceBuildSystem` can update only those ranges, and `GlyphBatchSystem` emits regular `DrawCommand[]` entries over `GlyphInstance[]`. Real UTF-8 decoding, shaping, rasterization, atlas packing, and FreeType linkage are deferred to a dedicated font runtime stage.
 
 Stage 10C migrated transform, bounds, culling, and atlas-rect math to fast_math. `BoundsSystem` now uses the fast center/extents transform formula over `MMath::Mat3` / `MMath::Aabb2` instead of Render2D-owned math structs.
+
+Stage 10F adds packed draw sort keys and an optional stable radix `DrawSortSystem`. Sorting reduces batch counts when command streams are not already resource-grouped, but it is explicit (`--enable-sort` in benchmarks) because CPU-only sort cost is measurable.
 
 ## Temporary test ECS
 
@@ -160,6 +164,7 @@ Implemented:
 - Stage 10C fast_math migration: `Render2D::Vec2`, `Render2D::Mat3`, and `Render2D::Aabb2` alias `MMath` POD types; custom Render2D `Aabb2` / `Affine2X3` structs are removed
 - Stage 10D benchmark/profile harness: `clang-ninja-perf` preset, dirty transform benchmark input mutation, extended runner suites, and Stage 10 TODO tracking
 - Stage 10E single-thread spatial hot path: `TransformDirtyItem`, `TransformSystem::runDirty`, `BoundsSystem::runDirty`, and zero-rotation transform fast path
+- Stage 10F sort/batch foundation: packed draw sort keys, optional `DrawSortSystem`, and collision-safe packed-key-first `BatchSystem` comparison
 
 Not implemented yet:
 

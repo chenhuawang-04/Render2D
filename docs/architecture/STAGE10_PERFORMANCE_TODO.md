@@ -9,10 +9,10 @@ This file is the execution checklist for fully completing Stage 10. It keeps opt
 - [x] 10C: Render math migrated to fast_math POD aliases and BoundsSystem hot path was reduced.
 - [x] 10D: Benchmark/profile harness now includes Perf preset, dirty transform scenarios, large/huge local suites, and profile runner metadata.
 - [x] 10E: Single-thread Transform/Bounds dirty-index path and zero-rotation Transform fast path are implemented and benchmarked.
+- [x] 10F: Packed draw sort keys, explicit radix sort path, and BatchSystem packed-key comparison are implemented and benchmarked.
 
 ## Remaining Route
 
-- [ ] 10F: Sort, radix/key packing, and BatchSystem key comparison.
 - [ ] 10G: ThreadCenter dependency integration as runtime/system infrastructure only.
 - [ ] 10H: ThreadCenter-backed multi-thread CPU pipeline with deterministic merge.
 - [ ] 10I: Upload command coalescing and descriptor table compaction.
@@ -70,3 +70,16 @@ ctest --preset clang-ninja-perf
 ```
 
 Current result: all commands passed on 2026-06-09. Perf capture is recorded in `BENCHMARK_BASELINE.md`.
+
+## Stage 10F Verification Commands
+
+```powershell
+cmake --build build
+ctest --test-dir build --output-on-failure
+clang-tidy -p build bench\null_cpu_bench.cpp tests\draw_sort_system_test.cpp tests\compile_smoke.cpp tests\cpu_system_pipeline_test.cpp --quiet
+cmake --build --preset clang-ninja-perf
+ctest --preset clang-ninja-perf
+.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeDirtyTransform -IncludeSorted -Quiet
+```
+
+Current result: all commands passed on 2026-06-09. `--enable-sort` remains explicit because sorting reduces batch count but has measurable CPU cost.

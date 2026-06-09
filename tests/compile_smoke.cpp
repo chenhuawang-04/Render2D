@@ -82,6 +82,7 @@ static_assert(!R2D::SupportedRenderComponent<int, Dim, R2D::Transform<int, Dim>>
 static_assert(!R2D::SupportedRenderComponent<Provider, int, R2D::Transform<Provider, int>>);
 
 static_assert(R2D::kStrictPodComponentValue<R2D::DrawCommand<Provider, Dim>>);
+static_assert(R2D::makeDrawSortKey(1U, 2U, 3U, 4U) != 0U);
 
 static_assert(std::is_trivial_v<MMath::Vec2>);
 static_assert(std::is_standard_layout_v<MMath::Vec2>);

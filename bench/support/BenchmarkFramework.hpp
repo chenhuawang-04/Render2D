@@ -35,6 +35,7 @@ struct BenchmarkConfig {
     U32 glyphs_per_text;
     U32 dirty_text_stride;
     U32 dirty_transform_stride;
+    bool enable_sort;
     BenchScenario scenario;
     VisibilityMode visibility;
     OutputFormat output_format;
@@ -49,6 +50,7 @@ struct StageTimeTotals {
     double glyph_run_ms;
     double glyph_instance_ms;
     double glyph_batch_ms;
+    double sort_ms;
     double batch_ms;
     double command_buffer_ms;
 };
@@ -72,6 +74,7 @@ inline constexpr BenchmarkConfig kDefaultBenchmarkConfig{
     .glyphs_per_text = 8U,
     .dirty_text_stride = 0U,
     .dirty_transform_stride = 0U,
+    .enable_sort = false,
     .scenario = BenchScenario::Mixed,
     .visibility = VisibilityMode::High,
     .output_format = OutputFormat::Text,
@@ -86,6 +89,7 @@ inline constexpr StageTimeTotals kZeroStageTimeTotals{
     .glyph_run_ms = 0.0,
     .glyph_instance_ms = 0.0,
     .glyph_batch_ms = 0.0,
+    .sort_ms = 0.0,
     .batch_ms = 0.0,
     .command_buffer_ms = 0.0,
 };
@@ -251,6 +255,8 @@ inline bool parseBenchmarkConfig(int argc_, char** argv_, BenchmarkConfig& out_c
                 return false;
             }
             ++index;
+        } else if (option == "--enable-sort") {
+            out_config_.enable_sort = true;
         } else if (option == "--scenario" && index + 1 < argc_) {
             if (!parseScenario(argv_[index + 1], out_config_.scenario)) {
                 return false;
@@ -300,6 +306,7 @@ inline void printBenchmarkUsage(std::ostream& out_)
          << "  --glyphs-per-text <count> (>0)\n"
          << "  --dirty-text-stride <0|N>\n"
          << "  --dirty-transform-stride <0|N>\n"
+         << "  --enable-sort\n"
          << "  --format text|csv\n";
 }
 
@@ -326,6 +333,7 @@ inline void accumulate(BenchmarkTotals& left_, const BenchmarkTotals& right_) no
     left_.times.glyph_run_ms += right_.times.glyph_run_ms;
     left_.times.glyph_instance_ms += right_.times.glyph_instance_ms;
     left_.times.glyph_batch_ms += right_.times.glyph_batch_ms;
+    left_.times.sort_ms += right_.times.sort_ms;
     left_.times.batch_ms += right_.times.batch_ms;
     left_.times.command_buffer_ms += right_.times.command_buffer_ms;
     left_.visible_count = right_.visible_count;
@@ -351,7 +359,8 @@ inline void printTextReport(
          << " warmup=" << config_.warmup_count
          << " glyphs_per_text=" << config_.glyphs_per_text
          << " dirty_text_stride=" << config_.dirty_text_stride
-         << " dirty_transform_stride=" << config_.dirty_transform_stride << '\n';
+         << " dirty_transform_stride=" << config_.dirty_transform_stride
+         << " enable_sort=" << (config_.enable_sort ? 1U : 0U) << '\n';
     out_ << "visible=" << totals_.visible_count
          << " sprite_draws=" << totals_.sprite_draw_count
          << " text_dirty=" << totals_.text_dirty_count
@@ -367,6 +376,7 @@ inline void printTextReport(
     out_ << "avg_glyph_run_ms=" << averageMs(totals_.times.glyph_run_ms, config_.frame_count) << '\n';
     out_ << "avg_glyph_instance_ms=" << averageMs(totals_.times.glyph_instance_ms, config_.frame_count) << '\n';
     out_ << "avg_glyph_batch_ms=" << averageMs(totals_.times.glyph_batch_ms, config_.frame_count) << '\n';
+    out_ << "avg_sort_ms=" << averageMs(totals_.times.sort_ms, config_.frame_count) << '\n';
     out_ << "avg_batch_ms=" << averageMs(totals_.times.batch_ms, config_.frame_count) << '\n';
     out_ << "avg_command_buffer_ms=" << averageMs(totals_.times.command_buffer_ms, config_.frame_count) << '\n';
 }
@@ -377,10 +387,10 @@ inline void printCsvReport(
     const BenchmarkTotals& totals_)
 {
     out_ << "scenario,visibility,sprites,texts,frames,warmup,glyphs_per_text,dirty_text_stride,"
-         << "dirty_transform_stride,visible,sprite_draws,text_dirty,glyphs,glyph_draws,total_draws,batches,"
+         << "dirty_transform_stride,enable_sort,visible,sprite_draws,text_dirty,glyphs,glyph_draws,total_draws,batches,"
          << "avg_transform_ms,avg_bounds_ms,avg_culling_ms,avg_sprite_command_ms,"
          << "avg_text_dirty_ms,avg_glyph_run_ms,avg_glyph_instance_ms,avg_glyph_batch_ms,"
-         << "avg_batch_ms,avg_command_buffer_ms\n";
+         << "avg_sort_ms,avg_batch_ms,avg_command_buffer_ms\n";
     out_ << scenarioName(config_.scenario) << ','
          << visibilityName(config_.visibility) << ','
          << config_.sprite_count << ','
@@ -390,6 +400,7 @@ inline void printCsvReport(
          << config_.glyphs_per_text << ','
          << config_.dirty_text_stride << ','
          << config_.dirty_transform_stride << ','
+         << (config_.enable_sort ? 1U : 0U) << ','
          << totals_.visible_count << ','
          << totals_.sprite_draw_count << ','
          << totals_.text_dirty_count << ','
@@ -405,6 +416,7 @@ inline void printCsvReport(
          << averageMs(totals_.times.glyph_run_ms, config_.frame_count) << ','
          << averageMs(totals_.times.glyph_instance_ms, config_.frame_count) << ','
          << averageMs(totals_.times.glyph_batch_ms, config_.frame_count) << ','
+         << averageMs(totals_.times.sort_ms, config_.frame_count) << ','
          << averageMs(totals_.times.batch_ms, config_.frame_count) << ','
          << averageMs(totals_.times.command_buffer_ms, config_.frame_count) << '\n';
 }

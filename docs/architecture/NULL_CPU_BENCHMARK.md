@@ -28,6 +28,8 @@ Useful options:
 --visibility high|low
 --glyphs-per-text <count>
 --dirty-text-stride <0|N>
+--dirty-transform-stride <0|N>
+--enable-sort
 --format text|csv
 ```
 
@@ -61,10 +63,10 @@ Text[] + TextState[] + FontAtlasRef[]
 Shared path:
 
 ```text
-DrawCommand[] -> BatchCommand[] -> CommandBuffer[]
+DrawCommand[] -> optional DrawSortSystem -> BatchCommand[] -> CommandBuffer[]
 ```
 
-The mixed scenario appends text draw commands after sprite draw commands, then batches the combined command stream. Static text can be measured with `--dirty-text-stride 0`; incremental dirty updates can be measured with `--dirty-text-stride N`. Numeric arguments are parsed strictly: malformed values fail instead of falling back to defaults.
+The mixed scenario appends text draw commands after sprite draw commands, then batches the combined command stream. Static text can be measured with `--dirty-text-stride 0`; incremental dirty updates can be measured with `--dirty-text-stride N`. Sparse transform updates can be measured with `--dirty-transform-stride N`. Sorting is opt-in through `--enable-sort` so callers can compare sort cost against batch-count reduction. Numeric arguments are parsed strictly: malformed values fail instead of falling back to defaults.
 
 ## Baseline Runner
 
@@ -82,6 +84,6 @@ The report includes active counts and average per-frame timings for:
 
 - transform, bounds, culling, and sprite command build
 - text dirty detection, glyph run update, glyph instance update, and glyph batching
-- final batch build and command buffer descriptor build
+- optional draw sort, final batch build, and command buffer descriptor build
 
 Stage 10 optimizations must compare against this baseline before changing hot-path implementations.

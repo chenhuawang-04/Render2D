@@ -4,6 +4,7 @@ param(
     [string]$BenchmarkExe = "",
     [string]$OutputDir = "",
     [switch]$IncludeDirtyTransform,
+    [switch]$IncludeSorted,
     [switch]$IncludeLarge,
     [switch]$IncludeHuge,
     [switch]$Quiet
@@ -83,6 +84,26 @@ if ($IncludeDirtyTransform) {
             Id = 'mixed_dirty_transform_10k_2k'
             Purpose = 'Mixed pipeline with partial transform and text dirty updates.'
             Args = @('--scenario', 'mixed', '--sprites', '10000', '--texts', '2048', '--frames', '8', '--warmup', '2', '--visibility', 'high', '--glyphs-per-text', '8', '--dirty-text-stride', '8', '--dirty-transform-stride', '4', '--format', 'csv')
+        }
+    )
+}
+
+if ($IncludeSorted) {
+    $Scenarios += @(
+        [pscustomobject]@{
+            Id = 'sprite_sorted_10k'
+            Purpose = 'Sprite pipeline with radix sort enabled before batching.'
+            Args = @('--scenario', 'sprite', '--sprites', '10000', '--frames', '8', '--warmup', '2', '--visibility', 'high', '--enable-sort', '--format', 'csv')
+        },
+        [pscustomobject]@{
+            Id = 'text_sorted_2k'
+            Purpose = 'Text pipeline with radix sort enabled before batching.'
+            Args = @('--scenario', 'text', '--texts', '2048', '--frames', '8', '--warmup', '2', '--glyphs-per-text', '8', '--dirty-text-stride', '8', '--enable-sort', '--format', 'csv')
+        },
+        [pscustomobject]@{
+            Id = 'mixed_sorted_10k_2k'
+            Purpose = 'Mixed pipeline with radix sort enabled before batching.'
+            Args = @('--scenario', 'mixed', '--sprites', '10000', '--texts', '2048', '--frames', '8', '--warmup', '2', '--visibility', 'high', '--glyphs-per-text', '8', '--dirty-text-stride', '8', '--enable-sort', '--format', 'csv')
         }
     )
 }
@@ -169,10 +190,10 @@ $Markdown.Add("- Build directory: ``$BuildDir``") | Out-Null
 $Markdown.Add("- Benchmark executable: ``$BenchmarkExe``") | Out-Null
 $Markdown.Add("- CSV: ``$CsvPath``") | Out-Null
 $Markdown.Add('') | Out-Null
-$Markdown.Add('| Scenario | Dirty Xform | Visible | Total Draws | Batches | Transform ms | Bounds ms | Culling ms | Sprite Cmd ms | Text Dirty ms | Glyph Instance ms | Batch ms |') | Out-Null
-$Markdown.Add('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|') | Out-Null
+$Markdown.Add('| Scenario | Sort | Dirty Xform | Visible | Total Draws | Batches | Transform ms | Bounds ms | Culling ms | Sprite Cmd ms | Text Dirty ms | Glyph Instance ms | Sort ms | Batch ms |') | Out-Null
+$Markdown.Add('|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|') | Out-Null
 foreach ($Record in $Records) {
-    $Markdown.Add("| $($Record.scenario_id) | $($Record.dirty_transform_stride) | $($Record.visible) | $($Record.total_draws) | $($Record.batches) | $($Record.avg_transform_ms) | $($Record.avg_bounds_ms) | $($Record.avg_culling_ms) | $($Record.avg_sprite_command_ms) | $($Record.avg_text_dirty_ms) | $($Record.avg_glyph_instance_ms) | $($Record.avg_batch_ms) |") | Out-Null
+    $Markdown.Add("| $($Record.scenario_id) | $($Record.enable_sort) | $($Record.dirty_transform_stride) | $($Record.visible) | $($Record.total_draws) | $($Record.batches) | $($Record.avg_transform_ms) | $($Record.avg_bounds_ms) | $($Record.avg_culling_ms) | $($Record.avg_sprite_command_ms) | $($Record.avg_text_dirty_ms) | $($Record.avg_glyph_instance_ms) | $($Record.avg_sort_ms) | $($Record.avg_batch_ms) |") | Out-Null
 }
 $Markdown | Set-Content -Path $MarkdownPath -Encoding utf8
 

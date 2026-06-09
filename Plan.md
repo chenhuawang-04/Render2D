@@ -1771,16 +1771,15 @@
   10E status (done): single-thread Transform/Bounds hot path is optimized. Added Strict POD `TransformDirtyItem`, `TransformSystem::runDirty`, `BoundsSystem::runDirty`, benchmark dirty-index feeding, and a zero-rotation transform fast path. Perf 10k static transform is now about 3.0x-3.9x faster; dirty transform/bounds scenarios now update sparse indices instead of full spatial streams.
 
 
+  10F status (done): sort/batch-key foundation is complete. Added packed `makeDrawSortKey`, explicit `DrawSortSystem` stable radix sort over `DrawCommand.sort_key`, `--enable-sort` benchmark mode, and BatchSystem packed-key-first comparison with full collision-safe verification. Sorting is opt-in because it reduces batch counts sharply but has measurable CPU cost.
+
+
 
   SIMD bounds/culling
 
   dirty transform propagation
 
   SoA transform columns
-
-  radix sort sort_key
-
-  batch key packing
 
   draw command compaction
 
@@ -2073,7 +2072,6 @@
   9. Vulkan RAII 生命周期由 storage/runtime/system 处理。
 
   10. 性能先通过 Null CPU pipeline benchmark 验证，再进入 Vulkan。
-
 
 
 

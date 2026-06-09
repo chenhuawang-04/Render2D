@@ -38,6 +38,12 @@ Optional large local-only scenarios:
 .\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeHuge
 ```
 
+Optional sorted scenarios:
+
+```powershell
+.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeSorted
+```
+
 ## Standard Scenarios
 
 | Scenario | Purpose | Main arguments |
@@ -186,6 +192,35 @@ Perf delta against the Stage 10D Perf capture:
 - Static 10k transform: about 3.0x-3.9x faster from zero-rotation fast path.
 - Dirty 10k transform: about 1.5x-1.8x faster from dirty-index updates.
 - Dirty 10k bounds: about 2.1x-2.8x faster from dirty-index updates.
+
+## Stage 10F Sort/Batch Key Result
+
+Stage 10F adds:
+
+- `makeDrawSortKey(layer, material, texture, flags)` packed key helper.
+- `DrawSortSystem` stable 4-pass radix sort over `DrawCommand.sort_key`.
+- Batch merge first compares packed `sort_key`, then verifies full material/texture/layer/flags to avoid collision merges.
+- Benchmark `--enable-sort` and runner `-IncludeSorted`; sorting remains explicit because sprite-only CPU paths can be faster without sorting.
+
+- Captured UTC: 2026-06-09T09:32:04Z
+- Build tree: `build_perf`
+- Command: `.\scripts\run_null_cpu_benchmarks.ps1 -BuildDir build_perf -IncludeDirtyTransform -IncludeSorted -Quiet`
+- Correctness gate: `ctest --preset clang-ninja-perf` passed 33/33.
+
+| Scenario | Sort | Total Draws | Batches | Sort ms | Batch ms |
+|---|---:|---:|---:|---:|---:|
+| `sprite_high_10k` | 0 | 10000 | 79 | 0 | 0.0185125 |
+| `text_dirty_2k` | 0 | 2048 | 2048 | 0 | 0.002825 |
+| `mixed_10k_2k` | 0 | 12048 | 2127 | 0 | 0.0189875 |
+| `sprite_sorted_10k` | 1 | 10000 | 8 | 0.18185 | 0.0185 |
+| `text_sorted_2k` | 1 | 2048 | 16 | 0.025725 | 0.0034625 |
+| `mixed_sorted_10k_2k` | 1 | 12048 | 24 | 0.19365 | 0.019925 |
+
+Interpretation:
+
+- Sorting reduces batch count dramatically: sprite 79 -> 8, text 2048 -> 16, mixed 2127 -> 24.
+- CPU-only sort cost is visible, so sorting is now an explicit runtime choice instead of always-on.
+- Native renderer stages can use sorted paths when reduced batch/native submit count outweighs sort cost.
 
 ## Gate Rule
 

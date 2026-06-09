@@ -76,6 +76,9 @@ struct BenchState {
     R2D::McVector<GlyphInstance> glyph_instances;
 
     R2D::McVector<DrawCommand> draw_commands;
+    R2D::McVector<DrawCommand> sorted_draw_commands;
+    R2D::McVector<R2D::SortedItem<Provider, Dim>> sort_scratch_a;
+    R2D::McVector<R2D::SortedItem<Provider, Dim>> sort_scratch_b;
     R2D::McVector<BatchCommand> batch_commands;
     R2D::McVector<CommandBuffer> command_buffers;
 
@@ -240,6 +243,9 @@ void fillTextInputs(const R2DB::BenchmarkConfig& config_, BenchState& state_) no
     state.glyph_instances.resize(counts_.glyph_count);
 
     state.draw_commands.resize(nonZeroCapacity(counts_.draw_capacity));
+    state.sorted_draw_commands.resize(nonZeroCapacity(counts_.draw_capacity));
+    state.sort_scratch_a.resize(nonZeroCapacity(counts_.draw_capacity));
+    state.sort_scratch_b.resize(nonZeroCapacity(counts_.draw_capacity));
     state.batch_commands.resize(nonZeroCapacity(counts_.draw_capacity));
     state.command_buffers.resize(1U);
 
@@ -465,14 +471,36 @@ void copyTextStates(BenchState& state_) noexcept
 }
 
 [[nodiscard]] int runCommonPath(
+    const R2DB::BenchmarkConfig& config_,
     R2D::U32 frame_index_,
     BenchState& state_,
     R2DB::BenchmarkTotals& frame_totals_)
 {
+    const std::span<const DrawCommand> draw_commands{
+        state_.draw_commands.data(),
+        frame_totals_.total_draw_count,
+    };
+    std::span<const DrawCommand> batch_input = draw_commands;
+    if (config_.enable_sort) {
+        auto start = std::chrono::steady_clock::now();
+        auto result = R2D::DrawSortSystem<Provider, Dim>::run(
+            draw_commands,
+            state_.sorted_draw_commands,
+            state_.sort_scratch_a,
+            state_.sort_scratch_b);
+        auto end = std::chrono::steady_clock::now();
+        frame_totals_.times.sort_ms += R2DB::elapsedMs(start, end);
+        if (!isOk(result)) {
+            return reportSystemFailure("sort", result);
+        }
+        batch_input = std::span<const DrawCommand>{
+            state_.sorted_draw_commands.data(),
+            frame_totals_.total_draw_count,
+        };
+    }
+
     auto start = std::chrono::steady_clock::now();
-    auto result = R2D::BatchSystem<Provider, Dim>::run(
-        std::span<const DrawCommand>{state_.draw_commands.data(), frame_totals_.total_draw_count},
-        state_.batch_commands);
+    auto result = R2D::BatchSystem<Provider, Dim>::run(batch_input, state_.batch_commands);
     auto end = std::chrono::steady_clock::now();
     frame_totals_.times.batch_ms += R2DB::elapsedMs(start, end);
     if (!isOk(result)) {
@@ -518,7 +546,7 @@ void copyTextStates(BenchState& state_) noexcept
         }
     }
 
-    const int common_result = runCommonPath(frame_index_, state_, frame_totals);
+    const int common_result = runCommonPath(config_, frame_index_, state_, frame_totals);
     if (common_result != 0) {
         return common_result;
     }

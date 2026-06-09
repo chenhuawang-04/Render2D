@@ -24,6 +24,9 @@ template<class Provider, class Dim>
 struct BatchSystem;
 
 template<class Provider, class Dim>
+struct DrawSortSystem;
+
+template<class Provider, class Dim>
 struct TextDirtySystem;
 
 template<class Provider, class Dim>

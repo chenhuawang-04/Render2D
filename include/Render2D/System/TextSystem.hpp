@@ -4,6 +4,7 @@
 #include "Render2D/Component/Text.hpp"
 #include "Render2D/Core/Result.hpp"
 #include "Render2D/Meta/Domain.hpp"
+#include "Render2D/System/SortKey.hpp"
 
 #include <limits>
 #include <span>
@@ -563,6 +564,7 @@ struct GlyphBatchSystem {
                     };
                 }
 
+                const U32 flags = text.flags | run.flags | atlas->flags | config_.flags;
                 draw_commands_[draw_count] = {
                     .source_index = run.source_text_index,
                     .material_id = config_.material_id,
@@ -573,9 +575,9 @@ struct GlyphBatchSystem {
                     .index_count = config_.index_count,
                     .instance_first = run.glyph_first,
                     .instance_count = run.glyph_count,
-                    .sort_key = text.layer,
+                    .sort_key = makeDrawSortKey(text.layer, config_.material_id, atlas->texture_id, flags),
                     .layer = text.layer,
-                    .flags = text.flags | run.flags | atlas->flags | config_.flags,
+                    .flags = flags,
                 };
                 ++draw_count;
             }

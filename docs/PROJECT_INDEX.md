@@ -52,6 +52,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/CullingSystem.hpp` - Produces `VisibleItem[]` using camera bounds and visibility masks.
 - `include/Render2D/System/CommandBuildSystem.hpp` - Builds `DrawCommand[]` from visible items and sprites.
 - `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands.
+- `include/Render2D/System/SortKey.hpp` - Packed draw sort/batch key helpers.
+- `include/Render2D/System/SortSystem.hpp` - Stable radix sort over `DrawCommand.sort_key` using caller-owned scratch spans.
 - `include/Render2D/System/CommandBufferSystem.hpp` - Builds and clears POD `CommandBuffer` range descriptors.
 - `include/Render2D/System/EncodeSystem.hpp` - CPU-only encode contract from `CommandBuffer` ranges to `NativeCommandBufferRef`.
 - `include/Render2D/System/SubmitSystem.hpp` - CPU-only submit contract from native command refs and `FrameSync` to `NativeSubmitCommand`.
@@ -92,6 +94,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/compile_smoke.cpp` - Umbrella compile smoke and broad static assertions.
 - `tests/test_harness_test.cpp` - Self-test for the lightweight test assertion harness.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
+- `tests/draw_sort_system_test.cpp` - Packed sort key, radix draw sort, batch merge, and collision-safety coverage.
 - `tests/transform_dirty_system_test.cpp` - Sparse dirty transform/bounds update coverage.
 - `tests/bounds_system_test.cpp` - fast_math AABB transform regression coverage for translation, scale, rotation, shear, and error paths.
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
@@ -123,7 +126,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 
 ## Scripts
 
-- `scripts/run_null_cpu_benchmarks.ps1` - Runs standard, dirty-transform, large, and huge local Null CPU benchmark suites; supports `-BuildDir` for Debug/Perf trees and writes timestamped CSV/Markdown reports.
+- `scripts/run_null_cpu_benchmarks.ps1` - Runs standard, dirty-transform, sorted, large, and huge local Null CPU benchmark suites; supports `-BuildDir` for Debug/Perf trees and writes timestamped CSV/Markdown reports.
 
 ## Benchmarks
 
