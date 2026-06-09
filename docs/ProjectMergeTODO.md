@@ -128,3 +128,16 @@ Render2D-owned dynamic arrays must use `Render2D::McVector<T>`, which aliases Ve
 Vulkan buffer/image backing memory must be allocated, persistently mapped, flushed, invalidated, and freed through `VulkanMemoryCenterAllocator`. Render2D runtime code should not call `vkAllocateMemory`, `vkFreeMemory`, `vkMapMemory`, `vkUnmapMemory`, `vkBindBufferMemory`, or `vkBindImageMemory` directly.
 
 Merge rule: host ECS owns only POD component streams and refs; Render2D native runtime owns MemoryCenter-backed CPU runtime tables and GPU allocation slices behind `id + generation` references.
+
+
+## 11. Text/Glyph data is POD-only in Stage 9A
+
+Stage 9A adds only data contracts: `Utf8Slice`, `GlyphRun`, `GlyphInstance`, and `FontAtlasRef` are Strict POD ECS components.
+
+Merge rule:
+
+- host ECS owns the component streams;
+- UTF-8 backing buffers, font files, shaping caches, atlas images, and glyph raster data remain outside ECS components;
+- glyph systems should pass only ids, ranges, atlas rects, positions, colors, sort keys, and flags through ECS.
+
+Still not implemented: font shaping, atlas packing, sampled-image descriptor policy, and Vulkan text draw integration.

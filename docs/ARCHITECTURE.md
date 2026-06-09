@@ -14,12 +14,13 @@ Render2D is a C++23, component-first, Vulkan-native rendering module. The curren
 ## Current data pipeline
 
 ```text
-Transform[] / Sprite[] / Text[] / Camera[]
+Transform[] / Sprite[] / Text[] / Utf8Slice[] / Camera[]
     -> TransformSystem
     -> BoundsSystem
     -> CullingSystem
     -> CommandBuildSystem
     -> BatchSystem
+    -> Text/Glyph POD streams
     -> CommandBufferBuildSystem
     -> CommandBuffer[]
     -> EncodeSystem
@@ -34,8 +35,8 @@ The CPU component pipeline remains ECS-driven. Stage 8 now attaches Vulkan comma
 
 The component layer defines Strict POD ECS records:
 
-- Scene/input components: `Transform`, `Sprite`, `Text`, `Camera`, `LocalBounds`, `VisibilityMask`, `RenderLayer`, `MaterialRef`, `TextureRef`, `FontRef`.
-- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`.
+- Scene/input components: `Transform`, `Sprite`, `Text`, `Utf8Slice`, `Camera`, `LocalBounds`, `VisibilityMask`, `RenderLayer`, `MaterialRef`, `TextureRef`, `FontRef`, `FontAtlasRef`.
+- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `GlyphRun`, `GlyphInstance`.
 - Command components: `DrawCommand`, `BatchCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
 - Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `BufferRef`, `UploadSlice`.
@@ -135,11 +136,14 @@ Implemented:
 - Stage 8E descriptors, shader modules, pipeline cache, and dynamic-rendering pipeline creation through `VulkanDescriptorRuntime` and `VulkanPipelineRuntime`
 - Stage 8F MemoryCenter-backed persistent mapped upload ring with frame-slot reuse protection through `VulkanUploadRingRuntime`
 - Stage 8G offscreen dynamic-rendering smoke through `VulkanDynamicRenderEncoder`
+- Stage 9A Text/Glyph Strict POD components: `Utf8Slice`, `GlyphRun`, `GlyphInstance`, and `FontAtlasRef`
 
 Not implemented yet:
 
 - deferred destroy queues
 - swapchain creation, image acquire, present, and window-visible output
 - production sprite instance shader/data layout
+- font shaping and atlas packing
 - production texture atlas / sampled-image descriptor policy
+- Vulkan text draw integration
 - RenderDoc automation; current capture target is the offscreen Vulkan smoke executable

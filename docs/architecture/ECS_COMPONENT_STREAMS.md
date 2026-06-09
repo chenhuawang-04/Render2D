@@ -45,3 +45,17 @@ NativeSubmitCommand[]
 
 CommandBuffer<Provider, Dim> 是 ECS component，但只保存 draw / batch / upload / native submit 的 offset/count range。它不拥有真实 command arrays。当前通过 CommandBufferBuildSystem 生成，通过 CommandBufferClearSystem 清零 descriptor。
 
+
+
+## Text / Glyph component streams
+
+Stage 9A introduces only Strict POD data streams for text:
+
+```text
+Text[] + Utf8Slice[] + FontAtlasRef[]
+    -> GlyphRun[]
+    -> GlyphInstance[]
+    -> future DrawCommand[] / BatchCommand[]
+```
+
+`Text`, `Utf8Slice`, `FontAtlasRef`, `GlyphRun`, and `GlyphInstance` are ECS components. They do not own strings, glyph caches, atlas images, or font resources. Backing storage and future shaping/atlas systems remain outside the component contract.

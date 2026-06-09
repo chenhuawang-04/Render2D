@@ -1680,6 +1680,8 @@
 
   ## 阶段 9：Text / Glyph Pipeline
 
+  9A status (done): Text/Glyph Strict POD component contract is complete. `Utf8Slice`, `GlyphRun`, `GlyphInstance`, and `FontAtlasRef` are registered as supported ECS components, with tests covering POD traits and temporary ECS stream storage. No font library, shaping, atlas packing, or Vulkan text draw is implemented in 9A.
+
 
 
   目标：文本也保持 Strict POD component stream。

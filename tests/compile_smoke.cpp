@@ -43,6 +43,9 @@ static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Transform<Provid
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::WorldTransform<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Sprite<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Text<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Utf8Slice<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::GlyphRun<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::GlyphInstance<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Camera<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::LocalBounds<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::WorldBounds<Provider, Dim>>);
@@ -51,6 +54,7 @@ static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::RenderLayer<Prov
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::MaterialRef<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TextureRef<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::FontRef<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::FontAtlasRef<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::VisibleItem<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SortedItem<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::DrawCommand<Provider, Dim>>);

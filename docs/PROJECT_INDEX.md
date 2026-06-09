@@ -37,7 +37,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Component/Transform.hpp` - `Transform` and `WorldTransform`.
 - `include/Render2D/Component/Bounds.hpp` - `LocalBounds` and `WorldBounds`.
 - `include/Render2D/Component/Sprite.hpp` - Sprite-facing components and render references.
-- `include/Render2D/Component/Text.hpp` - Text input component and `FontRef`.
+- `include/Render2D/Component/Text.hpp` - Text input, UTF-8 slice, font atlas, glyph run, and glyph instance POD components.
 - `include/Render2D/Component/Camera.hpp` - Camera input component.
 - `include/Render2D/Component/Command.hpp` - Visibility, sorting, draw command, and `CommandBuffer` descriptor components.
 - `include/Render2D/Component/Batch.hpp` - `BatchCommand`.
@@ -91,6 +91,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/compile_smoke.cpp` - Umbrella compile smoke and broad static assertions.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
+- `tests/text_glyph_components_test.cpp` - Text/Glyph Strict POD component contract and temporary stream storage behavior.
 - `tests/native_components_test.cpp` - Native POD ECS component contract checks.
 - `tests/native_runtime_contract_test.cpp` - Native runtime type/result POD contract checks.
 - `tests/native_resource_runtime_test.cpp` - Buffer/image native slot table stale-reference and generation reuse checks.
@@ -126,6 +127,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/ProjectMergeTODO.md` - Host-engine merge notes and migration constraints.
 - `docs/adr/2026-06-08-component-first-vulkan-native-render2d.md` - Initial ADR for component-first Vulkan-native architecture.
 - `docs/adr/2026-06-09-memorycenter-mcvector-runtime-memory.md` - ADR for MemoryCenter/McVector CPU runtime storage and Vulkan GPU allocation.
+- `docs/adr/2026-06-09-text-glyph-pod-components.md` - ADR for Text/Glyph Strict POD data contracts.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

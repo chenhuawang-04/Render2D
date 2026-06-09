@@ -15,6 +15,15 @@ template<class Provider, class Dim>
 struct Text;
 
 template<class Provider, class Dim>
+struct Utf8Slice;
+
+template<class Provider, class Dim>
+struct GlyphRun;
+
+template<class Provider, class Dim>
+struct GlyphInstance;
+
+template<class Provider, class Dim>
 struct Camera;
 
 template<class Provider, class Dim>
@@ -37,6 +46,9 @@ struct TextureRef;
 
 template<class Provider, class Dim>
 struct FontRef;
+
+template<class Provider, class Dim>
+struct FontAtlasRef;
 
 template<class Provider, class Dim>
 struct VisibleItem;
