@@ -29,6 +29,14 @@ struct SpriteMaterialBinding;
 template<class Provider, class Dim>
 struct SpriteTextureBinding;
 
+struct TextureAtlasBuildConfig;
+
+template<class Provider, class Dim>
+struct TextureAtlasItem;
+
+template<class Provider, class Dim>
+struct TextureAtlasRegion;
+
 template<class Provider, class Dim>
 struct SpriteInstanceUploadCommand;
 

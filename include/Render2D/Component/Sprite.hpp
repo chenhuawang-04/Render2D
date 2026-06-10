@@ -10,6 +10,8 @@ struct Sprite {
     U32 source_id;
     U32 texture_id;
     U32 texture_generation;
+    U32 texture_region_id;
+    U32 texture_region_generation;
     U32 material_id;
     U32 material_generation;
     U32 color_rgba8;
@@ -93,6 +95,46 @@ struct SpriteTextureBinding {
     U32 flags;
 };
 
+struct TextureAtlasBuildConfig {
+    U32 atlas_width;
+    U32 atlas_height;
+    U32 atlas_id;
+    U32 atlas_generation;
+    U32 texture_id;
+    U32 texture_generation;
+    U32 padding;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
+struct TextureAtlasItem {
+    U32 region_id;
+    U32 generation;
+    U32 width;
+    U32 height;
+    U32 padding;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
+struct TextureAtlasRegion {
+    U32 region_id;
+    U32 generation;
+    U32 atlas_id;
+    U32 atlas_generation;
+    U32 texture_id;
+    U32 texture_generation;
+    U32 x;
+    U32 y;
+    U32 width;
+    U32 height;
+    float uv_min_x;
+    float uv_min_y;
+    float uv_max_x;
+    float uv_max_y;
+    U32 flags;
+};
+
 template<class Provider, class Dim>
 struct SpriteInstanceUploadCommand {
     U32 instance_first;
@@ -168,6 +210,20 @@ struct ComponentTraits<Provider, Dim, SpriteTextureBinding<Provider, Dim>> {
     static constexpr bool kSupported =
         SupportedRenderDomain<Provider, Dim> &&
         StrictPodComponent<SpriteTextureBinding<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, TextureAtlasItem<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<TextureAtlasItem<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, TextureAtlasRegion<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<TextureAtlasRegion<Provider, Dim>>;
 };
 
 template<class Provider, class Dim>

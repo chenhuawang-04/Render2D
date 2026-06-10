@@ -22,6 +22,8 @@ using SpriteInstance = R2D::SpriteInstance<Provider, Dim>;
 using SpriteMaterialBinding = R2D::SpriteMaterialBinding<Provider, Dim>;
 using SpriteTextureBinding = R2D::SpriteTextureBinding<Provider, Dim>;
 using SpriteVertex = R2D::SpriteVertex<Provider, Dim>;
+using TextureAtlasItem = R2D::TextureAtlasItem<Provider, Dim>;
+using TextureAtlasRegion = R2D::TextureAtlasRegion<Provider, Dim>;
 using WorldTransform = R2D::WorldTransform<Provider, Dim>;
 
 static_assert(R2D::StrictPodComponent<SpriteVertex>);
@@ -29,11 +31,15 @@ static_assert(R2D::StrictPodComponent<SpriteInstance>);
 static_assert(R2D::StrictPodComponent<SpriteDrawPacket>);
 static_assert(R2D::StrictPodComponent<SpriteMaterialBinding>);
 static_assert(R2D::StrictPodComponent<SpriteTextureBinding>);
+static_assert(R2D::StrictPodComponent<TextureAtlasItem>);
+static_assert(R2D::StrictPodComponent<TextureAtlasRegion>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteVertex>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteInstance>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteDrawPacket>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteMaterialBinding>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteTextureBinding>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, TextureAtlasItem>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, TextureAtlasRegion>);
 
 constexpr R2D::Mat3 makeAffine(
     float m00_,
@@ -119,6 +125,8 @@ void testBuildSpriteInstances(R2DT::TestContext& context_)
             .source_id = 10U,
             .texture_id = 100U,
             .texture_generation = 0U,
+            .texture_region_id = 0U,
+            .texture_region_generation = 0U,
             .material_id = 200U,
             .material_generation = 0U,
             .color_rgba8 = 0x11223344U,
@@ -129,6 +137,8 @@ void testBuildSpriteInstances(R2DT::TestContext& context_)
             .source_id = 11U,
             .texture_id = 101U,
             .texture_generation = 0U,
+            .texture_region_id = 0U,
+            .texture_region_generation = 0U,
             .material_id = 201U,
             .material_generation = 0U,
             .color_rgba8 = 0x55667788U,
@@ -139,6 +149,8 @@ void testBuildSpriteInstances(R2DT::TestContext& context_)
             .source_id = 12U,
             .texture_id = 102U,
             .texture_generation = 0U,
+            .texture_region_id = 0U,
+            .texture_region_generation = 0U,
             .material_id = 202U,
             .material_generation = 0U,
             .color_rgba8 = 0x99AABBCCU,
@@ -327,6 +339,220 @@ void testPacketBuildInvalidInput(R2DT::TestContext& context_)
     R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::InvalidInput);
 }
 
+void testTextureAtlasBuildSystem(R2DT::TestContext& context_)
+{
+    constexpr std::array<TextureAtlasItem, 3U> kItems{{
+        {
+            .region_id = 1U,
+            .generation = 10U,
+            .width = 4U,
+            .height = 4U,
+            .padding = 0U,
+            .flags = 1U,
+        },
+        {
+            .region_id = 2U,
+            .generation = 20U,
+            .width = 8U,
+            .height = 4U,
+            .padding = 0U,
+            .flags = 2U,
+        },
+        {
+            .region_id = 3U,
+            .generation = 30U,
+            .width = 4U,
+            .height = 4U,
+            .padding = 0U,
+            .flags = 4U,
+        },
+    }};
+    constexpr R2D::TextureAtlasBuildConfig kConfig{
+        .atlas_width = 16U,
+        .atlas_height = 8U,
+        .atlas_id = 9U,
+        .atlas_generation = 90U,
+        .texture_id = 5U,
+        .texture_generation = 50U,
+        .padding = 0U,
+        .flags = 0x100U,
+    };
+    std::array<TextureAtlasRegion, kItems.size()> regions{};
+
+    auto result = R2D::TextureAtlasBuildSystem<Provider, Dim>::run(kItems, regions, kConfig);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(context_, result.read_count, 3U);
+    R2D_TEST_CHECK_EQ(context_, result.write_count, 3U);
+
+    R2D_TEST_CHECK_EQ(context_, regions[0U].region_id, 1U);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].generation, 10U);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].x, 0U);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].y, 0U);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].uv_min_x, 0.0F);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].uv_min_y, 0.0F);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].uv_max_x, 0.25F);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].uv_max_y, 0.5F);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].flags, 0x101U);
+
+    R2D_TEST_CHECK_EQ(context_, regions[1U].x, 4U);
+    R2D_TEST_CHECK_EQ(context_, regions[1U].uv_min_x, 0.25F);
+    R2D_TEST_CHECK_EQ(context_, regions[1U].uv_max_x, 0.75F);
+
+    R2D_TEST_CHECK_EQ(context_, regions[2U].x, 12U);
+    R2D_TEST_CHECK_EQ(context_, regions[2U].uv_min_x, 0.75F);
+    R2D_TEST_CHECK_EQ(context_, regions[2U].uv_max_x, 1.0F);
+
+    std::array<TextureAtlasRegion, 1U> short_regions{};
+    result = R2D::TextureAtlasBuildSystem<Provider, Dim>::run(kItems, short_regions, kConfig);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::InsufficientCapacity);
+
+    constexpr std::array<TextureAtlasItem, 1U> kTooLarge{{
+        {
+            .region_id = 4U,
+            .generation = 40U,
+            .width = 17U,
+            .height = 4U,
+            .padding = 0U,
+            .flags = 0U,
+        },
+    }};
+    result = R2D::TextureAtlasBuildSystem<Provider, Dim>::run(kTooLarge, regions, kConfig);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::InvalidInput);
+
+    constexpr std::array<TextureAtlasItem, 3U> kWrapItems{{
+        {.region_id = 5U, .generation = 50U, .width = 4U, .height = 4U, .padding = 0U, .flags = 0U},
+        {.region_id = 6U, .generation = 60U, .width = 4U, .height = 4U, .padding = 0U, .flags = 0U},
+        {.region_id = 7U, .generation = 70U, .width = 4U, .height = 4U, .padding = 0U, .flags = 0U},
+    }};
+    constexpr R2D::TextureAtlasBuildConfig kWrapConfig{
+        .atlas_width = 8U,
+        .atlas_height = 8U,
+        .atlas_id = 9U,
+        .atlas_generation = 90U,
+        .texture_id = 5U,
+        .texture_generation = 50U,
+        .padding = 0U,
+        .flags = 0U,
+    };
+    result = R2D::TextureAtlasBuildSystem<Provider, Dim>::run(kWrapItems, regions, kWrapConfig);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].x, 0U);
+    R2D_TEST_CHECK_EQ(context_, regions[1U].x, 4U);
+    R2D_TEST_CHECK_EQ(context_, regions[2U].x, 0U);
+    R2D_TEST_CHECK_EQ(context_, regions[2U].y, 4U);
+
+    constexpr std::array<TextureAtlasItem, 1U> kPaddedItems{{
+        {.region_id = 8U, .generation = 80U, .width = 4U, .height = 4U, .padding = 1U, .flags = 0U},
+    }};
+    constexpr R2D::TextureAtlasBuildConfig kPaddedConfig{
+        .atlas_width = 8U,
+        .atlas_height = 8U,
+        .atlas_id = 9U,
+        .atlas_generation = 90U,
+        .texture_id = 5U,
+        .texture_generation = 50U,
+        .padding = 1U,
+        .flags = 0U,
+    };
+    result = R2D::TextureAtlasBuildSystem<Provider, Dim>::run(kPaddedItems, regions, kPaddedConfig);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].x, 2U);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].y, 2U);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].uv_min_x, 0.25F);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].uv_max_x, 0.75F);
+}
+
+void testSpriteInstancesUseTextureRegions(R2DT::TestContext& context_)
+{
+    constexpr std::array<WorldTransform, 1U> kWorldTransforms{{
+        {.source_id = 1U, .affine = makeAffine(1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F)},
+    }};
+    constexpr std::array<Sprite, 1U> kSprites{{
+        {
+            .source_id = 1U,
+            .texture_id = 5U,
+            .texture_generation = 50U,
+            .texture_region_id = 2U,
+            .texture_region_generation = 20U,
+            .material_id = 7U,
+            .material_generation = 70U,
+            .color_rgba8 = 0xFFFFFFFFU,
+            .layer = 0U,
+            .flags = 0U,
+        },
+    }};
+    std::array<DrawCommand, 1U> draws{{
+        makeDraw(0U, 0U, 7U, 5U, 0U, 0U),
+    }};
+    draws[0U].material_generation = 70U;
+    draws[0U].texture_generation = 50U;
+    constexpr std::array<TextureAtlasRegion, 1U> kRegions{{
+        {
+            .region_id = 2U,
+            .generation = 20U,
+            .atlas_id = 9U,
+            .atlas_generation = 90U,
+            .texture_id = 5U,
+            .texture_generation = 50U,
+            .x = 4U,
+            .y = 0U,
+            .width = 8U,
+            .height = 4U,
+            .uv_min_x = 0.25F,
+            .uv_min_y = 0.0F,
+            .uv_max_x = 0.75F,
+            .uv_max_y = 0.5F,
+            .flags = 0U,
+        },
+    }};
+    std::array<SpriteInstance, 1U> instances{};
+
+    auto result = R2D::SpriteInstanceBuildSystem<Provider, Dim>::runWithTextureRegions(
+        draws,
+        kWorldTransforms,
+        kSprites,
+        kRegions,
+        instances);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(context_, instances[0U].uv_min_x, 0.25F);
+    R2D_TEST_CHECK_EQ(context_, instances[0U].uv_max_x, 0.75F);
+    R2D_TEST_CHECK_EQ(context_, instances[0U].texture_generation, 50U);
+    R2D_TEST_CHECK_EQ(context_, instances[0U].material_generation, 70U);
+
+    std::array<Sprite, 1U> stale_region_sprites{kSprites};
+    stale_region_sprites[0U].texture_region_generation = 21U;
+    result = R2D::SpriteInstanceBuildSystem<Provider, Dim>::runWithTextureRegions(
+        draws,
+        kWorldTransforms,
+        stale_region_sprites,
+        kRegions,
+        instances);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::InvalidInput);
+
+    std::array<TextureAtlasRegion, 1U> mismatched_texture_regions{kRegions};
+    mismatched_texture_regions[0U].texture_generation = 51U;
+    result = R2D::SpriteInstanceBuildSystem<Provider, Dim>::runWithTextureRegions(
+        draws,
+        kWorldTransforms,
+        kSprites,
+        mismatched_texture_regions,
+        instances);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::InvalidInput);
+
+    std::array<Sprite, 1U> default_region_sprites{kSprites};
+    default_region_sprites[0U].texture_region_id = 0U;
+    default_region_sprites[0U].texture_region_generation = 0U;
+    result = R2D::SpriteInstanceBuildSystem<Provider, Dim>::runWithTextureRegions(
+        draws,
+        kWorldTransforms,
+        default_region_sprites,
+        std::span<const TextureAtlasRegion>{},
+        instances);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(context_, instances[0U].uv_min_x, 0.0F);
+    R2D_TEST_CHECK_EQ(context_, instances[0U].uv_max_x, 1.0F);
+}
+
 void testCapacityAndInvalidInput(R2DT::TestContext& context_)
 {
     constexpr std::array<WorldTransform, 1U> kWorldTransforms{{
@@ -337,6 +563,8 @@ void testCapacityAndInvalidInput(R2DT::TestContext& context_)
             .source_id = 1U,
             .texture_id = 2U,
             .texture_generation = 0U,
+            .texture_region_id = 0U,
+            .texture_region_generation = 0U,
             .material_id = 3U,
             .material_generation = 0U,
             .color_rgba8 = 4U,
@@ -398,6 +626,8 @@ void testUnsupportedDomain(R2DT::TestContext& context_)
     testBuildSpriteInstances(context);
     testBuildSpriteDrawPackets(context);
     testPacketBuildInvalidInput(context);
+    testTextureAtlasBuildSystem(context);
+    testSpriteInstancesUseTextureRegions(context);
     testCapacityAndInvalidInput(context);
     testUnsupportedDomain(context);
     return context.result();

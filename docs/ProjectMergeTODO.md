@@ -484,3 +484,15 @@ Merge rule:
 - current packet builder requires contiguous instance ranges inside a batch before emitting one instanced draw packet.
 
 Production atlas packing, material graph policy, descriptor indexing, and text rendering remain separate future integration work.
+
+## 38. Texture atlas regions are ECS components; atlas images remain runtime/host resources
+
+Stage 15 adds `TextureAtlasItem`, `TextureAtlasRegion`, `TextureAtlasBuildConfig`, `TextureAtlasBuildSystem`, and `Sprite.texture_region_id + texture_region_generation`.
+
+Merge rule:
+
+- host ECS owns atlas item/region streams and sprite region references;
+- `TextureAtlasBuildSystem` is a deterministic no-allocation shelf packer over caller-owned spans;
+- `TextureAtlasRegion` stores atlas id/generation, texture id/generation, pixel rect, and normalized UVs;
+- `SpriteInstanceBuildSystem::runWithTextureRegions` writes region UVs into `SpriteInstance[]` and rejects stale or texture-mismatched regions;
+- actual atlas images, uploads, raster data, descriptor updates, and advanced packing policy remain outside ECS components and should be owned by host/runtime integration.

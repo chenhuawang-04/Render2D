@@ -40,6 +40,7 @@ static_assert(R2D::StrictPodComponent<R2D::VulkanSamplerConfig>);
 static_assert(R2D::StrictPodComponent<R2D::VulkanSamplerRuntimeConfig>);
 static_assert(R2D::StrictPodComponent<R2D::VulkanSpritePipelineConfig>);
 static_assert(R2D::StrictPodComponent<R2D::VulkanSpriteRenderEncoderConfig>);
+static_assert(R2D::StrictPodComponent<R2D::TextureAtlasBuildConfig>);
 static_assert(R2D::isSystemResultCountRepresentable(0U));
 static_assert(R2D::isSystemResultCountRepresentable(0xFFFFFFFFULL));
 static_assert(!R2D::isSystemResultCountRepresentable(0x1'0000'0000ULL));
@@ -59,6 +60,8 @@ static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteInstance<P
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteDrawPacket<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteMaterialBinding<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteTextureBinding<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TextureAtlasItem<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TextureAtlasRegion<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SpriteInstanceUploadCommand<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::Text<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::TextState<Provider, Dim>>);

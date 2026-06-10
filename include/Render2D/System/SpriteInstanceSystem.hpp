@@ -94,6 +94,293 @@ struct SpriteInstanceBuildSystem {
             };
         }
     }
+
+    static SystemResult runWithTextureRegions(
+        std::span<const DrawCommand<Provider, Dim>> draw_commands_,
+        std::span<const WorldTransform<Provider, Dim>> world_transforms_,
+        std::span<const Sprite<Provider, Dim>> sprites_,
+        std::span<const TextureAtlasRegion<Provider, Dim>> texture_regions_,
+        std::span<SpriteInstance<Provider, Dim>> sprite_instances_) noexcept
+    {
+        if constexpr (!SupportedRenderDomain<Provider, Dim>) {
+            return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
+        } else {
+            if (!isSystemResultCountRepresentable(draw_commands_.size()) ||
+                !isSystemResultCountRepresentable(world_transforms_.size()) ||
+                !isSystemResultCountRepresentable(sprites_.size()) ||
+                !isSystemResultCountRepresentable(texture_regions_.size()) ||
+                !isSystemResultCountRepresentable(sprite_instances_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
+            if (draw_commands_.empty()) {
+                return {.code = SystemStatusCode::Ok, .read_count = 0U, .write_count = 0U};
+            }
+
+            const U32 draw_count = static_cast<U32>(draw_commands_.size());
+            for (U32 draw_index = 0U; draw_index < draw_count; ++draw_index) {
+                const auto& draw = draw_commands_[draw_index];
+                if (draw.instance_count != 1U ||
+                    draw.source_index >= sprites_.size() ||
+                    draw.source_index >= world_transforms_.size()) {
+                    return {
+                        .code = SystemStatusCode::InvalidInput,
+                        .read_count = draw_index,
+                        .write_count = 0U,
+                    };
+                }
+                if (draw.instance_first >= sprite_instances_.size()) {
+                    return {
+                        .code = SystemStatusCode::InsufficientCapacity,
+                        .read_count = draw_index,
+                        .write_count = 0U,
+                    };
+                }
+                const auto& sprite = sprites_[draw.source_index];
+                if (!hasValidTextureRegion(sprite, draw, texture_regions_)) {
+                    return {
+                        .code = SystemStatusCode::InvalidInput,
+                        .read_count = draw_index,
+                        .write_count = 0U,
+                    };
+                }
+            }
+
+            for (U32 draw_index = 0U; draw_index < draw_count; ++draw_index) {
+                const auto& draw = draw_commands_[draw_index];
+                const auto& sprite = sprites_[draw.source_index];
+                const auto& world = world_transforms_[draw.source_index];
+                const auto& affine = world.affine;
+                float uv_min_x = kSpriteDefaultUvMin;
+                float uv_min_y = kSpriteDefaultUvMin;
+                float uv_max_x = kSpriteDefaultUvMax;
+                float uv_max_y = kSpriteDefaultUvMax;
+                const auto* region = findTextureRegion(
+                    sprite.texture_region_id,
+                    sprite.texture_region_generation,
+                    texture_regions_);
+                if (region != nullptr) {
+                    uv_min_x = region->uv_min_x;
+                    uv_min_y = region->uv_min_y;
+                    uv_max_x = region->uv_max_x;
+                    uv_max_y = region->uv_max_y;
+                }
+
+                sprite_instances_[draw.instance_first] = {
+                    .transform_m00 = affine.m00,
+                    .transform_m01 = affine.m01,
+                    .transform_m02 = affine.m02,
+                    .transform_m10 = affine.m10,
+                    .transform_m11 = affine.m11,
+                    .transform_m12 = affine.m12,
+                    .uv_min_x = uv_min_x,
+                    .uv_min_y = uv_min_y,
+                    .uv_max_x = uv_max_x,
+                    .uv_max_y = uv_max_y,
+                    .source_index = draw.source_index,
+                    .source_id = sprite.source_id,
+                    .texture_id = draw.texture_id,
+                    .texture_generation = draw.texture_generation,
+                    .material_id = draw.material_id,
+                    .material_generation = draw.material_generation,
+                    .color_rgba8 = sprite.color_rgba8,
+                    .sort_key = draw.sort_key,
+                    .layer = draw.layer,
+                    .flags = draw.flags,
+                };
+            }
+
+            return {
+                .code = SystemStatusCode::Ok,
+                .read_count = draw_count,
+                .write_count = draw_count,
+            };
+        }
+    }
+
+private:
+    static bool hasValidTextureRegion(
+        const Sprite<Provider, Dim>& sprite_,
+        const DrawCommand<Provider, Dim>& draw_,
+        std::span<const TextureAtlasRegion<Provider, Dim>> texture_regions_) noexcept
+    {
+        if (sprite_.texture_region_id == 0U && sprite_.texture_region_generation == 0U) {
+            return true;
+        }
+
+        const auto* region = findTextureRegion(
+            sprite_.texture_region_id,
+            sprite_.texture_region_generation,
+            texture_regions_);
+        return region != nullptr &&
+            region->texture_id == draw_.texture_id &&
+            region->texture_generation == draw_.texture_generation;
+    }
+
+    static const TextureAtlasRegion<Provider, Dim>* findTextureRegion(
+        U32 region_id_,
+        U32 generation_,
+        std::span<const TextureAtlasRegion<Provider, Dim>> texture_regions_) noexcept
+    {
+        if (generation_ == 0U) {
+            return nullptr;
+        }
+        if (region_id_ < texture_regions_.size() &&
+            texture_regions_[region_id_].region_id == region_id_ &&
+            texture_regions_[region_id_].generation == generation_) {
+            return &texture_regions_[region_id_];
+        }
+
+        for (const auto& region : texture_regions_) {
+            if (region.region_id == region_id_ && region.generation == generation_) {
+                return &region;
+            }
+        }
+        return nullptr;
+    }
+};
+
+template<class Provider, class Dim>
+struct TextureAtlasBuildSystem {
+    static SystemResult run(
+        std::span<const TextureAtlasItem<Provider, Dim>> items_,
+        std::span<TextureAtlasRegion<Provider, Dim>> regions_,
+        TextureAtlasBuildConfig config_) noexcept
+    {
+        if constexpr (!SupportedRenderDomain<Provider, Dim>) {
+            return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
+        } else {
+            if (!isSystemResultCountRepresentable(items_.size()) ||
+                !isSystemResultCountRepresentable(regions_.size()) ||
+                !isValidConfig(config_)) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
+            if (items_.empty()) {
+                return {.code = SystemStatusCode::Ok, .read_count = 0U, .write_count = 0U};
+            }
+            if (regions_.size() < items_.size()) {
+                return {
+                    .code = SystemStatusCode::InsufficientCapacity,
+                    .read_count = static_cast<U32>(items_.size()),
+                    .write_count = static_cast<U32>(regions_.size()),
+                };
+            }
+
+            U32 cursor_x = 0U;
+            U32 cursor_y = 0U;
+            U32 row_height = 0U;
+            U32 write_count = 0U;
+            for (Usize index = 0U; index < items_.size(); ++index) {
+                const auto& item = items_[index];
+                U32 padded_width = 0U;
+                U32 padded_height = 0U;
+                U32 padding = 0U;
+                if (!makePaddedExtent(item, config_, padded_width, padded_height, padding)) {
+                    return {
+                        .code = SystemStatusCode::InvalidInput,
+                        .read_count = static_cast<U32>(index),
+                        .write_count = write_count,
+                    };
+                }
+
+                if (cursor_x != 0U && padded_width > config_.atlas_width - cursor_x) {
+                    cursor_x = 0U;
+                    if (cursor_y > 0xFFFFFFFFU - row_height) {
+                        return {
+                            .code = SystemStatusCode::InsufficientCapacity,
+                            .read_count = static_cast<U32>(index),
+                            .write_count = write_count,
+                        };
+                    }
+                    cursor_y += row_height;
+                    row_height = 0U;
+                }
+                if (cursor_y > config_.atlas_height ||
+                    padded_height > config_.atlas_height - cursor_y) {
+                    return {
+                        .code = SystemStatusCode::InsufficientCapacity,
+                        .read_count = static_cast<U32>(index),
+                        .write_count = write_count,
+                    };
+                }
+
+                const U32 x = cursor_x + padding;
+                const U32 y = cursor_y + padding;
+                regions_[write_count] = makeRegion(item, config_, x, y);
+                ++write_count;
+
+                cursor_x += padded_width;
+                row_height = row_height < padded_height ? padded_height : row_height;
+            }
+
+            return {
+                .code = SystemStatusCode::Ok,
+                .read_count = static_cast<U32>(items_.size()),
+                .write_count = write_count,
+            };
+        }
+    }
+
+private:
+    static bool isValidConfig(TextureAtlasBuildConfig config_) noexcept
+    {
+        return config_.atlas_width != 0U &&
+            config_.atlas_height != 0U &&
+            config_.atlas_generation != 0U &&
+            config_.texture_generation != 0U;
+    }
+
+    static bool makePaddedExtent(
+        const TextureAtlasItem<Provider, Dim>& item_,
+        TextureAtlasBuildConfig config_,
+        U32& out_width_,
+        U32& out_height_,
+        U32& out_padding_) noexcept
+    {
+        if (item_.generation == 0U ||
+            item_.width == 0U ||
+            item_.height == 0U ||
+            config_.padding > 0xFFFFFFFFU - item_.padding) {
+            return false;
+        }
+
+        out_padding_ = config_.padding + item_.padding;
+        if (out_padding_ > (0xFFFFFFFFU / 2U) ||
+            item_.width > 0xFFFFFFFFU - (out_padding_ * 2U) ||
+            item_.height > 0xFFFFFFFFU - (out_padding_ * 2U)) {
+            return false;
+        }
+
+        out_width_ = item_.width + out_padding_ * 2U;
+        out_height_ = item_.height + out_padding_ * 2U;
+        return out_width_ <= config_.atlas_width && out_height_ <= config_.atlas_height;
+    }
+
+    static TextureAtlasRegion<Provider, Dim> makeRegion(
+        const TextureAtlasItem<Provider, Dim>& item_,
+        TextureAtlasBuildConfig config_,
+        U32 x_,
+        U32 y_) noexcept
+    {
+        const float inv_width = 1.0F / static_cast<float>(config_.atlas_width);
+        const float inv_height = 1.0F / static_cast<float>(config_.atlas_height);
+        return {
+            .region_id = item_.region_id,
+            .generation = item_.generation,
+            .atlas_id = config_.atlas_id,
+            .atlas_generation = config_.atlas_generation,
+            .texture_id = config_.texture_id,
+            .texture_generation = config_.texture_generation,
+            .x = x_,
+            .y = y_,
+            .width = item_.width,
+            .height = item_.height,
+            .uv_min_x = static_cast<float>(x_) * inv_width,
+            .uv_min_y = static_cast<float>(y_) * inv_height,
+            .uv_max_x = static_cast<float>(x_ + item_.width) * inv_width,
+            .uv_max_y = static_cast<float>(y_ + item_.height) * inv_height,
+            .flags = item_.flags | config_.flags,
+        };
+    }
 };
 
 template<class Provider, class Dim>

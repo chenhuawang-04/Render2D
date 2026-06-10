@@ -2286,3 +2286,29 @@
 - smoke 使用 red/green 两张 1x1 纹理，左右半屏 readback 验证；
 - stale descriptor generation 负例已覆盖；
 - 仍未实现：atlas packing、复杂 material graph、bindless/descriptor indexing、Vulkan text draw。
+
+## 2026-06-10 第十五阶段进度
+
+- [x] 15A：`Sprite` 增加 `texture_region_id + texture_region_generation`
+- [x] 15B：新增 `TextureAtlasItem`、`TextureAtlasRegion`、`TextureAtlasBuildConfig`
+- [x] 15C：新增无分配、确定性的 `TextureAtlasBuildSystem`
+- [x] 15D：`SpriteInstanceBuildSystem::runWithTextureRegions` 支持区域 UV 写入
+- [x] 15E：第十五阶段文档、ADR、测试与验证收口完成
+
+15A/15B 边界说明：
+
+- atlas item/region 仍是 Strict POD ECS component；
+- atlas/texture 对 ECS 暴露继续使用 `id + generation`；
+- `texture_region_id == 0 && texture_region_generation == 0` 表示使用整张纹理默认 UV。
+
+15C/15D 边界说明：
+
+- `TextureAtlasBuildSystem` 只做 CPU 侧 shelf packing，输入/输出均由调用方提供 span，不分配、不调用 Vulkan；
+- `runWithTextureRegions` 按 `region_id + generation` 解析区域，并校验 region 的 texture id/generation 与 draw command 一致；
+- 当前只建立 atlas region -> sprite instance UV 基础路径，不实现 atlas image 上传、复杂 bin packing、字体 raster 数据接入或 bindless 策略。
+
+15E 结论：
+
+- Stage 15 已完成；
+- sprite path 已具备 ECS 侧 texture atlas region 与 UV 传播基础；
+- 生产 atlas 图片生命周期、真实贴图合图、material graph、descriptor indexing 与 Vulkan text draw 留到后续阶段。

@@ -183,6 +183,8 @@ void fillSpriteInputs(const R2DB::BenchmarkConfig& config_, BenchState& state_) 
             .source_id = source_id,
             .texture_id = static_cast<R2D::U32>((index / 128U) % 8U),
             .texture_generation = 0U,
+            .texture_region_id = 0U,
+            .texture_region_generation = 0U,
             .material_id = static_cast<R2D::U32>((index / 128U) % 4U),
             .material_generation = 0U,
             .color_rgba8 = 0xFFFFFFFFU,

@@ -24,6 +24,11 @@ Transform[] / Sprite[] / Camera[]
     -> CommandBuildSystem
     -> DrawCommand[]
 
+Optional atlas path:
+TextureAtlasItem[]
+    -> TextureAtlasBuildSystem
+    -> TextureAtlasRegion[]
+
 Text path:
 Text[] + TextState[] + FontAtlasRef[]
     -> TextDirtySystem
@@ -36,7 +41,7 @@ Text[] + TextState[] + FontAtlasRef[]
 DrawCommand[]
     -> DrawSortSystem (optional)
     -> DrawCommand[]
-    -> SpriteInstanceBuildSystem
+    -> SpriteInstanceBuildSystem / runWithTextureRegions
     -> SpriteInstance[]
     -> BatchSystem
     -> BatchCommand[]
@@ -67,8 +72,8 @@ The CPU component pipeline remains ECS-driven. Vulkan command, sync, submit, res
 
 The component layer defines Strict POD ECS records:
 
-- Scene/input components: `Transform`, `Sprite`, `Text`, `Utf8Slice`, `Camera`, `LocalBounds`, `VisibilityMask`, `RenderLayer`, `MaterialRef`, `TextureRef`, `FontRef`, `FontAtlasRef`.
-- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, `SpriteMaterialBinding`, `SpriteTextureBinding`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`.
+- Scene/input components: `Transform`, `Sprite`, `Text`, `Utf8Slice`, `Camera`, `LocalBounds`, `VisibilityMask`, `RenderLayer`, `MaterialRef`, `TextureRef`, `FontRef`, `FontAtlasRef`, `TextureAtlasItem`.
+- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, `SpriteMaterialBinding`, `SpriteTextureBinding`, `TextureAtlasRegion`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`.
 - Command components: `DrawCommand`, `BatchCommand`, `SpriteInstanceUploadCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
 - Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `SamplerRef`, `BufferRef`, `UploadSlice`.
@@ -113,6 +118,8 @@ Stage 12E adds `VulkanSpriteRenderEncoder`, a runtime-only dynamic rendering rec
 Stage 13 adds the first real sampled sprite path. `SamplerRef` is a Strict POD ECS-visible resource reference, while `VulkanSamplerRuntime` owns `VkSampler` lifetimes. `VulkanResourceRuntime::recordCopyBufferToImage` records tightly packed upload-buffer copies into managed sampled images. The textured sprite smoke updates a combined image sampler descriptor, draws through the sprite encoder, and verifies a green 4x4 offscreen target by readback.
 
 Stage 14 turns the single-texture proof into a multi-packet sprite binding path. Texture/material identities now carry generation fields through `Sprite`, `DrawCommand`, `BatchCommand`, `SpriteInstance`, and `SpriteDrawPacket`. `SpriteMaterialBinding[]` and `SpriteTextureBinding[]` are ECS-owned POD streams that resolve batch identities to pipeline and descriptor references. `SpriteDrawPacketBuildSystem` emits packet records, and `VulkanSpriteRenderEncoder::recordPackets` draws multiple packets in one render pass while rebinding pipeline/descriptor only when the packet changes them.
+
+Stage 15 adds the texture-atlas UV region foundation. `TextureAtlasItem[]` and `TextureAtlasRegion[]` are ECS-owned Strict POD streams, and `TextureAtlasBuildSystem` performs deterministic no-allocation shelf packing into caller-owned output spans. `Sprite` now carries `texture_region_id + texture_region_generation`; `SpriteInstanceBuildSystem::runWithTextureRegions` resolves that pair, validates the region texture id/generation against the `DrawCommand`, and writes region UVs into `SpriteInstance`. Atlas image creation/upload and advanced packing remain future runtime/host work.
 
 ## Temporary test ECS
 
@@ -236,12 +243,15 @@ Implemented:
 - Stage 14B packet build system: `SpriteMaterialBinding`, `SpriteTextureBinding`, and `SpriteDrawPacketBuildSystem`
 - Stage 14C multi-packet encoder: `VulkanSpriteRenderEncoder::recordPackets`
 - Stage 14D multi-texture smoke: red/green descriptor batches in one command buffer with readback verification
+- Stage 15A texture atlas POD contracts: `TextureAtlasItem`, `TextureAtlasRegion`, `TextureAtlasBuildConfig`, and `Sprite` region id/generation
+- Stage 15B deterministic shelf atlas packing through `TextureAtlasBuildSystem`
+- Stage 15C sprite instance UV region propagation through `SpriteInstanceBuildSystem::runWithTextureRegions`
 
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
 - host-engine window-visible capture automation
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
-- production texture atlas packing, complex material graph, and bindless/descriptor-indexing policy
+- production atlas image upload/raster-data ingestion, advanced bin packing, complex material graph, and bindless/descriptor-indexing policy
 - Vulkan text draw integration
 - RenderDoc automation; current capture target is the offscreen Vulkan smoke executable
