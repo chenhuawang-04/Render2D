@@ -414,6 +414,19 @@ render2d_apply_strict_warnings(render2d_vulkan_sprite_pipeline_runtime_test)
 
 add_test(NAME render2d.vulkan_sprite_pipeline_runtime COMMAND render2d_vulkan_sprite_pipeline_runtime_test)
 
+add_executable(render2d_vulkan_sprite_render_encoder_test
+    vulkan_sprite_render_encoder_test.cpp
+)
+target_link_libraries(render2d_vulkan_sprite_render_encoder_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_vulkan_sprite_render_encoder_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_vulkan_sprite_render_encoder_test)
+
+add_test(NAME render2d.vulkan_sprite_render_encoder COMMAND render2d_vulkan_sprite_render_encoder_test)
+
 add_executable(render2d_vulkan_dynamic_render_encoder_test
     vulkan_dynamic_render_encoder_test.cpp
 )

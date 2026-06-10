@@ -405,3 +405,30 @@ Merge rule:
 - descriptor layout currently exposes sampled textures through combined image sampler descriptors;
 - instance buffers are bound as vertex/instance buffers, not as descriptor-owned storage;
 - `PipelineRef` and `DescriptorSlice` remain id + generation records resolved by native runtime.
+
+## 32. Sprite render encoder is runtime-only
+
+Stage 12E adds `VulkanSpriteRenderEncoder`.
+
+Merge rule:
+
+- host ECS still owns `SpriteVertex[]`, `SpriteInstance[]`, draw/batch streams, and POD refs;
+- encoder receives resolved component refs and native runtimes, but does not own ECS storage;
+- vertex data binds at slot 0 and instance data binds at slot 1, matching `VulkanSpritePipelineRuntime`;
+- `PipelineRef`, `BufferRef`, `ImageRef`, `DescriptorSlice`, and `NativeCommandBufferRef` stay id + generation records;
+- current smoke shader outputs instance color only; sampled texture/material descriptor policy remains a later integration step.
+
+## 33. Stage 12 sprite GPU path is closed
+
+Stage 12 is complete as of 2026-06-10.
+
+Completed merge-relevant items:
+
+- sprite GPU-facing POD records;
+- `SpriteInstanceBuildSystem`;
+- typed sprite instance upload command conversion;
+- MemoryCenter-backed upload-ring copy into managed GPU buffers;
+- sprite descriptor/pipeline layout;
+- offscreen real sprite draw smoke through `VulkanSpriteRenderEncoder`.
+
+Future work belongs to later stages: production texture atlas ownership, sampler/descriptor update policy, material selection, batching across multiple textures/materials, and Vulkan text draw integration.

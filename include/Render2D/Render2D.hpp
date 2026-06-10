@@ -41,6 +41,7 @@
 #include "Render2D/Native/VulkanResourceRuntime.hpp"
 #include "Render2D/Native/VulkanSpriteInstanceUploadRuntime.hpp"
 #include "Render2D/Native/VulkanSpritePipelineRuntime.hpp"
+#include "Render2D/Native/VulkanSpriteRenderEncoder.hpp"
 #include "Render2D/Native/VulkanSubmitRuntime.hpp"
 #include "Render2D/Native/VulkanSwapchainRuntime.hpp"
 #include "Render2D/Native/VulkanSyncRuntime.hpp"

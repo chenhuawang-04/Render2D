@@ -2182,8 +2182,8 @@
 - [x] 12B：`SpriteInstanceBuildSystem` 完成
 - [x] 12C：MemoryCenter-backed Sprite instance GPU upload path 完成
 - [x] 12D：Sprite pipeline / descriptor layout 完成
-- [ ] 12E：offscreen real sprite render smoke
-- [ ] 12F：第十二阶段文档与验证收口
+- [x] 12E：offscreen real sprite render smoke 完成
+- [x] 12F：第十二阶段文档与验证收口 完成
 
 12A/12B 边界说明：
 
@@ -2211,3 +2211,18 @@
 - 当前 shader-visible instance attributes 为 transform row0/row1、UV rect、packed RGBA8 color；source/material/texture metadata 保留在组件流中，后续 batch/descriptor 策略再使用；
 - sprite descriptor runtime config 当前只要求 combined image sampler array，不把 instance buffer 放入 descriptor；
 - 12D 只完成 descriptor layout 与 graphics pipeline creation smoke，真实 offscreen sprite draw 留到 12E。
+
+12E 边界说明：
+
+- 新增 `VulkanSpriteRenderEncoderConfig` 与 `VulkanSpriteRenderEncoder`；
+- encoder 是 native runtime 记录器，不是 ECS component/storage；
+- ECS/宿主仍拥有 `SpriteVertex[]`、`SpriteInstance[]`、`BufferRef`、`ImageRef`、`PipelineRef`、`DescriptorSlice` 等 POD streams/ref；
+- encoder 只解析 id + generation 引用，绑定 vertex buffer slot 0 与 instance buffer slot 1，开始 dynamic rendering 并执行 `vkCmdDraw`；
+- 当前 offscreen smoke shader 输出 `SpriteInstance.color_rgba8`，证明真实 sprite vertex/instance GPU path；真实 texture sampling/material policy 留到后续阶段。
+
+12F 结论：
+
+- Stage 12 已完成；
+- sprite GPU-facing POD records、instance build、instance upload、pipeline layout、offscreen real sprite draw 均已落地；
+- Debug / Perf CTest 覆盖真实 Vulkan sprite render smoke；
+- 仍未实现：生产 texture atlas、sampled-image descriptor update policy、material selection、text Vulkan draw。

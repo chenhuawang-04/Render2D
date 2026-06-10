@@ -129,6 +129,9 @@ template<class Provider, class Dim>
 struct VulkanSpritePipelineRuntime;
 
 template<class Provider, class Dim>
+class VulkanSpriteRenderEncoder;
+
+template<class Provider, class Dim>
 class DescriptorStorage;
 
 template<class Provider, class Dim>

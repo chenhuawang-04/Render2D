@@ -89,6 +89,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - MemoryCenter-backed persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
 - `include/Render2D/Native/VulkanSpriteInstanceUploadRuntime.hpp` - Stage 12C stateless upload bridge from `SpriteInstance[]` to managed GPU buffers through the upload ring.
 - `include/Render2D/Native/VulkanSpritePipelineRuntime.hpp` - Stage 12D stateless sprite vertex-input, descriptor config, and pipeline creation helper.
+- `include/Render2D/Native/VulkanSpriteRenderEncoder.hpp` - Stage 12E runtime-only sprite draw encoder that binds `SpriteVertex`/`SpriteInstance` buffers and records dynamic rendering.
 - `include/Render2D/Native/VulkanRenderEncoder.hpp` - Dynamic rendering encoder for direct and indirect draw recording.
 
 ### Memory and Storage
@@ -137,6 +138,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_upload_ring_runtime_test.cpp` - Optional Vulkan persistent upload ring frame-slot reuse smoke test.
 - `tests/vulkan_sprite_instance_upload_runtime_test.cpp` - Optional Stage 12C upload-ring to GPU buffer copy/readback smoke test for `SpriteInstance[]`.
 - `tests/vulkan_sprite_pipeline_runtime_test.cpp` - Optional Stage 12D descriptor layout plus sprite graphics pipeline creation smoke test.
+- `tests/vulkan_sprite_render_encoder_test.cpp` - Optional Stage 12E offscreen real sprite draw smoke test using sprite vertex/instance buffers and readback verification.
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
@@ -145,6 +147,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/support/ComponentStreamView.hpp` - Test-only view helpers for temporary ECS storage.
 - `tests/support/VulkanSmokeContext.hpp` - Optional Vulkan instance/device/queue setup helper for smoke tests.
 - `tests/support/FullScreenTriangleShaders.hpp` - Embedded SPIR-V for the offscreen full-screen triangle smoke test.
+- `tests/support/SpriteShaders.hpp` - Embedded SPIR-V for the Stage 12E sprite vertex/instance offscreen smoke test.
 - `tests/support/TestHarness.hpp` - Lightweight no-dependency assertion helpers for CTest executables.
 
 ## Scripts
@@ -182,6 +185,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-stage12-sprite-gpu-instance-contract.md` - ADR for Stage 12A/12B sprite GPU-facing POD records and instance build system.
 - `docs/adr/2026-06-09-stage12-sprite-instance-upload-path.md` - ADR for Stage 12C MemoryCenter-backed sprite instance upload path.
 - `docs/adr/2026-06-10-stage12-sprite-pipeline-descriptor-layout.md` - ADR for Stage 12D sprite vertex-input pipeline and descriptor layout.
+- `docs/adr/2026-06-10-stage12-offscreen-sprite-render-smoke.md` - ADR for Stage 12E runtime-only offscreen sprite draw encoder and smoke proof.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

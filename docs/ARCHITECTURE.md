@@ -108,6 +108,8 @@ Stage 12C adds the sprite instance upload path. `SpriteInstanceUploadCommand` is
 
 Stage 12D adds the sprite pipeline and descriptor layout contract. `VulkanGraphicsPipelineConfig` now accepts optional vertex binding/attribute descriptions. `VulkanSpritePipelineRuntime` is a stateless helper that fixes the sprite vertex input layout: `SpriteVertex` is vertex-rate binding 0 and `SpriteInstance` is instance-rate binding 1. The descriptor layout currently uses a combined image sampler array; instance data remains a vertex/instance buffer, not a descriptor-owned ECS storage path.
 
+Stage 12E adds `VulkanSpriteRenderEncoder`, a runtime-only dynamic rendering recorder for the sprite vertex/instance path. It resolves POD refs by id + generation, binds vertex buffer slot 0 and instance buffer slot 1, optionally binds descriptor slices, records `vkCmdDraw`, and leaves ECS ownership of `SpriteVertex[]`, `SpriteInstance[]`, refs, and command streams outside Render2D runtime storage.
+
 ## Temporary test ECS
 
 The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration. Its backing arrays use `Render2D::McVector`, but the storage itself remains test-only.
@@ -159,6 +161,7 @@ Implemented Vulkan-backed runtimes:
 - `VulkanUploadRingRuntime` - MemoryCenter-backed persistent mapped, frame-segmented upload ring; slices are not reusable until the frame is completed.
 - `VulkanSpriteInstanceUploadRuntime` - stateless bridge that uploads `SpriteInstance[]` through the upload ring into a managed GPU buffer.
 - `VulkanSpritePipelineRuntime` - stateless sprite descriptor/pipeline layout helper over `VulkanDescriptorRuntime` and `VulkanPipelineRuntime`.
+- `VulkanSpriteRenderEncoder` - runtime-only sprite dynamic rendering encoder that binds vertex/instance buffers and records direct sprite draws.
 - `VulkanDynamicRenderEncoder` - records dynamic rendering, pipeline bind, direct draw, and indirect draw.
 
 These runtime classes are not ECS storage. They own backend slot lifecycle metadata, validate generations, reject stale references, reuse slots, and keep Vulkan handles out of ECS components.
@@ -217,12 +220,13 @@ Implemented:
 - Stage 12A/12B sprite GPU instance contracts: `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, and `SpriteInstanceBuildSystem`
 - Stage 12C sprite instance GPU upload path: `SpriteInstanceUploadCommand`, `SpriteInstanceUploadSystem`, and `VulkanSpriteInstanceUploadRuntime`
 - Stage 12D sprite descriptor/pipeline layout: optional vertex input in `VulkanGraphicsPipelineConfig`, `VulkanSpritePipelineConfig`, and `VulkanSpritePipelineRuntime`
+- Stage 12E offscreen real sprite draw: `VulkanSpriteRenderEncoder`, embedded sprite smoke shaders, and readback verification over `SpriteVertex` + `SpriteInstance` buffers
+- Stage 12F sprite GPU path closeout: documentation, ADR, project index, Debug/Perf verification, clang-tidy, and source constraint scans
 
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
 - host-engine window-visible capture automation
-- Real offscreen sprite draw
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
 - production texture atlas / sampled-image descriptor policy
 - Vulkan text draw integration

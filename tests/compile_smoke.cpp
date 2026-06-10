@@ -37,6 +37,7 @@ static_assert(!R2D::StrictPodComponent<SmokeNonPodComponent>);
 static_assert(R2D::StrictPodComponent<R2D::RangeU32>);
 static_assert(R2D::StrictPodComponent<R2D::SystemResult>);
 static_assert(R2D::StrictPodComponent<R2D::VulkanSpritePipelineConfig>);
+static_assert(R2D::StrictPodComponent<R2D::VulkanSpriteRenderEncoderConfig>);
 static_assert(R2D::isSystemResultCountRepresentable(0U));
 static_assert(R2D::isSystemResultCountRepresentable(0xFFFFFFFFULL));
 static_assert(!R2D::isSystemResultCountRepresentable(0x1'0000'0000ULL));
