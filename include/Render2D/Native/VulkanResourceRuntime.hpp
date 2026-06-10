@@ -573,6 +573,75 @@ public:
         return makeResult(NativeStatusCode::Ok, NativeObjectKind::Buffer, ref_.buffer_id, ref_.generation);
     }
 
+    NativeResult recordCopyBufferToImage(
+        VkCommandBuffer command_buffer_,
+        const BufferRef<Provider, Dim>& source_,
+        const ImageRef<Provider, Dim>& destination_) const noexcept
+    {
+        return recordCopyBufferToImage(command_buffer_, source_, destination_, 0U);
+    }
+
+    NativeResult recordCopyBufferToImage(
+        VkCommandBuffer command_buffer_,
+        const BufferRef<Provider, Dim>& source_,
+        const ImageRef<Provider, Dim>& destination_,
+        U64 source_offset_) const noexcept
+    {
+        U64 byte_count = 0U;
+        if (command_buffer_ == VK_NULL_HANDLE ||
+            !isLiveBufferRef(source_) ||
+            !isLiveImageRef(destination_) ||
+            (source_.usage_flags & static_cast<U32>(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)) == 0U ||
+            (destination_.usage_flags & static_cast<U32>(VK_IMAGE_USAGE_TRANSFER_DST_BIT)) == 0U ||
+            !makeImageByteCount(destination_, byte_count) ||
+            !isValidBufferRange(source_, source_offset_, byte_count)) {
+            return makeResult(
+                NativeStatusCode::InvalidInput,
+                NativeObjectKind::Image,
+                destination_.image_id,
+                destination_.generation);
+        }
+
+        VkBuffer source_buffer = VK_NULL_HANDLE;
+        NativeResult result = resolveNativeBuffer(source_, source_buffer);
+        if (result.code != NativeStatusCode::Ok) {
+            return result;
+        }
+
+        VkImage destination_image = VK_NULL_HANDLE;
+        VkImageView destination_view = VK_NULL_HANDLE;
+        result = resolveNativeImage(destination_, destination_image, destination_view);
+        if (result.code != NativeStatusCode::Ok) {
+            return result;
+        }
+
+        const VkBufferImageCopy copy_region{
+            .bufferOffset = source_offset_,
+            .bufferRowLength = 0U,
+            .bufferImageHeight = 0U,
+            .imageSubresource = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0U,
+                .baseArrayLayer = 0U,
+                .layerCount = 1U,
+            },
+            .imageOffset = {.x = 0, .y = 0, .z = 0},
+            .imageExtent = {.width = destination_.width, .height = destination_.height, .depth = 1U},
+        };
+        vkCmdCopyBufferToImage(
+            command_buffer_,
+            source_buffer,
+            destination_image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1U,
+            &copy_region);
+        return makeResult(
+            NativeStatusCode::Ok,
+            NativeObjectKind::Image,
+            destination_.image_id,
+            destination_.generation);
+    }
+
     NativeResult recordCopyImageToBuffer(
         VkCommandBuffer command_buffer_,
         const ImageRef<Provider, Dim>& source_,
@@ -920,6 +989,46 @@ private:
     {
         const auto& slot = buffer_slots[ref_.buffer_id];
         return byte_count_ <= slot.byte_size && offset_ <= slot.byte_size - byte_count_;
+    }
+
+    static bool makeImageByteCount(
+        const ImageRef<Provider, Dim>& image_,
+        U64& out_byte_count_) noexcept
+    {
+        U64 bytes_per_pixel = 0U;
+        if (!formatBytesPerPixel(image_.format, bytes_per_pixel) ||
+            image_.width == 0U ||
+            image_.height == 0U ||
+            static_cast<U64>(image_.width) > kMaxU64 / static_cast<U64>(image_.height)) {
+            out_byte_count_ = 0U;
+            return false;
+        }
+
+        const U64 pixel_count = static_cast<U64>(image_.width) * static_cast<U64>(image_.height);
+        if (pixel_count > kMaxU64 / bytes_per_pixel) {
+            out_byte_count_ = 0U;
+            return false;
+        }
+
+        out_byte_count_ = pixel_count * bytes_per_pixel;
+        return true;
+    }
+
+    static bool formatBytesPerPixel(
+        U32 format_,
+        U64& out_bytes_per_pixel_) noexcept
+    {
+        switch (static_cast<VkFormat>(format_)) {
+        case VK_FORMAT_R8G8B8A8_UNORM:
+        case VK_FORMAT_R8G8B8A8_SRGB:
+        case VK_FORMAT_B8G8R8A8_UNORM:
+        case VK_FORMAT_B8G8R8A8_SRGB:
+            out_bytes_per_pixel_ = 4U;
+            return true;
+        default:
+            out_bytes_per_pixel_ = 0U;
+            return false;
+        }
     }
 
     bool isLiveImageRef(const ImageRef<Provider, Dim>& ref_) const noexcept

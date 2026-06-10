@@ -57,6 +57,9 @@ template<class Provider, class Dim>
 struct ImageRef;
 
 template<class Provider, class Dim>
+struct SamplerRef;
+
+template<class Provider, class Dim>
 struct BufferRef;
 
 template<class Provider, class Dim>
@@ -106,6 +109,9 @@ class VulkanDynamicRenderEncoder;
 
 template<class Provider, class Dim>
 class VulkanResourceRuntime;
+
+template<class Provider, class Dim>
+class VulkanSamplerRuntime;
 
 template<class Provider, class Dim>
 class VulkanSyncRuntime;

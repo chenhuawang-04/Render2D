@@ -36,6 +36,8 @@ static_assert(R2D::StrictPodComponent<SmokePodComponent>);
 static_assert(!R2D::StrictPodComponent<SmokeNonPodComponent>);
 static_assert(R2D::StrictPodComponent<R2D::RangeU32>);
 static_assert(R2D::StrictPodComponent<R2D::SystemResult>);
+static_assert(R2D::StrictPodComponent<R2D::VulkanSamplerConfig>);
+static_assert(R2D::StrictPodComponent<R2D::VulkanSamplerRuntimeConfig>);
 static_assert(R2D::StrictPodComponent<R2D::VulkanSpritePipelineConfig>);
 static_assert(R2D::StrictPodComponent<R2D::VulkanSpriteRenderEncoderConfig>);
 static_assert(R2D::isSystemResultCountRepresentable(0U));
@@ -88,6 +90,7 @@ static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::CommandBuffer<Pr
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::UploadRingSlice<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::DescriptorSlice<Provider, Dim>>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::FenceState<Provider, Dim>>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, R2D::SamplerRef<Provider, Dim>>);
 
 static_assert(!R2D::SupportedRenderComponent<Provider, Dim, SmokePodComponent>);
 static_assert(!R2D::SupportedRenderComponent<Provider, Dim, SmokeNonPodComponent>);

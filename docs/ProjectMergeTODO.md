@@ -432,3 +432,30 @@ Completed merge-relevant items:
 - offscreen real sprite draw smoke through `VulkanSpriteRenderEncoder`.
 
 Future work belongs to later stages: production texture atlas ownership, sampler/descriptor update policy, material selection, batching across multiple textures/materials, and Vulkan text draw integration.
+
+## 34. Sampler refs are ECS components; VkSampler ownership is runtime-only
+
+Stage 13 adds `SamplerRef`.
+
+Merge rule:
+
+- host ECS may store `SamplerRef[]` exactly like `ImageRef[]` or `BufferRef[]`;
+- every sampler record uses `sampler_id + generation`;
+- real `VkSampler` creation/destruction stays in `VulkanSamplerRuntime`;
+- stale sampler refs must be rejected before descriptor updates;
+- do not move `VkSampler` ownership, sampler caches, or runtime slot arrays into ECS components.
+
+## 35. Textured sprite sampling is proven, but atlas/material policy is still host-facing work
+
+Stage 13 proves a real sampled sprite path:
+
+- upload buffer -> sampled image copy is recorded by `VulkanResourceRuntime`;
+- descriptor update uses `DescriptorSlice` plus a resolved `SamplerRef`;
+- `VulkanSpriteRenderEncoder` binds the descriptor slice and draws the sprite;
+- the smoke verifies sampled green pixels by readback.
+
+Merge rule:
+
+- texture images and upload/readback buffers remain MemoryCenter-backed runtime resources;
+- ECS owns only POD refs and component streams;
+- production atlas packing, material selection, texture-array indexing, and multi-texture batch policy still need a dedicated host/runtime integration pass.

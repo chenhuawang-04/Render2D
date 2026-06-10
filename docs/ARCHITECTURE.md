@@ -61,7 +61,7 @@ BatchCommand[] + UploadCommand[] + DescriptorSlice[]
     -> NativeSubmitCommand[]
 ```
 
-The CPU component pipeline remains ECS-driven. Stage 8 now attaches Vulkan command, sync, submit, resource, descriptor, pipeline, upload-ring, and dynamic-rendering encoder runtimes behind POD references. The offscreen smoke path records an indirect full-screen triangle draw and validates readback.
+The CPU component pipeline remains ECS-driven. Vulkan command, sync, submit, resource, descriptor, pipeline, upload-ring, sampler, and encoder runtimes sit behind POD references. The current offscreen smoke paths validate both generic dynamic rendering and sprite textured sampling through readback.
 
 ## Component layer
 
@@ -71,7 +71,7 @@ The component layer defines Strict POD ECS records:
 - Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`.
 - Command components: `DrawCommand`, `BatchCommand`, `SpriteInstanceUploadCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
-- Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `BufferRef`, `UploadSlice`.
+- Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `SamplerRef`, `BufferRef`, `UploadSlice`.
 
 Every supported component is registered through `ComponentTraits` and checked by `SupportedRenderComponent`. `WorldTransform` stores `Render2D::Mat3` (`MMath::Mat3`), while `LocalBounds`, `WorldBounds`, and `GlyphInstance::atlas_rect` store `Render2D::Aabb2` (`MMath::Aabb2`). Use `makeAabb2` / `aabb2Min` / `aabb2Max` instead of touching AABB internals.
 
@@ -110,6 +110,8 @@ Stage 12D adds the sprite pipeline and descriptor layout contract. `VulkanGraphi
 
 Stage 12E adds `VulkanSpriteRenderEncoder`, a runtime-only dynamic rendering recorder for the sprite vertex/instance path. It resolves POD refs by id + generation, binds vertex buffer slot 0 and instance buffer slot 1, optionally binds descriptor slices, records `vkCmdDraw`, and leaves ECS ownership of `SpriteVertex[]`, `SpriteInstance[]`, refs, and command streams outside Render2D runtime storage.
 
+Stage 13 adds the first real sampled sprite path. `SamplerRef` is a Strict POD ECS-visible resource reference, while `VulkanSamplerRuntime` owns `VkSampler` lifetimes. `VulkanResourceRuntime::recordCopyBufferToImage` records tightly packed upload-buffer copies into managed sampled images. The textured sprite smoke updates a combined image sampler descriptor, draws through the sprite encoder, and verifies a green 4x4 offscreen target by readback.
+
 ## Temporary test ECS
 
 The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration. Its backing arrays use `Render2D::McVector`, but the storage itself remains test-only.
@@ -130,6 +132,7 @@ QueueHandle::queue_id + QueueHandle::generation
 SwapchainState::swapchain_id + SwapchainState::generation
 PipelineRef::pipeline_id + PipelineRef::generation
 ImageRef::image_id + ImageRef::generation
+SamplerRef::sampler_id + SamplerRef::generation
 BufferRef::buffer_id + BufferRef::generation
 DescriptorSlice::descriptor_set_id + DescriptorSlice::generation
 NativeCommandBufferRef::command_buffer_id + NativeCommandBufferRef::generation
@@ -154,7 +157,8 @@ Implemented Vulkan-backed runtimes:
 - `VulkanSyncRuntime` - real semaphore/fence lifecycle behind `FrameSync`.
 - `VulkanSubmitRuntime` - real `vkQueueSubmit` using resolved command buffers and frame sync.
 - `VulkanSwapchainRuntime` - swapchain/image-view runtime for host-provided surfaces or adopted swapchains.
-- `VulkanResourceRuntime` - real buffer/image/image-view lifecycle, MemoryCenter-backed GPU allocation, upload/readback, copies, and image layout tracking.
+- `VulkanResourceRuntime` - real buffer/image/image-view lifecycle, MemoryCenter-backed GPU allocation, upload/readback, buffer/image copies, and image layout tracking.
+- `VulkanSamplerRuntime` - real `VkSampler` lifecycle behind `SamplerRef`.
 - `VulkanDescriptorRuntime` - descriptor pool, descriptor set layout, set allocation, and descriptor array updates.
 - `VulkanPipelineRuntime` - shader module creation, pipeline cache, dynamic-rendering pipeline layout/pipeline creation.
 - `VulkanPresentRuntime` - swapchain image acquire and queue present using resolved `SwapchainState`, `PresentCommand`, and `FrameSync`.
@@ -222,12 +226,16 @@ Implemented:
 - Stage 12D sprite descriptor/pipeline layout: optional vertex input in `VulkanGraphicsPipelineConfig`, `VulkanSpritePipelineConfig`, and `VulkanSpritePipelineRuntime`
 - Stage 12E offscreen real sprite draw: `VulkanSpriteRenderEncoder`, embedded sprite smoke shaders, and readback verification over `SpriteVertex` + `SpriteInstance` buffers
 - Stage 12F sprite GPU path closeout: documentation, ADR, project index, Debug/Perf verification, clang-tidy, and source constraint scans
+- Stage 13A sampler POD/runtime path: `SamplerRef` and `VulkanSamplerRuntime`
+- Stage 13B texture upload recording: `VulkanResourceRuntime::recordCopyBufferToImage`
+- Stage 13C textured sprite smoke: combined image sampler descriptor update, sampled sprite shader, and green readback verification
+- Stage 13D textured sprite sampling closeout: documentation, ADR, project index, Debug/Perf verification, clang-tidy, and source constraint scans
 
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
 - host-engine window-visible capture automation
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
-- production texture atlas / sampled-image descriptor policy
+- production texture atlas, material selection, and multi-texture batch policy
 - Vulkan text draw integration
 - RenderDoc automation; current capture target is the offscreen Vulkan smoke executable

@@ -66,7 +66,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 ### Native
 
 - `include/Render2D/Native/NativeFwd.hpp` - Forward declarations for native components and runtime types.
-- `include/Render2D/Native/NativeComponents.hpp` - Native POD ECS components such as `BufferRef`, `ImageRef`, `PipelineRef`, `NativeCommandBufferRef`, `DeviceHandle`, `SwapchainState`, `AcquiredImage`, `PresentCommand`, and `DeferredDestroyCommand`.
+- `include/Render2D/Native/NativeComponents.hpp` - Native POD ECS components such as `BufferRef`, `ImageRef`, `SamplerRef`, `PipelineRef`, `NativeCommandBufferRef`, `DeviceHandle`, `SwapchainState`, `AcquiredImage`, `PresentCommand`, and `DeferredDestroyCommand`.
 - `include/Render2D/Native/NativeTypes.hpp` - Native runtime POD type contracts: status codes, object kinds, memory domains, IDs, generations, handles, and byte ranges.
 - `include/Render2D/Native/NativeResult.hpp` - POD result records for native runtime APIs.
 - `include/Render2D/Native/FrameRuntime.hpp` - CPU-side frame-in-flight runtime skeleton.
@@ -82,7 +82,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanSyncRuntime.hpp` - Vulkan semaphore/fence lifecycle runtime behind `FrameSync`.
 - `include/Render2D/Native/VulkanSubmitRuntime.hpp` - Vulkan queue submit runtime for resolved command buffers and frame sync.
 - `include/Render2D/Native/VulkanSwapchainRuntime.hpp` - Stage 11B Vulkan swapchain/image-view runtime for host-provided surfaces or adopted swapchains.
-- `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with MemoryCenter-backed GPU allocation, upload/readback, and copy helpers.
+- `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with MemoryCenter-backed GPU allocation, upload/readback, buffer copy, and buffer-to-image texture upload helpers.
+- `include/Render2D/Native/VulkanSamplerRuntime.hpp` - Stage 13A Vulkan `VkSampler` lifecycle runtime behind ECS-visible `SamplerRef` id + generation records.
 - `include/Render2D/Native/VulkanDescriptorRuntime.hpp` - Vulkan descriptor pool, set layout, set allocation, and descriptor update runtime.
 - `include/Render2D/Native/VulkanPipelineRuntime.hpp` - Vulkan shader module, pipeline cache, pipeline layout, and dynamic-rendering pipeline runtime.
 - `include/Render2D/Native/VulkanPresentRuntime.hpp` - Stage 11C/11E acquire/present runtime using `vkAcquireNextImageKHR`, `vkQueuePresentKHR`, result mapping, and swapchain image-index validation.
@@ -139,6 +140,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_sprite_instance_upload_runtime_test.cpp` - Optional Stage 12C upload-ring to GPU buffer copy/readback smoke test for `SpriteInstance[]`.
 - `tests/vulkan_sprite_pipeline_runtime_test.cpp` - Optional Stage 12D descriptor layout plus sprite graphics pipeline creation smoke test.
 - `tests/vulkan_sprite_render_encoder_test.cpp` - Optional Stage 12E offscreen real sprite draw smoke test using sprite vertex/instance buffers and readback verification.
+- `tests/vulkan_textured_sprite_render_test.cpp` - Optional Stage 13C offscreen textured sprite smoke test covering sampler runtime, buffer-to-image upload, descriptor update, sampled shader draw, and readback verification.
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
@@ -147,7 +149,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/support/ComponentStreamView.hpp` - Test-only view helpers for temporary ECS storage.
 - `tests/support/VulkanSmokeContext.hpp` - Optional Vulkan instance/device/queue setup helper for smoke tests.
 - `tests/support/FullScreenTriangleShaders.hpp` - Embedded SPIR-V for the offscreen full-screen triangle smoke test.
-- `tests/support/SpriteShaders.hpp` - Embedded SPIR-V for the Stage 12E sprite vertex/instance offscreen smoke test.
+- `tests/support/SpriteShaders.hpp` - Embedded SPIR-V for Stage 12E color-only and Stage 13C textured sprite offscreen smoke tests.
 - `tests/support/TestHarness.hpp` - Lightweight no-dependency assertion helpers for CTest executables.
 
 ## Scripts
@@ -186,6 +188,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-stage12-sprite-instance-upload-path.md` - ADR for Stage 12C MemoryCenter-backed sprite instance upload path.
 - `docs/adr/2026-06-10-stage12-sprite-pipeline-descriptor-layout.md` - ADR for Stage 12D sprite vertex-input pipeline and descriptor layout.
 - `docs/adr/2026-06-10-stage12-offscreen-sprite-render-smoke.md` - ADR for Stage 12E runtime-only offscreen sprite draw encoder and smoke proof.
+- `docs/adr/2026-06-10-stage13-textured-sprite-sampling.md` - ADR for Stage 13 sampler runtime, texture upload helper, and textured sprite sampling smoke proof.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

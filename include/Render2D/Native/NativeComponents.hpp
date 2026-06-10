@@ -127,6 +127,14 @@ struct ImageRef {
 };
 
 template<class Provider, class Dim>
+struct SamplerRef {
+    U64 sampler_handle;
+    U32 sampler_id;
+    U32 generation;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
 struct BufferRef {
     U64 handle;
     U64 byte_size;
@@ -222,6 +230,13 @@ struct ComponentTraits<Provider, Dim, ImageRef<Provider, Dim>> {
     static constexpr bool kSupported =
         SupportedRenderDomain<Provider, Dim> &&
         StrictPodComponent<ImageRef<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, SamplerRef<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<SamplerRef<Provider, Dim>>;
 };
 
 template<class Provider, class Dim>

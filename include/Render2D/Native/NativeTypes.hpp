@@ -34,6 +34,7 @@ enum class NativeObjectKind : U8 {
     CommandPool = 11,
     CommandBuffer = 12,
     Frame = 13,
+    Sampler = 14,
 };
 
 enum class NativeMemoryDomain : U8 {

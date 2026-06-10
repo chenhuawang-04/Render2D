@@ -2226,3 +2226,35 @@
 - sprite GPU-facing POD records、instance build、instance upload、pipeline layout、offscreen real sprite draw 均已落地；
 - Debug / Perf CTest 覆盖真实 Vulkan sprite render smoke；
 - 仍未实现：生产 texture atlas、sampled-image descriptor update policy、material selection、text Vulkan draw。
+
+## 2026-06-10 第十三阶段进度
+
+- [x] 13A：`SamplerRef` POD component 与 `VulkanSamplerRuntime` 完成
+- [x] 13B：`VulkanResourceRuntime::recordCopyBufferToImage` texture upload copy helper 完成
+- [x] 13C：textured sprite offscreen sampling smoke 完成
+- [x] 13D：第十三阶段文档与验证收口 完成
+
+13A 边界说明：
+
+- 新增 `SamplerRef<Provider, Dim>`，仍然是 Strict POD component，只保存 sampler handle 快照、id、generation、flags；
+- `VulkanSamplerRuntime` 负责真实 `VkSampler` 生命周期、slot 复用、generation 更新和 stale-reference 拒绝；
+- sampler 通过 id + generation 暴露给 ECS/宿主，不把 `VkSampler` 所有权放入组件。
+
+13B 边界说明：
+
+- `VulkanResourceRuntime` 增加 buffer -> image copy 记录接口；
+- copy helper 校验 command buffer、source/destination ref、transfer usage、format byte size、offset/range 溢出；
+- 纹理 image/buffer 仍由 MemoryCenter-backed resource runtime 创建和释放，没有直接 Vulkan memory API。
+
+13C 边界说明：
+
+- 新增 textured fragment SPIR-V，使用 sprite descriptor layout 中的 combined image sampler；
+- `tests/vulkan_textured_sprite_render_test.cpp` 创建 1x1 green texture，上传到 sampled image，更新 descriptor，绘制 4x4 offscreen quad，并逐像素 readback 验证；
+- 该阶段证明真实 texture sampling path，但不引入生产 atlas/material graph/multi-texture batching。
+
+13D 结论：
+
+- Stage 13 已完成；
+- sprite path 已从 color-only draw 扩展到真实 sampled image draw；
+- ECS 侧新增的是 `SamplerRef` POD 引用，真实 sampler/image/descriptor/pipeline 仍由 Vulkan runtime 管；
+- 仍未实现：生产 texture atlas、material selection、multi-texture batch policy、Vulkan text draw。
