@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Render2D/Component/Sprite.hpp"
 #include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeResult.hpp"
 #include "Render2D/Native/VulkanCommandRuntime.hpp"
@@ -72,6 +73,10 @@ public:
             if (result.code != NativeStatusCode::Ok) {
                 return result;
             }
+            result = validateColorTarget(color_target_, config_);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
 
             VkPipeline pipeline = VK_NULL_HANDLE;
             VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
@@ -88,9 +93,27 @@ public:
             if (result.code != NativeStatusCode::Ok) {
                 return result;
             }
+            result = validateVertexBufferRange(
+                vertex_buffer_ref_,
+                config_.vertex_buffer_offset,
+                config_.first_vertex,
+                config_.vertex_count,
+                kSpriteVertexByteSize);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
 
             VkBuffer instance_buffer = VK_NULL_HANDLE;
             result = resource_runtime_.resolveNativeBuffer(instance_buffer_ref_, instance_buffer);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+            result = validateVertexBufferRange(
+                instance_buffer_ref_,
+                config_.instance_buffer_offset,
+                config_.first_instance,
+                config_.instance_count,
+                kSpriteInstanceByteSize);
             if (result.code != NativeStatusCode::Ok) {
                 return result;
             }
@@ -193,17 +216,103 @@ public:
 
 private:
     static constexpr Usize kMaxDescriptorSetCount = 1U;
+    static constexpr U64 kMaxU64 = 0xFFFFFFFFFFFFFFFFULL;
+    static constexpr U64 kSpriteVertexByteSize = static_cast<U64>(sizeof(SpriteVertex<Provider, Dim>));
+    static constexpr U64 kSpriteInstanceByteSize = static_cast<U64>(sizeof(SpriteInstance<Provider, Dim>));
 
     static NativeResult makeResult(
         NativeStatusCode code_,
         NativeObjectKind object_kind_) noexcept
     {
+        return makeResult(code_, object_kind_, 0U, 0U);
+    }
+
+    static NativeResult makeResult(
+        NativeStatusCode code_,
+        NativeObjectKind object_kind_,
+        U32 object_id_,
+        U32 generation_) noexcept
+    {
         return {
             .code = code_,
             .object_kind = object_kind_,
-            .object_id = {.value = 0U},
-            .generation = {.value = 0U},
+            .object_id = {.value = object_id_},
+            .generation = {.value = generation_},
         };
+    }
+
+    static NativeResult validateColorTarget(
+        const ImageRef<Provider, Dim>& color_target_,
+        const VulkanSpriteRenderEncoderConfig& config_) noexcept
+    {
+        if ((color_target_.usage_flags & static_cast<U32>(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) == 0U ||
+            config_.width > color_target_.width ||
+            config_.height > color_target_.height) {
+            return makeResult(
+                NativeStatusCode::InvalidInput,
+                NativeObjectKind::Image,
+                color_target_.image_id,
+                color_target_.generation);
+        }
+
+        return makeResult(
+            NativeStatusCode::Ok,
+            NativeObjectKind::Image,
+            color_target_.image_id,
+            color_target_.generation);
+    }
+
+    static NativeResult validateVertexBufferRange(
+        const BufferRef<Provider, Dim>& buffer_,
+        U64 base_offset_,
+        U32 first_element_,
+        U32 element_count_,
+        U64 element_byte_size_) noexcept
+    {
+        if ((buffer_.usage_flags & static_cast<U32>(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)) == 0U ||
+            !isValidByteRange(
+                buffer_.byte_size,
+                base_offset_,
+                first_element_,
+                element_count_,
+                element_byte_size_)) {
+            return makeResult(
+                NativeStatusCode::InvalidInput,
+                NativeObjectKind::Buffer,
+                buffer_.buffer_id,
+                buffer_.generation);
+        }
+
+        return makeResult(
+            NativeStatusCode::Ok,
+            NativeObjectKind::Buffer,
+            buffer_.buffer_id,
+            buffer_.generation);
+    }
+
+    static bool isValidByteRange(
+        U64 buffer_byte_size_,
+        U64 base_offset_,
+        U32 first_element_,
+        U32 element_count_,
+        U64 element_byte_size_) noexcept
+    {
+        if (buffer_byte_size_ == 0U ||
+            element_count_ == 0U ||
+            element_byte_size_ == 0U ||
+            static_cast<U64>(first_element_) > kMaxU64 / element_byte_size_ ||
+            static_cast<U64>(element_count_) > kMaxU64 / element_byte_size_) {
+            return false;
+        }
+
+        const U64 first_element_offset = static_cast<U64>(first_element_) * element_byte_size_;
+        if (base_offset_ > kMaxU64 - first_element_offset) {
+            return false;
+        }
+
+        const U64 byte_offset = base_offset_ + first_element_offset;
+        const U64 byte_count = static_cast<U64>(element_count_) * element_byte_size_;
+        return byte_count <= buffer_byte_size_ && byte_offset <= buffer_byte_size_ - byte_count;
     }
 
     static VkClearValue makeClearValue(U32 rgba8_) noexcept

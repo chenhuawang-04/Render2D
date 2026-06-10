@@ -24,6 +24,7 @@ using PipelineRuntime = R2D::VulkanPipelineRuntime<Provider, Dim>;
 using SpriteInstance = R2D::SpriteInstance<Provider, Dim>;
 using SpritePipelineRuntime = R2D::VulkanSpritePipelineRuntime<Provider, Dim>;
 using SpriteRenderEncoder = R2D::VulkanSpriteRenderEncoder<Provider, Dim>;
+using SpriteRenderEncoderConfig = R2D::VulkanSpriteRenderEncoderConfig;
 using SpriteVertex = R2D::SpriteVertex<Provider, Dim>;
 
 static_assert(!R2D::SupportedRenderComponent<Provider, Dim, SpriteRenderEncoder>);
@@ -85,7 +86,7 @@ void testOffscreenSpriteDraw(const Render2DTest::VulkanSmokeContext& context_)
         .device = context_.device,
     });
     assert(result.code == R2D::NativeStatusCode::Ok);
-    auto capacity = resource_runtime.reserveImages(1U);
+    auto capacity = resource_runtime.reserveImages(2U);
     assert(capacity.code == R2D::NativeStatusCode::Ok);
     capacity = resource_runtime.reserveBuffers(3U);
     assert(capacity.code == R2D::NativeStatusCode::Ok);
@@ -97,6 +98,15 @@ void testOffscreenSpriteDraw(const Render2DTest::VulkanSmokeContext& context_)
         VK_FORMAT_R8G8B8A8_UNORM,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
         color_target);
+    assert(result.code == R2D::NativeStatusCode::Ok);
+
+    ImageRef invalid_color_target{};
+    result = resource_runtime.createImageRef(
+        kWidth,
+        kHeight,
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT,
+        invalid_color_target);
     assert(result.code == R2D::NativeStatusCode::Ok);
 
     BufferRef vertex_buffer{};
@@ -187,6 +197,21 @@ void testOffscreenSpriteDraw(const Render2DTest::VulkanSmokeContext& context_)
     result = command_runtime.beginCommandBuffer(command_ref, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     assert(result.code == R2D::NativeStatusCode::Ok);
 
+    constexpr SpriteRenderEncoderConfig kValidEncoderConfig{
+        .vertex_buffer_offset = 0U,
+        .instance_buffer_offset = 0U,
+        .width = kWidth,
+        .height = kHeight,
+        .clear_color_rgba8 = 0x000000FFU,
+        .vertex_count = static_cast<R2D::U32>(kVertices.size()),
+        .instance_count = static_cast<R2D::U32>(kInstances.size()),
+        .first_vertex = 0U,
+        .first_instance = 0U,
+        .flags = 0U,
+    };
+
+    auto invalid_config = kValidEncoderConfig;
+    invalid_config.width = kWidth + 1U;
     result = SpriteRenderEncoder::record(
         command_ref,
         color_target,
@@ -198,18 +223,86 @@ void testOffscreenSpriteDraw(const Render2DTest::VulkanSmokeContext& context_)
         resource_runtime,
         pipeline_runtime,
         descriptor_runtime,
-        {
-            .vertex_buffer_offset = 0U,
-            .instance_buffer_offset = 0U,
-            .width = kWidth,
-            .height = kHeight,
-            .clear_color_rgba8 = 0x000000FFU,
-            .vertex_count = static_cast<R2D::U32>(kVertices.size()),
-            .instance_count = static_cast<R2D::U32>(kInstances.size()),
-            .first_vertex = 0U,
-            .first_instance = 0U,
-            .flags = 0U,
-        });
+        invalid_config);
+    assert(result.code == R2D::NativeStatusCode::InvalidInput);
+    assert(result.object_kind == R2D::NativeObjectKind::Image);
+
+    result = SpriteRenderEncoder::record(
+        command_ref,
+        invalid_color_target,
+        pipeline_ref,
+        vertex_buffer,
+        instance_buffer,
+        std::span<const DescriptorSlice>{},
+        command_runtime,
+        resource_runtime,
+        pipeline_runtime,
+        descriptor_runtime,
+        kValidEncoderConfig);
+    assert(result.code == R2D::NativeStatusCode::InvalidInput);
+    assert(result.object_kind == R2D::NativeObjectKind::Image);
+
+    invalid_config = kValidEncoderConfig;
+    invalid_config.vertex_buffer_offset = kVertexByteCount;
+    result = SpriteRenderEncoder::record(
+        command_ref,
+        color_target,
+        pipeline_ref,
+        vertex_buffer,
+        instance_buffer,
+        std::span<const DescriptorSlice>{},
+        command_runtime,
+        resource_runtime,
+        pipeline_runtime,
+        descriptor_runtime,
+        invalid_config);
+    assert(result.code == R2D::NativeStatusCode::InvalidInput);
+    assert(result.object_kind == R2D::NativeObjectKind::Buffer);
+
+    invalid_config = kValidEncoderConfig;
+    invalid_config.instance_buffer_offset = kInstanceByteCount;
+    result = SpriteRenderEncoder::record(
+        command_ref,
+        color_target,
+        pipeline_ref,
+        vertex_buffer,
+        instance_buffer,
+        std::span<const DescriptorSlice>{},
+        command_runtime,
+        resource_runtime,
+        pipeline_runtime,
+        descriptor_runtime,
+        invalid_config);
+    assert(result.code == R2D::NativeStatusCode::InvalidInput);
+    assert(result.object_kind == R2D::NativeObjectKind::Buffer);
+
+    result = SpriteRenderEncoder::record(
+        command_ref,
+        color_target,
+        pipeline_ref,
+        readback_buffer,
+        instance_buffer,
+        std::span<const DescriptorSlice>{},
+        command_runtime,
+        resource_runtime,
+        pipeline_runtime,
+        descriptor_runtime,
+        kValidEncoderConfig);
+    assert(result.code == R2D::NativeStatusCode::InvalidInput);
+    assert(result.object_kind == R2D::NativeObjectKind::Buffer);
+
+    result = SpriteRenderEncoder::record(
+        command_ref,
+        color_target,
+        pipeline_ref,
+        vertex_buffer,
+        instance_buffer,
+        std::span<const DescriptorSlice>{},
+        command_runtime,
+        resource_runtime,
+        pipeline_runtime,
+        descriptor_runtime,
+        kValidEncoderConfig);
     assert(result.code == R2D::NativeStatusCode::Ok);
 
     VkCommandBuffer native_command_buffer = VK_NULL_HANDLE;
@@ -266,10 +359,12 @@ void testOffscreenSpriteDraw(const Render2DTest::VulkanSmokeContext& context_)
     std::array<R2D::U8, static_cast<R2D::Usize>(kReadbackByteCount)> pixels{};
     result = resource_runtime.readBuffer(readback_buffer, pixels.data(), kReadbackByteCount, 0U);
     assert(result.code == R2D::NativeStatusCode::Ok);
-    assert(pixels[0U] == 0xFFU);
-    assert(pixels[1U] == 0x00U);
-    assert(pixels[2U] == 0xFFU);
-    assert(pixels[3U] == 0xFFU);
+    for (R2D::Usize byte_offset = 0U; byte_offset < pixels.size(); byte_offset += 4U) {
+        assert(pixels[byte_offset] == 0xFFU);
+        assert(pixels[byte_offset + 1U] == 0x00U);
+        assert(pixels[byte_offset + 2U] == 0xFFU);
+        assert(pixels[byte_offset + 3U] == 0xFFU);
+    }
 
     result = command_runtime.releaseCommandBufferRef(command_ref);
     assert(result.code == R2D::NativeStatusCode::Ok);
@@ -288,6 +383,8 @@ void testOffscreenSpriteDraw(const Render2DTest::VulkanSmokeContext& context_)
     result = resource_runtime.releaseBufferRef(vertex_buffer);
     assert(result.code == R2D::NativeStatusCode::Ok);
     result = resource_runtime.releaseImageRef(color_target);
+    assert(result.code == R2D::NativeStatusCode::Ok);
+    result = resource_runtime.releaseImageRef(invalid_color_target);
     assert(result.code == R2D::NativeStatusCode::Ok);
 }
 
