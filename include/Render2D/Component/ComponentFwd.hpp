@@ -24,6 +24,12 @@ template<class Provider, class Dim>
 struct SpriteDrawPacket;
 
 template<class Provider, class Dim>
+struct SpriteMaterialBinding;
+
+template<class Provider, class Dim>
+struct SpriteTextureBinding;
+
+template<class Provider, class Dim>
 struct SpriteInstanceUploadCommand;
 
 template<class Provider, class Dim>

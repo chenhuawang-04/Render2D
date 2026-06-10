@@ -137,6 +137,7 @@ int main()
         .atlas_id = run_view.data[0].atlas_id,
         .generation = run_view.data[0].atlas_generation,
         .texture_id = 99U,
+        .texture_generation = 0U,
         .flags = 0U,
     };
     assert(atlas.generation == 1U);

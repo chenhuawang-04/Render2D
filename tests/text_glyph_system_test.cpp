@@ -51,6 +51,7 @@ int main()
             .atlas_id = 9U,
             .generation = 7U,
             .texture_id = 11U,
+            .texture_generation = 0U,
             .flags = 0U,
         },
     }};
@@ -141,6 +142,7 @@ int main()
             .atlas_id = 9U,
             .generation = 7U,
             .texture_id = 11U,
+            .texture_generation = 0U,
             .flags = 0U,
         },
     }};

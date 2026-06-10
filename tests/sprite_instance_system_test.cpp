@@ -14,19 +14,26 @@ namespace R2DT = Render2D::TestSupport;
 
 using Provider = R2D::VulkanNativeProvider;
 using Dim = R2D::Dim2;
+using BatchCommand = R2D::BatchCommand<Provider, Dim>;
 using DrawCommand = R2D::DrawCommand<Provider, Dim>;
 using Sprite = R2D::Sprite<Provider, Dim>;
 using SpriteDrawPacket = R2D::SpriteDrawPacket<Provider, Dim>;
 using SpriteInstance = R2D::SpriteInstance<Provider, Dim>;
+using SpriteMaterialBinding = R2D::SpriteMaterialBinding<Provider, Dim>;
+using SpriteTextureBinding = R2D::SpriteTextureBinding<Provider, Dim>;
 using SpriteVertex = R2D::SpriteVertex<Provider, Dim>;
 using WorldTransform = R2D::WorldTransform<Provider, Dim>;
 
 static_assert(R2D::StrictPodComponent<SpriteVertex>);
 static_assert(R2D::StrictPodComponent<SpriteInstance>);
 static_assert(R2D::StrictPodComponent<SpriteDrawPacket>);
+static_assert(R2D::StrictPodComponent<SpriteMaterialBinding>);
+static_assert(R2D::StrictPodComponent<SpriteTextureBinding>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteVertex>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteInstance>);
 static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteDrawPacket>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteMaterialBinding>);
+static_assert(R2D::SupportedRenderComponent<Provider, Dim, SpriteTextureBinding>);
 
 constexpr R2D::Mat3 makeAffine(
     float m00_,
@@ -60,7 +67,9 @@ constexpr DrawCommand makeDraw(
     return {
         .source_index = source_index_,
         .material_id = material_id_,
+        .material_generation = 0U,
         .texture_id = texture_id_,
+        .texture_generation = 0U,
         .vertex_first = 0U,
         .vertex_count = 4U,
         .index_first = 0U,
@@ -69,6 +78,31 @@ constexpr DrawCommand makeDraw(
         .instance_count = 1U,
         .sort_key = R2D::makeDrawSortKey(layer_, material_id_, texture_id_, flags_),
         .layer = layer_,
+        .flags = flags_,
+    };
+}
+
+constexpr BatchCommand makeBatch(
+    R2D::U32 draw_first_,
+    R2D::U32 draw_count_,
+    R2D::U32 material_id_,
+    R2D::U32 material_generation_,
+    R2D::U32 texture_id_,
+    R2D::U32 texture_generation_,
+    R2D::U32 flags_) noexcept
+{
+    return {
+        .draw_first = draw_first_,
+        .draw_count = draw_count_,
+        .material_id = material_id_,
+        .material_generation = material_generation_,
+        .texture_id = texture_id_,
+        .texture_generation = texture_generation_,
+        .pipeline_id = 0U,
+        .pipeline_generation = 0U,
+        .descriptor_id = 0U,
+        .descriptor_generation = 0U,
+        .sort_key = R2D::makeDrawSortKey(0U, material_id_, texture_id_, flags_),
         .flags = flags_,
     };
 }
@@ -84,7 +118,9 @@ void testBuildSpriteInstances(R2DT::TestContext& context_)
         {
             .source_id = 10U,
             .texture_id = 100U,
+            .texture_generation = 0U,
             .material_id = 200U,
+            .material_generation = 0U,
             .color_rgba8 = 0x11223344U,
             .layer = 1U,
             .flags = 0U,
@@ -92,7 +128,9 @@ void testBuildSpriteInstances(R2DT::TestContext& context_)
         {
             .source_id = 11U,
             .texture_id = 101U,
+            .texture_generation = 0U,
             .material_id = 201U,
+            .material_generation = 0U,
             .color_rgba8 = 0x55667788U,
             .layer = 2U,
             .flags = 1U,
@@ -100,7 +138,9 @@ void testBuildSpriteInstances(R2DT::TestContext& context_)
         {
             .source_id = 12U,
             .texture_id = 102U,
+            .texture_generation = 0U,
             .material_id = 202U,
+            .material_generation = 0U,
             .color_rgba8 = 0x99AABBCCU,
             .layer = 3U,
             .flags = 2U,
@@ -143,6 +183,150 @@ void testBuildSpriteInstances(R2DT::TestContext& context_)
     R2D_TEST_CHECK_EQ(context_, instances[1U].flags, 2U);
 }
 
+void testBuildSpriteDrawPackets(R2DT::TestContext& context_)
+{
+    std::array<DrawCommand, 3U> draws{{
+        makeDraw(0U, 0U, 7U, 11U, 0U, 1U),
+        makeDraw(1U, 1U, 7U, 11U, 0U, 1U),
+        makeDraw(2U, 2U, 8U, 12U, 0U, 2U),
+    }};
+    draws[0U].material_generation = 70U;
+    draws[0U].texture_generation = 110U;
+    draws[1U].material_generation = 70U;
+    draws[1U].texture_generation = 110U;
+    draws[2U].material_generation = 80U;
+    draws[2U].texture_generation = 120U;
+
+    constexpr std::array<BatchCommand, 2U> kBatches{{
+        makeBatch(0U, 2U, 7U, 70U, 11U, 110U, 1U),
+        makeBatch(2U, 1U, 8U, 80U, 12U, 120U, 2U),
+    }};
+    constexpr std::array<SpriteMaterialBinding, 2U> kMaterials{{
+        {
+            .material_id = 7U,
+            .material_generation = 70U,
+            .pipeline_id = 3U,
+            .pipeline_generation = 30U,
+            .flags = 0x10U,
+        },
+        {
+            .material_id = 8U,
+            .material_generation = 80U,
+            .pipeline_id = 4U,
+            .pipeline_generation = 40U,
+            .flags = 0x20U,
+        },
+    }};
+    constexpr std::array<SpriteTextureBinding, 2U> kTextures{{
+        {
+            .texture_id = 11U,
+            .texture_generation = 110U,
+            .descriptor_id = 5U,
+            .descriptor_generation = 50U,
+            .descriptor_first = 0U,
+            .descriptor_count = 1U,
+            .flags = 0x100U,
+        },
+        {
+            .texture_id = 12U,
+            .texture_generation = 120U,
+            .descriptor_id = 6U,
+            .descriptor_generation = 60U,
+            .descriptor_first = 0U,
+            .descriptor_count = 1U,
+            .flags = 0x200U,
+        },
+    }};
+    std::array<SpriteDrawPacket, 2U> packets{};
+
+    const auto result = R2D::SpriteDrawPacketBuildSystem<Provider, Dim>::run(
+        kBatches,
+        draws,
+        kMaterials,
+        kTextures,
+        packets);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(context_, result.read_count, 2U);
+    R2D_TEST_CHECK_EQ(context_, result.write_count, 2U);
+
+    R2D_TEST_CHECK_EQ(context_, packets[0U].batch_index, 0U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].draw_first, 0U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].draw_count, 2U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].instance_first, 0U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].instance_count, 2U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].material_id, 7U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].material_generation, 70U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].texture_id, 11U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].texture_generation, 110U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].pipeline_id, 3U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].pipeline_generation, 30U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].descriptor_id, 5U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].descriptor_generation, 50U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].descriptor_count, 1U);
+    R2D_TEST_CHECK_EQ(context_, packets[0U].flags, 0x111U);
+
+    R2D_TEST_CHECK_EQ(context_, packets[1U].batch_index, 1U);
+    R2D_TEST_CHECK_EQ(context_, packets[1U].instance_first, 2U);
+    R2D_TEST_CHECK_EQ(context_, packets[1U].instance_count, 1U);
+    R2D_TEST_CHECK_EQ(context_, packets[1U].pipeline_id, 4U);
+    R2D_TEST_CHECK_EQ(context_, packets[1U].descriptor_id, 6U);
+}
+
+void testPacketBuildInvalidInput(R2DT::TestContext& context_)
+{
+    std::array<DrawCommand, 2U> draws{{
+        makeDraw(0U, 0U, 7U, 11U, 0U, 0U),
+        makeDraw(1U, 2U, 7U, 11U, 0U, 0U),
+    }};
+    draws[0U].material_generation = 70U;
+    draws[0U].texture_generation = 110U;
+    draws[1U].material_generation = 70U;
+    draws[1U].texture_generation = 110U;
+    constexpr std::array<BatchCommand, 1U> kBatches{{
+        makeBatch(0U, 2U, 7U, 70U, 11U, 110U, 0U),
+    }};
+    constexpr std::array<SpriteMaterialBinding, 1U> kMaterials{{
+        {
+            .material_id = 7U,
+            .material_generation = 70U,
+            .pipeline_id = 3U,
+            .pipeline_generation = 30U,
+            .flags = 0U,
+        },
+    }};
+    constexpr std::array<SpriteTextureBinding, 1U> kTextures{{
+        {
+            .texture_id = 11U,
+            .texture_generation = 110U,
+            .descriptor_id = 5U,
+            .descriptor_generation = 50U,
+            .descriptor_first = 0U,
+            .descriptor_count = 1U,
+            .flags = 0U,
+        },
+    }};
+    std::array<SpriteDrawPacket, 1U> packets{};
+
+    auto result = R2D::SpriteDrawPacketBuildSystem<Provider, Dim>::run(
+        kBatches,
+        draws,
+        kMaterials,
+        kTextures,
+        packets);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::InvalidInput);
+
+    draws[1U].instance_first = 1U;
+    std::array<SpriteTextureBinding, 1U> stale_textures{kTextures};
+    stale_textures[0U].texture_generation = 111U;
+    result = R2D::SpriteDrawPacketBuildSystem<Provider, Dim>::run(
+        kBatches,
+        draws,
+        kMaterials,
+        stale_textures,
+        packets);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::InvalidInput);
+}
+
 void testCapacityAndInvalidInput(R2DT::TestContext& context_)
 {
     constexpr std::array<WorldTransform, 1U> kWorldTransforms{{
@@ -152,7 +336,9 @@ void testCapacityAndInvalidInput(R2DT::TestContext& context_)
         {
             .source_id = 1U,
             .texture_id = 2U,
+            .texture_generation = 0U,
             .material_id = 3U,
+            .material_generation = 0U,
             .color_rgba8 = 4U,
             .layer = 5U,
             .flags = 6U,
@@ -210,6 +396,8 @@ void testUnsupportedDomain(R2DT::TestContext& context_)
 {
     R2DT::TestContext context{};
     testBuildSpriteInstances(context);
+    testBuildSpriteDrawPackets(context);
+    testPacketBuildInvalidInput(context);
     testCapacityAndInvalidInput(context);
     testUnsupportedDomain(context);
     return context.result();

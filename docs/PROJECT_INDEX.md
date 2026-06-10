@@ -36,7 +36,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Component/ComponentTraits.hpp` - Supported component trait and `SupportedRenderComponent` concept.
 - `include/Render2D/Component/Transform.hpp` - `Transform`, `WorldTransform`, and `TransformDirtyItem`; derived transforms store fast_math `Mat3`.
 - `include/Render2D/Component/Bounds.hpp` - `LocalBounds` and `WorldBounds`; bounds store fast_math `Aabb2`.
-- `include/Render2D/Component/Sprite.hpp` - Sprite-facing components, GPU-facing sprite POD records, sprite instance upload command, and render references.
+- `include/Render2D/Component/Sprite.hpp` - Sprite-facing components, GPU-facing sprite POD records, material/texture binding records, sprite draw packets, sprite instance upload command, and render references.
 - `include/Render2D/Component/Text.hpp` - Text input, text dirty state/range, UTF-8 slice, font atlas, glyph run, and glyph instance POD components.
 - `include/Render2D/Component/Camera.hpp` - Camera input component.
 - `include/Render2D/Component/Command.hpp` - Visibility, sorting, draw command, and `CommandBuffer` descriptor components.
@@ -51,7 +51,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/BoundsSystem.hpp` - Converts local bounds plus world transforms to world bounds, including dirty-index updates.
 - `include/Render2D/System/CullingSystem.hpp` - Produces `VisibleItem[]` using camera bounds and visibility masks.
 - `include/Render2D/System/CommandBuildSystem.hpp` - Builds `DrawCommand[]` from visible items and sprites.
-- `include/Render2D/System/SpriteInstanceSystem.hpp` - Stage 12B/12C component-stream systems building `SpriteInstance[]` and sprite instance upload commands.
+- `include/Render2D/System/SpriteInstanceSystem.hpp` - Component-stream systems building `SpriteInstance[]`, sprite instance upload commands, and Stage 14 `SpriteDrawPacket[]` from batch/material/texture binding streams.
 - `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands.
 - `include/Render2D/System/SortKey.hpp` - Packed draw sort/batch key helpers.
 - `include/Render2D/System/SortSystem.hpp` - Stable radix sort over `DrawCommand.sort_key` using caller-owned scratch spans.
@@ -90,7 +90,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - MemoryCenter-backed persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
 - `include/Render2D/Native/VulkanSpriteInstanceUploadRuntime.hpp` - Stage 12C stateless upload bridge from `SpriteInstance[]` to managed GPU buffers through the upload ring.
 - `include/Render2D/Native/VulkanSpritePipelineRuntime.hpp` - Stage 12D stateless sprite vertex-input, descriptor config, and pipeline creation helper.
-- `include/Render2D/Native/VulkanSpriteRenderEncoder.hpp` - Stage 12E runtime-only sprite draw encoder that binds `SpriteVertex`/`SpriteInstance` buffers and records dynamic rendering.
+- `include/Render2D/Native/VulkanSpriteRenderEncoder.hpp` - Runtime-only sprite draw encoder that binds `SpriteVertex`/`SpriteInstance` buffers, records single draws, and Stage 14 multi-packet dynamic rendering.
 - `include/Render2D/Native/VulkanRenderEncoder.hpp` - Dynamic rendering encoder for direct and indirect draw recording.
 
 ### Memory and Storage
@@ -140,7 +140,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_sprite_instance_upload_runtime_test.cpp` - Optional Stage 12C upload-ring to GPU buffer copy/readback smoke test for `SpriteInstance[]`.
 - `tests/vulkan_sprite_pipeline_runtime_test.cpp` - Optional Stage 12D descriptor layout plus sprite graphics pipeline creation smoke test.
 - `tests/vulkan_sprite_render_encoder_test.cpp` - Optional Stage 12E offscreen real sprite draw smoke test using sprite vertex/instance buffers and readback verification.
-- `tests/vulkan_textured_sprite_render_test.cpp` - Optional Stage 13C offscreen textured sprite smoke test covering sampler runtime, buffer-to-image upload, descriptor update, sampled shader draw, and readback verification.
+- `tests/vulkan_textured_sprite_render_test.cpp` - Optional Stage 13/14 offscreen textured sprite smoke test covering sampler runtime, buffer-to-image upload, descriptor update, sampled shader draw, multi-packet red/green rendering, stale descriptor rejection, and readback verification.
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
@@ -189,6 +189,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-10-stage12-sprite-pipeline-descriptor-layout.md` - ADR for Stage 12D sprite vertex-input pipeline and descriptor layout.
 - `docs/adr/2026-06-10-stage12-offscreen-sprite-render-smoke.md` - ADR for Stage 12E runtime-only offscreen sprite draw encoder and smoke proof.
 - `docs/adr/2026-06-10-stage13-textured-sprite-sampling.md` - ADR for Stage 13 sampler runtime, texture upload helper, and textured sprite sampling smoke proof.
+- `docs/adr/2026-06-10-stage14-sprite-packet-material-texture-binding.md` - ADR for Stage 14 resource-generation sprite contracts, packet build system, and multi-packet sprite encoder.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

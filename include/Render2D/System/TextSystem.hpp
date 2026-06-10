@@ -32,6 +32,7 @@ inline constexpr GlyphBuildConfig kDefaultGlyphBuildConfig{
 
 struct GlyphDrawConfig {
     U32 material_id;
+    U32 material_generation;
     U32 vertex_first;
     U32 vertex_count;
     U32 index_first;
@@ -41,6 +42,7 @@ struct GlyphDrawConfig {
 
 inline constexpr GlyphDrawConfig kDefaultGlyphDrawConfig{
     .material_id = 0U,
+    .material_generation = 0U,
     .vertex_first = 0U,
     .vertex_count = 4U,
     .index_first = 0U,
@@ -568,7 +570,9 @@ struct GlyphBatchSystem {
                 draw_commands_[draw_count] = {
                     .source_index = run.source_text_index,
                     .material_id = config_.material_id,
+                    .material_generation = config_.material_generation,
                     .texture_id = atlas->texture_id,
+                    .texture_generation = atlas->texture_generation,
                     .vertex_first = config_.vertex_first,
                     .vertex_count = config_.vertex_count,
                     .index_first = config_.index_first,

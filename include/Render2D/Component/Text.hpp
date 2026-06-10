@@ -61,6 +61,7 @@ struct FontAtlasRef {
     U32 atlas_id;
     U32 generation;
     U32 texture_id;
+    U32 texture_generation;
     U32 flags;
 };
 

@@ -9,7 +9,9 @@ template<class Provider, class Dim>
 struct Sprite {
     U32 source_id;
     U32 texture_id;
+    U32 texture_generation;
     U32 material_id;
+    U32 material_generation;
     U32 color_rgba8;
     U32 layer;
     U32 flags;
@@ -38,7 +40,9 @@ struct SpriteInstance {
     U32 source_index;
     U32 source_id;
     U32 texture_id;
+    U32 texture_generation;
     U32 material_id;
+    U32 material_generation;
     U32 color_rgba8;
     U32 sort_key;
     U32 layer;
@@ -57,9 +61,35 @@ struct SpriteDrawPacket {
     U32 index_first;
     U32 index_count;
     U32 material_id;
+    U32 material_generation;
     U32 texture_id;
+    U32 texture_generation;
     U32 pipeline_id;
+    U32 pipeline_generation;
     U32 descriptor_id;
+    U32 descriptor_generation;
+    U32 descriptor_first;
+    U32 descriptor_count;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
+struct SpriteMaterialBinding {
+    U32 material_id;
+    U32 material_generation;
+    U32 pipeline_id;
+    U32 pipeline_generation;
+    U32 flags;
+};
+
+template<class Provider, class Dim>
+struct SpriteTextureBinding {
+    U32 texture_id;
+    U32 texture_generation;
+    U32 descriptor_id;
+    U32 descriptor_generation;
+    U32 descriptor_first;
+    U32 descriptor_count;
     U32 flags;
 };
 
@@ -77,11 +107,15 @@ struct SpriteInstanceUploadCommand {
 template<class Provider, class Dim>
 struct MaterialRef {
     U32 id;
+    U32 generation;
+    U32 flags;
 };
 
 template<class Provider, class Dim>
 struct TextureRef {
     U32 id;
+    U32 generation;
+    U32 flags;
 };
 
 template<class Provider, class Dim>
@@ -120,6 +154,20 @@ struct ComponentTraits<Provider, Dim, SpriteDrawPacket<Provider, Dim>> {
     static constexpr bool kSupported =
         SupportedRenderDomain<Provider, Dim> &&
         StrictPodComponent<SpriteDrawPacket<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, SpriteMaterialBinding<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<SpriteMaterialBinding<Provider, Dim>>;
+};
+
+template<class Provider, class Dim>
+struct ComponentTraits<Provider, Dim, SpriteTextureBinding<Provider, Dim>> {
+    static constexpr bool kSupported =
+        SupportedRenderDomain<Provider, Dim> &&
+        StrictPodComponent<SpriteTextureBinding<Provider, Dim>>;
 };
 
 template<class Provider, class Dim>

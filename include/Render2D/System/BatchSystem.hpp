@@ -80,9 +80,13 @@ private:
             .draw_first = draw_first_,
             .draw_count = 1U,
             .material_id = draw_command_.material_id,
+            .material_generation = draw_command_.material_generation,
             .texture_id = draw_command_.texture_id,
+            .texture_generation = draw_command_.texture_generation,
             .pipeline_id = 0U,
+            .pipeline_generation = 0U,
             .descriptor_id = 0U,
+            .descriptor_generation = 0U,
             .sort_key = draw_command_.sort_key,
             .flags = draw_command_.flags,
         };

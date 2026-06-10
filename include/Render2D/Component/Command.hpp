@@ -23,7 +23,9 @@ template<class Provider, class Dim>
 struct DrawCommand {
     U32 source_index;
     U32 material_id;
+    U32 material_generation;
     U32 texture_id;
+    U32 texture_generation;
     U32 vertex_first;
     U32 vertex_count;
     U32 index_first;

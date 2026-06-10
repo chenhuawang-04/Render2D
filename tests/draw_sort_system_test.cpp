@@ -24,7 +24,9 @@ using BatchCommand = R2D::BatchCommand<Provider, Dim>;
     return {
         .source_index = source_index_,
         .material_id = material_id_,
+        .material_generation = 0U,
         .texture_id = texture_id_,
+        .texture_generation = 0U,
         .vertex_first = 0U,
         .vertex_count = 4U,
         .index_first = 0U,

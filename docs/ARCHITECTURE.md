@@ -68,7 +68,7 @@ The CPU component pipeline remains ECS-driven. Vulkan command, sync, submit, res
 The component layer defines Strict POD ECS records:
 
 - Scene/input components: `Transform`, `Sprite`, `Text`, `Utf8Slice`, `Camera`, `LocalBounds`, `VisibilityMask`, `RenderLayer`, `MaterialRef`, `TextureRef`, `FontRef`, `FontAtlasRef`.
-- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`.
+- Derived components: `WorldTransform`, `WorldBounds`, `VisibleItem`, `SortedItem`, `SpriteVertex`, `SpriteInstance`, `SpriteDrawPacket`, `SpriteMaterialBinding`, `SpriteTextureBinding`, `TextState`, `TextDirtyRange`, `GlyphRun`, `GlyphInstance`.
 - Command components: `DrawCommand`, `BatchCommand`, `SpriteInstanceUploadCommand`, `UploadCommand`, `NativeSubmitCommand`, `CommandBuffer`.
 - Frame/native state components: `FrameIndex`, `FrameArenaState`, `DescriptorSlice`, `UploadRingSlice`, `FenceState`.
 - Native resource references: `DeviceHandle`, `QueueHandle`, `SwapchainState`, `FrameSync`, `NativeCommandBufferRef`, `PipelineRef`, `ImageRef`, `SamplerRef`, `BufferRef`, `UploadSlice`.
@@ -111,6 +111,8 @@ Stage 12D adds the sprite pipeline and descriptor layout contract. `VulkanGraphi
 Stage 12E adds `VulkanSpriteRenderEncoder`, a runtime-only dynamic rendering recorder for the sprite vertex/instance path. It resolves POD refs by id + generation, binds vertex buffer slot 0 and instance buffer slot 1, optionally binds descriptor slices, records `vkCmdDraw`, and leaves ECS ownership of `SpriteVertex[]`, `SpriteInstance[]`, refs, and command streams outside Render2D runtime storage.
 
 Stage 13 adds the first real sampled sprite path. `SamplerRef` is a Strict POD ECS-visible resource reference, while `VulkanSamplerRuntime` owns `VkSampler` lifetimes. `VulkanResourceRuntime::recordCopyBufferToImage` records tightly packed upload-buffer copies into managed sampled images. The textured sprite smoke updates a combined image sampler descriptor, draws through the sprite encoder, and verifies a green 4x4 offscreen target by readback.
+
+Stage 14 turns the single-texture proof into a multi-packet sprite binding path. Texture/material identities now carry generation fields through `Sprite`, `DrawCommand`, `BatchCommand`, `SpriteInstance`, and `SpriteDrawPacket`. `SpriteMaterialBinding[]` and `SpriteTextureBinding[]` are ECS-owned POD streams that resolve batch identities to pipeline and descriptor references. `SpriteDrawPacketBuildSystem` emits packet records, and `VulkanSpriteRenderEncoder::recordPackets` draws multiple packets in one render pass while rebinding pipeline/descriptor only when the packet changes them.
 
 ## Temporary test ECS
 
@@ -230,12 +232,16 @@ Implemented:
 - Stage 13B texture upload recording: `VulkanResourceRuntime::recordCopyBufferToImage`
 - Stage 13C textured sprite smoke: combined image sampler descriptor update, sampled sprite shader, and green readback verification
 - Stage 13D textured sprite sampling closeout: documentation, ADR, project index, Debug/Perf verification, clang-tidy, and source constraint scans
+- Stage 14A resource-generation sprite contracts: texture/material generation fields across sprite, draw, batch, instance, and packet records
+- Stage 14B packet build system: `SpriteMaterialBinding`, `SpriteTextureBinding`, and `SpriteDrawPacketBuildSystem`
+- Stage 14C multi-packet encoder: `VulkanSpriteRenderEncoder::recordPackets`
+- Stage 14D multi-texture smoke: red/green descriptor batches in one command buffer with readback verification
 
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
 - host-engine window-visible capture automation
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
-- production texture atlas, material selection, and multi-texture batch policy
+- production texture atlas packing, complex material graph, and bindless/descriptor-indexing policy
 - Vulkan text draw integration
 - RenderDoc automation; current capture target is the offscreen Vulkan smoke executable

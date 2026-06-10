@@ -51,7 +51,9 @@ template<class Provider, class Dim>
 {
     return left_.sort_key == right_.sort_key &&
         left_.material_id == right_.material_id &&
+        left_.material_generation == right_.material_generation &&
         left_.texture_id == right_.texture_id &&
+        left_.texture_generation == right_.texture_generation &&
         left_.layer == right_.layer &&
         left_.flags == right_.flags;
 }

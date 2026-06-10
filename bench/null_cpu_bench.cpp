@@ -182,7 +182,9 @@ void fillSpriteInputs(const R2DB::BenchmarkConfig& config_, BenchState& state_) 
         state_.sprites[index] = {
             .source_id = source_id,
             .texture_id = static_cast<R2D::U32>((index / 128U) % 8U),
+            .texture_generation = 0U,
             .material_id = static_cast<R2D::U32>((index / 128U) % 4U),
+            .material_generation = 0U,
             .color_rgba8 = 0xFFFFFFFFU,
             .layer = static_cast<R2D::U32>((index / 128U) % 4U),
             .flags = 0U,
@@ -198,6 +200,7 @@ void fillTextInputs(const R2DB::BenchmarkConfig& config_, BenchState& state_) no
             .atlas_id = static_cast<R2D::U32>(100U + index),
             .generation = 1U,
             .texture_id = static_cast<R2D::U32>(200U + index),
+            .texture_generation = 0U,
             .flags = 0U,
         };
     }

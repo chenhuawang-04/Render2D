@@ -89,7 +89,9 @@ void fillInputs(
         sprites_[index] = {
             .source_id = index,
             .texture_id = static_cast<R2D::U32>((index / 2U) % 3U),
+            .texture_generation = 0U,
             .material_id = static_cast<R2D::U32>((index / 4U) % 2U),
+            .material_generation = 0U,
             .color_rgba8 = kVisibleMask,
             .layer = static_cast<R2D::U32>(index % 2U),
             .flags = 0U,

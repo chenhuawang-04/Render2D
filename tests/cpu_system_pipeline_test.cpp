@@ -72,7 +72,9 @@ int main()
         {
             .source_id = 0U,
             .texture_id = 10U,
+            .texture_generation = 0U,
             .material_id = 20U,
+            .material_generation = 0U,
             .color_rgba8 = kVisibleMask,
             .layer = 1U,
             .flags = 0U,
@@ -80,7 +82,9 @@ int main()
         {
             .source_id = 1U,
             .texture_id = 10U,
+            .texture_generation = 0U,
             .material_id = 20U,
+            .material_generation = 0U,
             .color_rgba8 = kVisibleMask,
             .layer = 1U,
             .flags = 0U,
@@ -88,7 +92,9 @@ int main()
         {
             .source_id = 2U,
             .texture_id = 30U,
+            .texture_generation = 0U,
             .material_id = 40U,
+            .material_generation = 0U,
             .color_rgba8 = kVisibleMask,
             .layer = 1U,
             .flags = 0U,

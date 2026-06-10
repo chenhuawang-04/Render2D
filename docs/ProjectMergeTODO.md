@@ -459,3 +459,28 @@ Merge rule:
 - texture images and upload/readback buffers remain MemoryCenter-backed runtime resources;
 - ECS owns only POD refs and component streams;
 - production atlas packing, material selection, texture-array indexing, and multi-texture batch policy still need a dedicated host/runtime integration pass.
+
+## 36. Texture/material generations must flow through sprite batches
+
+Stage 14 adds generation fields to sprite resource identities.
+
+Merge rule:
+
+- host ECS should store `texture_id + texture_generation` and `material_id + material_generation` in sprite-facing records;
+- `DrawCommand`, `BatchCommand`, `SpriteInstance`, and `SpriteDrawPacket` must preserve those generations;
+- `DrawCommand.sort_key` remains only a fast grouping hint;
+- batch merge must still compare the full id + generation identity to avoid merging stale/reused resource ids.
+
+## 37. SpriteDrawPacket is the ECS-visible draw binding record
+
+Stage 14 adds `SpriteMaterialBinding`, `SpriteTextureBinding`, `SpriteDrawPacketBuildSystem`, and multi-packet sprite encoding.
+
+Merge rule:
+
+- host ECS owns `SpriteMaterialBinding[]`, `SpriteTextureBinding[]`, and `SpriteDrawPacket[]`;
+- material bindings map material id + generation to pipeline id + generation;
+- texture bindings map texture id + generation to descriptor id + generation plus descriptor range;
+- `VulkanSpriteRenderEncoder::recordPackets` only resolves packet refs and records Vulkan commands;
+- current packet builder requires contiguous instance ranges inside a batch before emitting one instanced draw packet.
+
+Production atlas packing, material graph policy, descriptor indexing, and text rendering remain separate future integration work.

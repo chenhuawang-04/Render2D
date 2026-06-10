@@ -235,7 +235,9 @@ void fillInputs(const BenchConfig& config_, BenchState& state_) noexcept
         state_.sprites[index] = {
             .source_id = index,
             .texture_id = static_cast<R2D::U32>((index / 128U) % 8U),
+            .texture_generation = 0U,
             .material_id = static_cast<R2D::U32>((index / 128U) % 4U),
+            .material_generation = 0U,
             .color_rgba8 = 0xFFFFFFFFU,
             .layer = static_cast<R2D::U32>((index / 128U) % 4U),
             .flags = 0U,

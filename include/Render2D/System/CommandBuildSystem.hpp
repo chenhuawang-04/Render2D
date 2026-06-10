@@ -47,7 +47,9 @@ struct CommandBuildSystem {
                 draw_commands_[index] = {
                     .source_index = source_index,
                     .material_id = sprite.material_id,
+                    .material_generation = sprite.material_generation,
                     .texture_id = sprite.texture_id,
+                    .texture_generation = sprite.texture_generation,
                     .vertex_first = 0U,
                     .vertex_count = 4U,
                     .index_first = 0U,

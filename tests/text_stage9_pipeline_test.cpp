@@ -54,6 +54,7 @@ int main()
             .atlas_id = 9U,
             .generation = 7U,
             .texture_id = 11U,
+            .texture_generation = 0U,
             .flags = 0U,
         },
     }};
@@ -106,6 +107,7 @@ int main()
 
     constexpr R2D::GlyphDrawConfig kDrawConfig{
         .material_id = 77U,
+        .material_generation = 0U,
         .vertex_first = 0U,
         .vertex_count = 4U,
         .index_first = 0U,

@@ -24,7 +24,9 @@ int main()
         const Sprite first_sprite{
             .source_id = 7U,
             .texture_id = 11U,
+            .texture_generation = 0U,
             .material_id = 13U,
+            .material_generation = 0U,
             .color_rgba8 = 0xFFFFFFFFU,
             .layer = 2U,
             .flags = 0U,
@@ -33,7 +35,9 @@ int main()
         sprites.push(Sprite{
             .source_id = 8U,
             .texture_id = 12U,
+            .texture_generation = 0U,
             .material_id = 14U,
+            .material_generation = 0U,
             .color_rgba8 = 0xFFFFFFFFU,
             .layer = 3U,
             .flags = 1U,
@@ -57,7 +61,9 @@ int main()
         draw_commands.push(DrawCommand{
             .source_index = 0U,
             .material_id = 13U,
+            .material_generation = 0U,
             .texture_id = 11U,
+            .texture_generation = 0U,
             .vertex_first = 0U,
             .vertex_count = 4U,
             .index_first = 0U,

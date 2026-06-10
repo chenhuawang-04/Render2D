@@ -2258,3 +2258,31 @@
 - sprite path 已从 color-only draw 扩展到真实 sampled image draw；
 - ECS 侧新增的是 `SamplerRef` POD 引用，真实 sampler/image/descriptor/pipeline 仍由 Vulkan runtime 管；
 - 仍未实现：生产 texture atlas、material selection、multi-texture batch policy、Vulkan text draw。
+
+## 2026-06-10 第十四阶段进度
+
+- [x] 14A：sprite texture/material 资源引用 generation 化完成
+- [x] 14B：`SpriteDrawPacketBuildSystem` 完成
+- [x] 14C：`VulkanSpriteRenderEncoder::recordPackets` 多 packet 记录完成
+- [x] 14D：多纹理/多批次 textured sprite smoke 完成
+- [x] 14E：第十四阶段文档与验证收口完成
+
+14A 边界说明：
+
+- `TextureRef`、`MaterialRef`、`Sprite`、`DrawCommand`、`BatchCommand`、`SpriteInstance`、`SpriteDrawPacket` 补齐 texture/material generation；
+- `SpriteDrawPacket` 补齐 pipeline/descriptor generation 与 descriptor first/count；
+- sort key 仍是快速分组 hint，batch merge 会额外比较 generation，避免复用后的同 id 误合批。
+
+14B/14C 边界说明：
+
+- 新增 `SpriteMaterialBinding` 与 `SpriteTextureBinding`，仍是 Strict POD component stream；
+- `SpriteDrawPacketBuildSystem` 将 `BatchCommand[] + DrawCommand[] + binding streams` 转换为 `SpriteDrawPacket[]`；
+- 当前 packet 构建要求 batch 内 instance range 连续，避免把非连续 instance 当作一次 instanced draw；
+- `recordPackets` 在一个 render pass 内按 packet 绘制，并仅在 pipeline/descriptor 变化时重新 bind。
+
+14D 结论：
+
+- 一个 command buffer 内已经可绘制两个 texture/descriptor batch；
+- smoke 使用 red/green 两张 1x1 纹理，左右半屏 readback 验证；
+- stale descriptor generation 负例已覆盖；
+- 仍未实现：atlas packing、复杂 material graph、bindless/descriptor indexing、Vulkan text draw。
