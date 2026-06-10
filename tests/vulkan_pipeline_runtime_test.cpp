@@ -70,6 +70,10 @@ void testPipelineLifecycle(const Render2DTest::VulkanSmokeContext& context_)
                 .polygon_mode = VK_POLYGON_MODE_FILL,
                 .sample_count = VK_SAMPLE_COUNT_1_BIT,
                 .flags = 0U,
+                .vertex_binding_descriptions = nullptr,
+                .vertex_attribute_descriptions = nullptr,
+                .vertex_binding_description_count = 0U,
+                .vertex_attribute_description_count = 0U,
             },
             pipeline_ref);
         assert(result.code == R2D::NativeStatusCode::Ok);

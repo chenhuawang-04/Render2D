@@ -2181,7 +2181,7 @@
 - [x] 12A：Sprite GPU-facing POD component contracts 完成
 - [x] 12B：`SpriteInstanceBuildSystem` 完成
 - [x] 12C：MemoryCenter-backed Sprite instance GPU upload path 完成
-- [ ] 12D：Sprite pipeline / descriptor layout
+- [x] 12D：Sprite pipeline / descriptor layout 完成
 - [ ] 12E：offscreen real sprite render smoke
 - [ ] 12F：第十二阶段文档与验证收口
 
@@ -2202,3 +2202,12 @@
 - `VulkanResourceRuntime` 增加带 source/destination offset 的 buffer copy helper，以及 native source buffer -> managed buffer copy helper；
 - GPU allocation 和 mapped memory 仍全部由 MemoryCenter-backed runtime 处理，没有直接 `VkDeviceMemory` 管理；
 - 12C 已有 CPU system test 与 Vulkan upload/readback smoke 覆盖。
+
+12D 边界说明：
+
+- `VulkanGraphicsPipelineConfig` 增加可选 vertex binding / attribute layout 指针与计数；
+- 新增 `VulkanSpritePipelineConfig` 与 `VulkanSpritePipelineRuntime`，作为 stateless sprite pipeline contract/helper；
+- sprite pipeline 固定使用 `SpriteVertex` vertex-rate binding 与 `SpriteInstance` instance-rate binding；
+- 当前 shader-visible instance attributes 为 transform row0/row1、UV rect、packed RGBA8 color；source/material/texture metadata 保留在组件流中，后续 batch/descriptor 策略再使用；
+- sprite descriptor runtime config 当前只要求 combined image sampler array，不把 instance buffer 放入 descriptor；
+- 12D 只完成 descriptor layout 与 graphics pipeline creation smoke，真实 offscreen sprite draw 留到 12E。

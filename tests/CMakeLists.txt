@@ -104,6 +104,19 @@ render2d_apply_strict_warnings(render2d_sprite_instance_upload_system_test)
 
 add_test(NAME render2d.sprite_instance_upload_system COMMAND render2d_sprite_instance_upload_system_test)
 
+add_executable(render2d_sprite_pipeline_contract_test
+    sprite_pipeline_contract_test.cpp
+)
+target_link_libraries(render2d_sprite_pipeline_contract_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_sprite_pipeline_contract_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_sprite_pipeline_contract_test)
+
+add_test(NAME render2d.sprite_pipeline_contract COMMAND render2d_sprite_pipeline_contract_test)
+
 add_executable(render2d_upload_descriptor_compaction_test
     upload_descriptor_compaction_test.cpp
 )
@@ -387,6 +400,19 @@ target_include_directories(render2d_vulkan_sprite_instance_upload_runtime_test P
 render2d_apply_strict_warnings(render2d_vulkan_sprite_instance_upload_runtime_test)
 
 add_test(NAME render2d.vulkan_sprite_instance_upload_runtime COMMAND render2d_vulkan_sprite_instance_upload_runtime_test)
+
+add_executable(render2d_vulkan_sprite_pipeline_runtime_test
+    vulkan_sprite_pipeline_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_sprite_pipeline_runtime_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_vulkan_sprite_pipeline_runtime_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_vulkan_sprite_pipeline_runtime_test)
+
+add_test(NAME render2d.vulkan_sprite_pipeline_runtime COMMAND render2d_vulkan_sprite_pipeline_runtime_test)
 
 add_executable(render2d_vulkan_dynamic_render_encoder_test
     vulkan_dynamic_render_encoder_test.cpp

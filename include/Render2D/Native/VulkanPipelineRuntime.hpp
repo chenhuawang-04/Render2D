@@ -31,6 +31,10 @@ struct VulkanGraphicsPipelineConfig {
     U32 polygon_mode;
     U32 sample_count;
     U32 flags;
+    const VkVertexInputBindingDescription* vertex_binding_descriptions;
+    const VkVertexInputAttributeDescription* vertex_attribute_descriptions;
+    U32 vertex_binding_description_count;
+    U32 vertex_attribute_description_count;
 };
 
 template<class Provider, class Dim>
@@ -189,7 +193,11 @@ public:
                 config_.vertex_shader == VK_NULL_HANDLE ||
                 config_.fragment_shader == VK_NULL_HANDLE ||
                 config_.color_format == static_cast<U32>(VK_FORMAT_UNDEFINED) ||
-                (config_.descriptor_set_layout_count != 0U && config_.descriptor_set_layouts == nullptr)) {
+                (config_.descriptor_set_layout_count != 0U && config_.descriptor_set_layouts == nullptr) ||
+                (config_.vertex_binding_description_count != 0U &&
+                    config_.vertex_binding_descriptions == nullptr) ||
+                (config_.vertex_attribute_description_count != 0U &&
+                    config_.vertex_attribute_descriptions == nullptr)) {
                 return makeResult(NativeStatusCode::InvalidInput, 0U, 0U);
             }
             if (!hasAvailableSlot()) {
@@ -425,10 +433,10 @@ private:
             .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
             .pNext = nullptr,
             .flags = 0U,
-            .vertexBindingDescriptionCount = 0U,
-            .pVertexBindingDescriptions = nullptr,
-            .vertexAttributeDescriptionCount = 0U,
-            .pVertexAttributeDescriptions = nullptr,
+            .vertexBindingDescriptionCount = config_.vertex_binding_description_count,
+            .pVertexBindingDescriptions = config_.vertex_binding_descriptions,
+            .vertexAttributeDescriptionCount = config_.vertex_attribute_description_count,
+            .pVertexAttributeDescriptions = config_.vertex_attribute_descriptions,
         };
         const VkPipelineInputAssemblyStateCreateInfo input_assembly{
             .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,

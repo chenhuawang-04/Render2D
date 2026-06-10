@@ -393,3 +393,15 @@ Merge rule:
 - `SpriteInstanceUploadSystem` only computes byte ranges and generic upload descriptors; it does not allocate or call Vulkan;
 - `VulkanSpriteInstanceUploadRuntime` writes to the MemoryCenter-backed upload ring and records a copy into a `VulkanResourceRuntime` managed buffer;
 - direct Vulkan memory allocation/mapping remains forbidden in the sprite path.
+
+## 31. Sprite pipeline layout is runtime contract, not ECS storage
+
+Stage 12D adds `VulkanSpritePipelineConfig` and `VulkanSpritePipelineRuntime`.
+
+Merge rule:
+
+- host ECS still owns `SpriteVertex[]`, `SpriteInstance[]`, draw/batch/upload streams, and resource ref components;
+- sprite vertex input uses `SpriteVertex` as vertex-rate binding 0 and `SpriteInstance` as instance-rate binding 1;
+- descriptor layout currently exposes sampled textures through combined image sampler descriptors;
+- instance buffers are bound as vertex/instance buffers, not as descriptor-owned storage;
+- `PipelineRef` and `DescriptorSlice` remain id + generation records resolved by native runtime.

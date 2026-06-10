@@ -88,6 +88,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanPresentRuntime.hpp` - Stage 11C/11E acquire/present runtime using `vkAcquireNextImageKHR`, `vkQueuePresentKHR`, result mapping, and swapchain image-index validation.
 - `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - MemoryCenter-backed persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
 - `include/Render2D/Native/VulkanSpriteInstanceUploadRuntime.hpp` - Stage 12C stateless upload bridge from `SpriteInstance[]` to managed GPU buffers through the upload ring.
+- `include/Render2D/Native/VulkanSpritePipelineRuntime.hpp` - Stage 12D stateless sprite vertex-input, descriptor config, and pipeline creation helper.
 - `include/Render2D/Native/VulkanRenderEncoder.hpp` - Dynamic rendering encoder for direct and indirect draw recording.
 
 ### Memory and Storage
@@ -108,6 +109,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/draw_sort_system_test.cpp` - Packed sort key, radix draw sort, batch merge, and collision-safety coverage.
 - `tests/sprite_instance_system_test.cpp` - Stage 12B Sprite GPU instance component contract and build-system coverage.
 - `tests/sprite_instance_upload_system_test.cpp` - Stage 12C typed sprite instance upload command conversion coverage.
+- `tests/sprite_pipeline_contract_test.cpp` - Stage 12D sprite vertex input and descriptor config contract coverage.
 - `tests/upload_descriptor_compaction_test.cpp` - Stage 10I upload coalescing, descriptor compaction, in-place, capacity, invalid-input, and unsupported-domain coverage.
 - `tests/transform_dirty_system_test.cpp` - Sparse dirty transform/bounds update coverage.
 - `tests/bounds_system_test.cpp` - fast_math AABB transform regression coverage for translation, scale, rotation, shear, and error paths.
@@ -134,6 +136,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_present_runtime_test.cpp` - Stage 11C/11E headless acquire/present runtime tests for invalid init, stale refs, result mapping, invalid commands, and unsupported domains.
 - `tests/vulkan_upload_ring_runtime_test.cpp` - Optional Vulkan persistent upload ring frame-slot reuse smoke test.
 - `tests/vulkan_sprite_instance_upload_runtime_test.cpp` - Optional Stage 12C upload-ring to GPU buffer copy/readback smoke test for `SpriteInstance[]`.
+- `tests/vulkan_sprite_pipeline_runtime_test.cpp` - Optional Stage 12D descriptor layout plus sprite graphics pipeline creation smoke test.
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
@@ -178,6 +181,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-09-stage11-acquire-present-state-flow.md` - ADR for Stage 11E acquire-to-present component flow and headless result mapping coverage.
 - `docs/adr/2026-06-09-stage12-sprite-gpu-instance-contract.md` - ADR for Stage 12A/12B sprite GPU-facing POD records and instance build system.
 - `docs/adr/2026-06-09-stage12-sprite-instance-upload-path.md` - ADR for Stage 12C MemoryCenter-backed sprite instance upload path.
+- `docs/adr/2026-06-10-stage12-sprite-pipeline-descriptor-layout.md` - ADR for Stage 12D sprite vertex-input pipeline and descriptor layout.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.
