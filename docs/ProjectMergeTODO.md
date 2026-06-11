@@ -496,3 +496,14 @@ Merge rule:
 - `TextureAtlasRegion` stores atlas id/generation, texture id/generation, pixel rect, and normalized UVs;
 - `SpriteInstanceBuildSystem::runWithTextureRegions` writes region UVs into `SpriteInstance[]` and rejects stale or texture-mismatched regions;
 - actual atlas images, uploads, raster data, descriptor updates, and advanced packing policy remain outside ECS components and should be owned by host/runtime integration.
+
+## 39. Atlas region UVs are GPU-proven, but production atlas ownership is still external
+
+Stage 16 adds a Vulkan smoke test that renders two sprites from one 2x1 atlas texture through one descriptor and one packet.
+
+Merge rule:
+
+- host/runtime still owns atlas image creation, upload scheduling, descriptor updates, and retirement;
+- host ECS still owns `TextureAtlasRegion[]`, `Sprite[]`, `DrawCommand[]`, and `SpriteInstance[]`;
+- Render2D systems can now be trusted to propagate region UVs into the sampled sprite path;
+- this proof does not replace a production atlas runtime, image packing policy, font raster ingestion, material graph, or bindless/descriptor-indexing design.

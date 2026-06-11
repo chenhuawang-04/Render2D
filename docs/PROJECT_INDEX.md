@@ -140,7 +140,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_sprite_instance_upload_runtime_test.cpp` - Optional Stage 12C upload-ring to GPU buffer copy/readback smoke test for `SpriteInstance[]`.
 - `tests/vulkan_sprite_pipeline_runtime_test.cpp` - Optional Stage 12D descriptor layout plus sprite graphics pipeline creation smoke test.
 - `tests/vulkan_sprite_render_encoder_test.cpp` - Optional Stage 12E offscreen real sprite draw smoke test using sprite vertex/instance buffers and readback verification.
-- `tests/vulkan_textured_sprite_render_test.cpp` - Optional Stage 13/14 offscreen textured sprite smoke test covering sampler runtime, buffer-to-image upload, descriptor update, sampled shader draw, multi-packet red/green rendering, stale descriptor rejection, and readback verification.
+- `tests/vulkan_textured_sprite_render_test.cpp` - Optional Stage 13/14/16 offscreen textured sprite smoke test covering sampler runtime, buffer-to-image upload, descriptor update, sampled shader draw, atlas-region UV sampling, multi-packet red/green rendering, stale descriptor rejection, and readback verification.
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
@@ -191,6 +191,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-10-stage13-textured-sprite-sampling.md` - ADR for Stage 13 sampler runtime, texture upload helper, and textured sprite sampling smoke proof.
 - `docs/adr/2026-06-10-stage14-sprite-packet-material-texture-binding.md` - ADR for Stage 14 resource-generation sprite contracts, packet build system, and multi-packet sprite encoder.
 - `docs/adr/2026-06-10-stage15-texture-atlas-uv-region.md` - ADR for Stage 15 texture atlas POD components, deterministic shelf packing, and sprite UV region propagation.
+- `docs/adr/2026-06-11-stage16-atlas-textured-sprite-smoke.md` - ADR for Stage 16 one-atlas, one-descriptor textured sprite smoke coverage.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

@@ -2312,3 +2312,22 @@
 - Stage 15 已完成；
 - sprite path 已具备 ECS 侧 texture atlas region 与 UV 传播基础；
 - 生产 atlas 图片生命周期、真实贴图合图、material graph、descriptor indexing 与 Vulkan text draw 留到后续阶段。
+
+## 2026-06-11 第十六阶段进度
+
+- [x] 16A：新增 atlas texture region 的真实 Vulkan sampled sprite smoke
+- [x] 16B：用 `TextureAtlasBuildSystem` 生成 region，并用 `runWithTextureRegions` 写入 `SpriteInstance[]`
+- [x] 16C：单 atlas image、单 descriptor、单 packet、两个 instance 渲染左右半屏
+- [x] 16D：第十六阶段文档、ADR、验证收口完成
+
+16A/16B 边界说明：
+
+- smoke 使用一张 2x1 atlas sampled image，左像素 red、右像素 green；
+- `TextureAtlasRegion[]` 仍由 ECS/调用方拥有，Render2D 不新增生产 ECS storage；
+- instance UV 来自 `Sprite.texture_region_id + texture_region_generation`，不是测试手写 UV。
+
+16C 结论：
+
+- atlas region UV 已经通过真实 textured sprite shader 采样验证；
+- 一个 descriptor/packet 可绘制同一 atlas 纹理内的多个 region；
+- 当前仍不是生产 atlas runtime：真实图片合图、字体 raster 接入、descriptor 更新策略、material graph、bindless/indexing 继续留到后续阶段。
