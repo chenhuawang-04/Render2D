@@ -8,7 +8,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `.gitignore` - Ignores CMake/Ninja build output, user files, and generated compiler artifacts.
 - `AGENTS.md` - Contributor guide for this repository.
 - `CLAUDE.md` - Guidance for Claude Code instances: build/test/run commands, external dependency paths, the three-layer architecture, non-negotiable invariants, and naming conventions.
-- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, the internal `render2d_thread_runtime_support` and (Stage 19, behind `RENDER2D_BUILD_FONT_RUNTIME`) `render2d_font_runtime_support` targets, the MemoryCenter/Vector_New/fast_math/ThreadCenter/Vulkan dependencies, the vendored FreeType/HarfBuzz/SheenBidi static libraries, warnings, tests, and benchmarks.
+- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, the internal `render2d_thread_runtime_support` and (Stage 19, behind `RENDER2D_BUILD_FONT_RUNTIME`) `render2d_font_runtime_support` targets, the MemoryCenter/Vector_New/fast_math/ThreadCenter/Vulkan dependencies, the FreeType/HarfBuzz/SheenBidi submodule static libraries, warnings, tests, and benchmarks.
 - `CMakePresets.json` - Debug and Perf configure/build/test presets, now aligned to the CMake 3.28 minimum required by embedded ThreadCenter.
 - `Plan.md` - Long-term implementation plan and phase tracking.
 - `ReinforcementPlan.md` - Reinforcement plan continuing `Plan.md` from Stage 17: build portability/CI gate, production texture-atlas image runtime, real FreeType font/text runtime, material/descriptor (bindless) policy, parallel tail stages, on-screen presentation/capture, and host-engine merge.
@@ -205,7 +205,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-10-stage15-texture-atlas-uv-region.md` - ADR for Stage 15 texture atlas POD components, deterministic shelf packing, and sprite UV region propagation.
 - `docs/adr/2026-06-11-stage16-atlas-textured-sprite-smoke.md` - ADR for Stage 16 one-atlas, one-descriptor textured sprite smoke coverage.
 - `docs/adr/2026-06-11-stage18-texture-atlas-image-runtime.md` - ADR for Stage 18 `VulkanTextureAtlasRuntime` (atlas image ownership behind id + generation, allocation delegated to the resource runtime), the `recordCopyBufferToImageRegion` sub-rectangle copy, and the 18E end-to-end sampled atlas proof.
-- `docs/adr/2026-06-11-stage19-text-font-pipeline.md` - ADR for the Stage 19 real font/text pipeline: decomposed shaping (pure systems + FreeType/HarfBuzz/SheenBidi runtime touchpoints), the new POD shaping components, full bidi, and the dependency/vendoring constraints.
+- `docs/adr/2026-06-11-stage19-text-font-pipeline.md` - ADR for the Stage 19 real font/text pipeline: decomposed shaping (pure systems + FreeType/HarfBuzz/SheenBidi runtime touchpoints), the new POD shaping components, full bidi, and the dependency constraints.
+- `docs/adr/2026-06-12-third-party-submodules.md` - ADR for acquiring FreeType/HarfBuzz/SheenBidi as git submodules pinned to `VER-2-14-3`/`14.2.1`/`v3.0.0` (replacing in-tree vendored source), with shallow fetch and unchanged CMake wiring.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.
@@ -215,11 +216,13 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/architecture/BENCHMARK_BASELINE.md` - Stage 10 benchmark scenarios, runner usage, Debug/Perf captures, and optimization gate rule.
 - `docs/architecture/STAGE10_PERFORMANCE_TODO.md` - Stage 10 completion checklist, ThreadCenter boundary, and remaining performance work items.
 - `docs/architecture/STAGE11_NATIVE_FRAME_TODO.md` - Stage 11 native frame-loop checklist covering frame/present contracts, deferred destroy, swapchain acquire, and present.
-- `docs/architecture/STAGE19_TEXT_FONT_DESIGN.md` - Frozen Stage 19 design: decomposed FreeType + HarfBuzz + SheenBidi text pipeline, the POD ECS component spec, full bidi, GPU reuse via the sprite path, and the sub-stage/vendoring plan.
+- `docs/architecture/STAGE19_TEXT_FONT_DESIGN.md` - Frozen Stage 19 design: decomposed FreeType + HarfBuzz + SheenBidi text pipeline, the POD ECS component spec, full bidi, GPU reuse via the sprite path, and the sub-stage/submodule plan.
 
 
-## Third-party source snapshots
+## Third-party submodules
 
-- `third_party/freetype/` - Vendored FreeType source. Built as a static library (self-contained: zlib/png/bzip2/brotli/harfbuzz disabled) behind `RENDER2D_BUILD_FONT_RUNTIME` for the Stage 19 font runtime; provides face loading, glyph rasterization, and metrics.
-- `third_party/harfbuzz/` - Vendored HarfBuzz source. Built as a static library (core shaping + FreeType interop only; subset/raster/vector/gpu/glib/icu disabled) for Stage 19 text shaping (`hb_shape`).
-- `third_party/sheenbidi/` - Vendored SheenBidi source (Apache-2.0, unity build). Built as a static library for Stage 19 UAX#9 bidirectional resolution and script itemization.
+The font-runtime dependencies are git submodules under `third_party/`, pinned to release tags (`git submodule update --init --recursive` to fetch; `shallow = true` in `.gitmodules`). See `docs/adr/2026-06-12-third-party-submodules.md`.
+
+- `third_party/freetype/` - FreeType submodule pinned to `VER-2-14-3`. Built as a static library (self-contained: zlib/png/bzip2/brotli/harfbuzz disabled) behind `RENDER2D_BUILD_FONT_RUNTIME` for the Stage 19 font runtime; provides face loading, glyph rasterization, and metrics.
+- `third_party/harfbuzz/` - HarfBuzz submodule pinned to `14.2.1`. Built as a static library (core shaping + FreeType interop only; subset/raster/vector/gpu/glib/icu disabled) for Stage 19 text shaping (`hb_shape`).
+- `third_party/sheenbidi/` - SheenBidi submodule pinned to `v3.0.0` (Apache-2.0, unity build). Built as a static library for Stage 19 UAX#9 bidirectional resolution and script itemization.

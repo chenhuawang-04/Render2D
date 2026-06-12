@@ -54,4 +54,4 @@ GlyphInstance[]
 
 ## FreeType boundary
 
-FreeType is vendored under `third_party/freetype/` but is not linked. Future font runtime work may use it for decoding/rasterization, but FreeType handles, font faces, glyph slots, atlas images, and caches must remain outside ECS components.
+FreeType, HarfBuzz, and SheenBidi are git submodules under `third_party/`, linked only by the Stage 19 font runtime behind `render2d_font_runtime_support`. FreeType handles, font faces, glyph slots, atlas images, shaping scratch, and caches must remain outside ECS components.

@@ -216,7 +216,7 @@ Implemented:
 - Stage 8G offscreen dynamic-rendering smoke through `VulkanDynamicRenderEncoder`
 - Stage 9A Text/Glyph Strict POD components: `Utf8Slice`, `GlyphRun`, `GlyphInstance`, and `FontAtlasRef`
 - Stage 9B deterministic test glyph systems through `GlyphRunBuildSystem`, `GlyphInstanceBuildSystem`, and `GlyphBuildConfig`
-- Dormant FreeType source copied under `third_party/freetype` for future font integration; it is not built yet
+- Stage 19 font/text runtime: FreeType, HarfBuzz, and SheenBidi as git submodules under `third_party/`, built behind `RENDER2D_BUILD_FONT_RUNTIME` and isolated in the internal `render2d_font_runtime_support` target (see `docs/architecture/STAGE19_TEXT_FONT_DESIGN.md`)
 - Stage 10C fast_math migration: `Render2D::Vec2`, `Render2D::Mat3`, and `Render2D::Aabb2` alias `MMath` POD types; custom Render2D `Aabb2` / `Affine2X3` structs are removed
 - Stage 10D benchmark/profile harness: `clang-ninja-perf` preset, dirty transform benchmark input mutation, extended runner suites, and Stage 10 TODO tracking
 - Stage 10E single-thread spatial hot path: `TransformDirtyItem`, `TransformSystem::runDirty`, `BoundsSystem::runDirty`, and zero-rotation transform fast path
