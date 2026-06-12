@@ -8,6 +8,7 @@
 #include "Render2D/Core/Result.hpp"
 #include "Render2D/Meta/Domain.hpp"
 
+#include <algorithm>
 #include <span>
 
 namespace Render2D {
@@ -315,6 +316,107 @@ struct TextureAtlasBuildSystem {
             return {
                 .code = SystemStatusCode::Ok,
                 .read_count = static_cast<U32>(items_.size()),
+                .write_count = write_count,
+            };
+        }
+    }
+
+    // First-Fit Decreasing Height shelf packing: place items tallest-first so a
+    // shelf's wasted vertical space is bounded by similar-height neighbours,
+    // which packs varied-size items far tighter than the input-order shelf in
+    // run(). The caller owns the scratch order span (no allocation); output
+    // regions are looked up by region id, so placement order is not observable
+    // to consumers.
+    static SystemResult runHeightSorted(
+        std::span<const TextureAtlasItem<Provider, Dim>> items_,
+        std::span<TextureAtlasRegion<Provider, Dim>> regions_,
+        std::span<U32> scratch_order_,
+        TextureAtlasBuildConfig config_) noexcept
+    {
+        if constexpr (!SupportedRenderDomain<Provider, Dim>) {
+            return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
+        } else {
+            if (!isSystemResultCountRepresentable(items_.size()) ||
+                !isSystemResultCountRepresentable(regions_.size()) ||
+                !isSystemResultCountRepresentable(scratch_order_.size()) ||
+                !isValidConfig(config_)) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
+            if (items_.empty()) {
+                return {.code = SystemStatusCode::Ok, .read_count = 0U, .write_count = 0U};
+            }
+            if (regions_.size() < items_.size() || scratch_order_.size() < items_.size()) {
+                return {
+                    .code = SystemStatusCode::InsufficientCapacity,
+                    .read_count = static_cast<U32>(items_.size()),
+                    .write_count = 0U,
+                };
+            }
+
+            const Usize item_count = items_.size();
+            const std::span<U32> ordered = scratch_order_.first(item_count);
+            for (Usize index = 0U; index < item_count; ++index) {
+                ordered[index] = static_cast<U32>(index);
+            }
+            std::sort(
+                ordered.begin(),
+                ordered.end(),
+                [items_](U32 left_, U32 right_) noexcept {
+                    const U32 left_height = items_[left_].height;
+                    const U32 right_height = items_[right_].height;
+                    return left_height != right_height ? left_height > right_height : left_ < right_;
+                });
+
+            U32 cursor_x = 0U;
+            U32 cursor_y = 0U;
+            U32 row_height = 0U;
+            U32 write_count = 0U;
+            for (Usize order_index = 0U; order_index < item_count; ++order_index) {
+                const auto& item = items_[ordered[order_index]];
+                U32 padded_width = 0U;
+                U32 padded_height = 0U;
+                U32 padding = 0U;
+                if (!makePaddedExtent(item, config_, padded_width, padded_height, padding)) {
+                    return {
+                        .code = SystemStatusCode::InvalidInput,
+                        .read_count = static_cast<U32>(order_index),
+                        .write_count = write_count,
+                    };
+                }
+
+                if (cursor_x != 0U && padded_width > config_.atlas_width - cursor_x) {
+                    cursor_x = 0U;
+                    if (cursor_y > 0xFFFFFFFFU - row_height) {
+                        return {
+                            .code = SystemStatusCode::InsufficientCapacity,
+                            .read_count = static_cast<U32>(order_index),
+                            .write_count = write_count,
+                        };
+                    }
+                    cursor_y += row_height;
+                    row_height = 0U;
+                }
+                if (cursor_y > config_.atlas_height ||
+                    padded_height > config_.atlas_height - cursor_y) {
+                    return {
+                        .code = SystemStatusCode::InsufficientCapacity,
+                        .read_count = static_cast<U32>(order_index),
+                        .write_count = write_count,
+                    };
+                }
+
+                const U32 x = cursor_x + padding;
+                const U32 y = cursor_y + padding;
+                regions_[write_count] = makeRegion(item, config_, x, y);
+                ++write_count;
+
+                cursor_x += padded_width;
+                row_height = row_height < padded_height ? padded_height : row_height;
+            }
+
+            return {
+                .code = SystemStatusCode::Ok,
+                .read_count = static_cast<U32>(item_count),
                 .write_count = write_count,
             };
         }

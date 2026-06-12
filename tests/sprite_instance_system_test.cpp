@@ -462,6 +462,50 @@ void testTextureAtlasBuildSystem(R2DT::TestContext& context_)
     R2D_TEST_CHECK_EQ(context_, regions[0U].uv_max_x, 0.75F);
 }
 
+void testTextureAtlasHeightSortedBuild(R2DT::TestContext& context_)
+{
+    // Input order interleaves heights; FFDH must place the tall item (id 2, h4)
+    // before the short items (id 1 and id 3, h2), with id-order tie-breaking.
+    constexpr std::array<TextureAtlasItem, 3U> kItems{{
+        {.region_id = 1U, .generation = 10U, .width = 4U, .height = 2U, .padding = 0U, .flags = 0U},
+        {.region_id = 2U, .generation = 20U, .width = 4U, .height = 4U, .padding = 0U, .flags = 0U},
+        {.region_id = 3U, .generation = 30U, .width = 4U, .height = 2U, .padding = 0U, .flags = 0U},
+    }};
+    constexpr R2D::TextureAtlasBuildConfig kConfig{
+        .atlas_width = 8U,
+        .atlas_height = 8U,
+        .atlas_id = 9U,
+        .atlas_generation = 90U,
+        .texture_id = 5U,
+        .texture_generation = 50U,
+        .padding = 0U,
+        .flags = 0U,
+    };
+    std::array<TextureAtlasRegion, kItems.size()> regions{};
+    std::array<R2D::U32, kItems.size()> order{};
+
+    auto result = R2D::TextureAtlasBuildSystem<Provider, Dim>::runHeightSorted(kItems, regions, order, kConfig);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(context_, result.read_count, 3U);
+    R2D_TEST_CHECK_EQ(context_, result.write_count, 3U);
+
+    // Tallest first: id 2 at (0,0), then id 1 at (4,0), then id 3 wraps to (0,4).
+    R2D_TEST_CHECK_EQ(context_, regions[0U].region_id, 2U);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].x, 0U);
+    R2D_TEST_CHECK_EQ(context_, regions[0U].y, 0U);
+    R2D_TEST_CHECK_EQ(context_, regions[1U].region_id, 1U);
+    R2D_TEST_CHECK_EQ(context_, regions[1U].x, 4U);
+    R2D_TEST_CHECK_EQ(context_, regions[1U].y, 0U);
+    R2D_TEST_CHECK_EQ(context_, regions[2U].region_id, 3U);
+    R2D_TEST_CHECK_EQ(context_, regions[2U].x, 0U);
+    R2D_TEST_CHECK_EQ(context_, regions[2U].y, 4U);
+
+    // Scratch order smaller than the item count is rejected.
+    std::array<R2D::U32, 1U> short_order{};
+    result = R2D::TextureAtlasBuildSystem<Provider, Dim>::runHeightSorted(kItems, regions, short_order, kConfig);
+    R2D_TEST_CHECK_EQ(context_, result.code, R2D::SystemStatusCode::InsufficientCapacity);
+}
+
 void testSpriteInstancesUseTextureRegions(R2DT::TestContext& context_)
 {
     constexpr std::array<WorldTransform, 1U> kWorldTransforms{{
@@ -627,6 +671,7 @@ void testUnsupportedDomain(R2DT::TestContext& context_)
     testBuildSpriteDrawPackets(context);
     testPacketBuildInvalidInput(context);
     testTextureAtlasBuildSystem(context);
+    testTextureAtlasHeightSortedBuild(context);
     testSpriteInstancesUseTextureRegions(context);
     testCapacityAndInvalidInput(context);
     testUnsupportedDomain(context);

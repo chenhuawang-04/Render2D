@@ -46,6 +46,7 @@
 #include "Render2D/Native/VulkanSubmitRuntime.hpp"
 #include "Render2D/Native/VulkanSwapchainRuntime.hpp"
 #include "Render2D/Native/VulkanSyncRuntime.hpp"
+#include "Render2D/Native/VulkanTextureAtlasRuntime.hpp"
 #include "Render2D/Native/VulkanThreadCommandRuntime.hpp"
 #include "Render2D/Native/VulkanUploadRingRuntime.hpp"
 #include "Render2D/Storage/StorageFwd.hpp"

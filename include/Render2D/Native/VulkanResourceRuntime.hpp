@@ -642,6 +642,81 @@ public:
             destination_.generation);
     }
 
+    NativeResult recordCopyBufferToImageRegion(
+        VkCommandBuffer command_buffer_,
+        const BufferRef<Provider, Dim>& source_,
+        const ImageRef<Provider, Dim>& destination_,
+        U64 source_offset_,
+        U32 destination_x_,
+        U32 destination_y_,
+        U32 region_width_,
+        U32 region_height_) const noexcept
+    {
+        U64 byte_count = 0U;
+        if (command_buffer_ == VK_NULL_HANDLE ||
+            !isLiveBufferRef(source_) ||
+            !isLiveImageRef(destination_) ||
+            region_width_ == 0U ||
+            region_height_ == 0U ||
+            (source_.usage_flags & static_cast<U32>(VK_BUFFER_USAGE_TRANSFER_SRC_BIT)) == 0U ||
+            (destination_.usage_flags & static_cast<U32>(VK_IMAGE_USAGE_TRANSFER_DST_BIT)) == 0U ||
+            destination_x_ > destination_.width ||
+            destination_y_ > destination_.height ||
+            region_width_ > destination_.width - destination_x_ ||
+            region_height_ > destination_.height - destination_y_ ||
+            !makeRegionByteCount(destination_.format, region_width_, region_height_, byte_count) ||
+            !isValidBufferRange(source_, source_offset_, byte_count)) {
+            return makeResult(
+                NativeStatusCode::InvalidInput,
+                NativeObjectKind::Image,
+                destination_.image_id,
+                destination_.generation);
+        }
+
+        VkBuffer source_buffer = VK_NULL_HANDLE;
+        NativeResult result = resolveNativeBuffer(source_, source_buffer);
+        if (result.code != NativeStatusCode::Ok) {
+            return result;
+        }
+
+        VkImage destination_image = VK_NULL_HANDLE;
+        VkImageView destination_view = VK_NULL_HANDLE;
+        result = resolveNativeImage(destination_, destination_image, destination_view);
+        if (result.code != NativeStatusCode::Ok) {
+            return result;
+        }
+
+        const VkBufferImageCopy copy_region{
+            .bufferOffset = source_offset_,
+            .bufferRowLength = 0U,
+            .bufferImageHeight = 0U,
+            .imageSubresource = {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0U,
+                .baseArrayLayer = 0U,
+                .layerCount = 1U,
+            },
+            .imageOffset = {
+                .x = static_cast<std::int32_t>(destination_x_),
+                .y = static_cast<std::int32_t>(destination_y_),
+                .z = 0,
+            },
+            .imageExtent = {.width = region_width_, .height = region_height_, .depth = 1U},
+        };
+        vkCmdCopyBufferToImage(
+            command_buffer_,
+            source_buffer,
+            destination_image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1U,
+            &copy_region);
+        return makeResult(
+            NativeStatusCode::Ok,
+            NativeObjectKind::Image,
+            destination_.image_id,
+            destination_.generation);
+    }
+
     NativeResult recordCopyImageToBuffer(
         VkCommandBuffer command_buffer_,
         const ImageRef<Provider, Dim>& source_,

@@ -345,6 +345,16 @@ render2d_apply_strict_warnings(render2d_vulkan_resource_runtime_test)
 
 add_test(NAME render2d.vulkan_resource_runtime COMMAND render2d_vulkan_resource_runtime_test)
 
+add_executable(render2d_vulkan_texture_atlas_runtime_test
+    vulkan_texture_atlas_runtime_test.cpp
+)
+target_link_libraries(render2d_vulkan_texture_atlas_runtime_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_texture_atlas_runtime_test)
+
+add_test(NAME render2d.vulkan_texture_atlas_runtime COMMAND render2d_vulkan_texture_atlas_runtime_test)
+
 add_executable(render2d_vulkan_descriptor_runtime_test
     vulkan_descriptor_runtime_test.cpp
 )
