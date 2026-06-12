@@ -59,6 +59,21 @@ template<class Provider, class Dim>
 struct GlyphInstance;
 
 template<class Provider, class Dim>
+struct Codepoint;
+
+template<class Provider, class Dim>
+struct ShapingRun;
+
+template<class Provider, class Dim>
+struct ShapedGlyph;
+
+template<class Provider, class Dim>
+struct GlyphAtlasEntry;
+
+template<class Provider, class Dim>
+struct FontMetrics;
+
+template<class Provider, class Dim>
 struct Camera;
 
 template<class Provider, class Dim>

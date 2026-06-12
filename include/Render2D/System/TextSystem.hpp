@@ -498,6 +498,8 @@ private:
             .atlas_rect = makeAtlasRect(glyph_id_, config_),
             .position_x = static_cast<float>(glyph_index_) * text_.pixel_size * config_.advance_x_scale,
             .position_y = config_.baseline_y,
+            .width = text_.pixel_size,
+            .height = text_.pixel_size,
             .color_rgba8 = text_.color_rgba8,
             .sort_key = text_.layer,
             .layer = text_.layer,

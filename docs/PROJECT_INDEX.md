@@ -7,9 +7,11 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `.clang-tidy` - Project clang-tidy configuration adapted from the Melosyne style rules.
 - `.gitignore` - Ignores CMake/Ninja build output, user files, and generated compiler artifacts.
 - `AGENTS.md` - Contributor guide for this repository.
-- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, the internal `render2d_thread_runtime_support` target, MemoryCenter/Vector_New/fast_math/ThreadCenter/Vulkan dependencies, warnings, tests, and benchmarks. Dormant `third_party/freetype` is intentionally not added here yet.
+- `CLAUDE.md` - Guidance for Claude Code instances: build/test/run commands, external dependency paths, the three-layer architecture, non-negotiable invariants, and naming conventions.
+- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, the internal `render2d_thread_runtime_support` and (Stage 19, behind `RENDER2D_BUILD_FONT_RUNTIME`) `render2d_font_runtime_support` targets, the MemoryCenter/Vector_New/fast_math/ThreadCenter/Vulkan dependencies, the vendored FreeType/HarfBuzz/SheenBidi static libraries, warnings, tests, and benchmarks.
 - `CMakePresets.json` - Debug and Perf configure/build/test presets, now aligned to the CMake 3.28 minimum required by embedded ThreadCenter.
 - `Plan.md` - Long-term implementation plan and phase tracking.
+- `ReinforcementPlan.md` - Reinforcement plan continuing `Plan.md` from Stage 17: build portability/CI gate, production texture-atlas image runtime, real FreeType font/text runtime, material/descriptor (bindless) policy, parallel tail stages, on-screen presentation/capture, and host-engine merge.
 
 ## Public include tree
 
@@ -37,7 +39,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Component/Transform.hpp` - `Transform`, `WorldTransform`, and `TransformDirtyItem`; derived transforms store fast_math `Mat3`.
 - `include/Render2D/Component/Bounds.hpp` - `LocalBounds` and `WorldBounds`; bounds store fast_math `Aabb2`.
 - `include/Render2D/Component/Sprite.hpp` - Sprite-facing components, texture atlas item/region POD records, GPU-facing sprite POD records, material/texture binding records, sprite draw packets, sprite instance upload command, and render references.
-- `include/Render2D/Component/Text.hpp` - Text input, text dirty state/range, UTF-8 slice, font atlas, glyph run, and glyph instance POD components.
+- `include/Render2D/Component/Text.hpp` - Text input, text dirty state/range, UTF-8 slice, font atlas, glyph run, and glyph instance POD components, plus the Stage 19 shaping-pipeline POD components (`Codepoint`, `ShapingRun`, `ShapedGlyph`, `GlyphAtlasEntry`, `FontMetrics`); `GlyphInstance` carries a `width`/`height` quad and `FontRef` is an id + generation handle.
 - `include/Render2D/Component/Camera.hpp` - Camera input component.
 - `include/Render2D/Component/Command.hpp` - Visibility, sorting, draw command, and `CommandBuffer` descriptor components.
 - `include/Render2D/Component/Batch.hpp` - `BatchCommand`.
@@ -51,7 +53,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/BoundsSystem.hpp` - Converts local bounds plus world transforms to world bounds, including dirty-index updates.
 - `include/Render2D/System/CullingSystem.hpp` - Produces `VisibleItem[]` using camera bounds and visibility masks.
 - `include/Render2D/System/CommandBuildSystem.hpp` - Builds `DrawCommand[]` from visible items and sprites.
-- `include/Render2D/System/SpriteInstanceSystem.hpp` - Component-stream systems building `SpriteInstance[]`, optional texture-region UVs, texture atlas region output, sprite instance upload commands, and `SpriteDrawPacket[]` from batch/material/texture binding streams.
+- `include/Render2D/System/SpriteInstanceSystem.hpp` - Component-stream systems building `SpriteInstance[]`, optional texture-region UVs, texture atlas region output, sprite instance upload commands, and `SpriteDrawPacket[]` from batch/material/texture binding streams. `TextureAtlasBuildSystem` offers input-order shelf packing plus Stage 18C `runHeightSorted` First-Fit Decreasing Height packing over a caller-owned scratch order span.
 - `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands.
 - `include/Render2D/System/SortKey.hpp` - Packed draw sort/batch key helpers.
 - `include/Render2D/System/SortSystem.hpp` - Stable radix sort over `DrawCommand.sort_key` using caller-owned scratch spans.
@@ -61,7 +63,11 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/SubmitSystem.hpp` - CPU-only submit contract from native command refs and `FrameSync` to `NativeSubmitCommand`.
 - `include/Render2D/System/PresentSystem.hpp` - Stage 11E component-stream system converting `AcquiredImage[]` to `PresentCommand[]`.
 - `include/Render2D/System/TextSystem.hpp` - Stage 9 text dirty detection, dirty glyph-run/instance updates, and glyph-to-DrawCommand batching using `GlyphBuildConfig` / `GlyphDrawConfig`.
+- `include/Render2D/System/TextShapingSystem.hpp` - Stage 19C pure text-pipeline systems: `Utf8DecodeSystem` (bytes via a non-owning `Utf8BufferView` → `Codepoint[]`), `GlyphPositionSystem` (single-baseline pen-walk of shaped glyphs + atlas entries → positioned `GlyphInstance[]`), and `GlyphInstanceToSpriteSystem` (bridge → `SpriteInstance[]`, mapping the unit quad onto each glyph rect and skipping degenerate glyphs). Dependency-free; the shape/bidi/raster touchpoints stay runtime-side.
 - `include/Render2D/System/ThreadedCpuPipeline.hpp` - Stage 10H ThreadCenter-backed runtime facade for deterministic chunked sprite CPU pipeline execution. It is not included by the umbrella header because consumers must link `render2d_thread_runtime_support`.
+- `include/Render2D/Font/BidiItemizeRuntime.hpp` - Stage 19E SheenBidi-backed UAX#9 bidi + script itemization: `Codepoint[]` + `Text[]` → visually-ordered, single-script `ShapingRun[]`. Links SheenBidi; not in the umbrella (requires `render2d_font_runtime_support`).
+- `include/Render2D/Font/FontShapeRuntime.hpp` - Stage 19D HarfBuzz-over-FreeType shaping runtime: owns `FT_Face`/`hb_font` per font behind a `FontRef` id + generation slot table, `loadFontFromMemory` (face + `FontMetrics`), `shape` (`ShapingRun[]` + `Codepoint[]` → `ShapedGlyph[]`), and `rasterizeGlyph` (8-bit coverage bitmap for the atlas). Links FreeType + HarfBuzz; not in the umbrella.
+- `include/Render2D/Font/GlyphAtlasRuntime.hpp` - Stage 19F glyph atlas residency: owns one R8_UNORM Stage 18 atlas + a staging buffer + shelf packer; `ensureResident` rasterizes each distinct (font, glyph, size) once, packs and uploads its coverage bitmap into the atlas, and emits `GlyphAtlasEntry[]` (UV + bitmap size + bearings). Links FreeType + the Vulkan atlas/resource runtimes; not in the umbrella.
 
 ### Native
 
@@ -82,7 +88,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanSyncRuntime.hpp` - Vulkan semaphore/fence lifecycle runtime behind `FrameSync`.
 - `include/Render2D/Native/VulkanSubmitRuntime.hpp` - Vulkan queue submit runtime for resolved command buffers and frame sync.
 - `include/Render2D/Native/VulkanSwapchainRuntime.hpp` - Stage 11B Vulkan swapchain/image-view runtime for host-provided surfaces or adopted swapchains.
-- `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with MemoryCenter-backed GPU allocation, upload/readback, buffer copy, and buffer-to-image texture upload helpers.
+- `include/Render2D/Native/VulkanResourceRuntime.hpp` - Vulkan buffer/image/image-view runtime with MemoryCenter-backed GPU allocation, upload/readback, buffer copy, and full-image plus Stage 18B sub-region buffer-to-image texture upload helpers. Format table covers RGBA8/BGRA8 (4 bytes) and Stage 19 `R8_UNORM`/`R8_SRGB` (1 byte) for glyph-coverage atlases.
+- `include/Render2D/Native/VulkanTextureAtlasRuntime.hpp` - Stage 18 atlas image runtime: owns atlas image slots behind `VulkanAtlasImageRef` id + generation, delegates the backing sampled-image lifetime to `VulkanResourceRuntime`, records `recordUploadRegion` sub-rectangle uploads, retires atlas images frame-safely through `NativeDeferredDestroyRuntime` via `retireAtlasImage`, and rejects stale references after slot reuse.
 - `include/Render2D/Native/VulkanSamplerRuntime.hpp` - Stage 13A Vulkan `VkSampler` lifecycle runtime behind ECS-visible `SamplerRef` id + generation records.
 - `include/Render2D/Native/VulkanDescriptorRuntime.hpp` - Vulkan descriptor pool, set layout, set allocation, and descriptor update runtime.
 - `include/Render2D/Native/VulkanPipelineRuntime.hpp` - Vulkan shader module, pipeline cache, pipeline layout, and dynamic-rendering pipeline runtime.
@@ -109,15 +116,19 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/threaded_cpu_pipeline_test.cpp` - Stage 10H single-thread equivalence and deterministic chunk merge coverage for `ThreadedCpuPipelineRuntime`.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/draw_sort_system_test.cpp` - Packed sort key, radix draw sort, batch merge, and collision-safety coverage.
-- `tests/sprite_instance_system_test.cpp` - Sprite GPU instance, packet build, texture atlas shelf packing, and texture-region UV propagation system coverage.
+- `tests/sprite_instance_system_test.cpp` - Sprite GPU instance, packet build, texture atlas shelf packing, Stage 18C FFDH height-sorted packing, and texture-region UV propagation system coverage.
 - `tests/sprite_instance_upload_system_test.cpp` - Stage 12C typed sprite instance upload command conversion coverage.
 - `tests/sprite_pipeline_contract_test.cpp` - Stage 12D sprite vertex input and descriptor config contract coverage.
 - `tests/upload_descriptor_compaction_test.cpp` - Stage 10I upload coalescing, descriptor compaction, in-place, capacity, invalid-input, and unsupported-domain coverage.
 - `tests/transform_dirty_system_test.cpp` - Sparse dirty transform/bounds update coverage.
 - `tests/bounds_system_test.cpp` - fast_math AABB transform regression coverage for translation, scale, rotation, shear, and error paths.
 - `tests/command_buffer_descriptor_test.cpp` - `CommandBuffer` descriptor build/clear behavior.
-- `tests/text_glyph_components_test.cpp` - Text/Glyph Strict POD component contract and temporary stream storage behavior.
+- `tests/text_glyph_components_test.cpp` - Text/Glyph Strict POD component contract (including the Stage 19 shaping components and the extended `GlyphInstance`/`FontRef`) and temporary stream storage behavior.
 - `tests/text_glyph_system_test.cpp` - Stage 9B glyph-run and glyph-instance system behavior and error paths.
+- `tests/text_shaping_system_test.cpp` - Stage 19C pure text-pipeline coverage: UTF-8 decode (mixed widths, offsets, malformed resync, errors), `GlyphPositionSystem` pen-walk/bearing placement and non-resident/error paths, and `GlyphInstanceToSpriteSystem` unit-quad affine, whitespace skipping, and capacity paths.
+- `tests/bidi_itemize_runtime_test.cpp` - Stage 19E SheenBidi itemization coverage: mixed LTR/RTL visual runs, pure-RTL collapse, per-text font ids, and empty/capacity/invalid-text/unsupported-domain paths. Links `render2d_font_runtime_support`.
+- `tests/font_shape_runtime_test.cpp` - Stage 19D HarfBuzz/FreeType shaping smoke: loads a system font (graceful skip if none present), shapes Latin text and checks glyph count/advances/metrics, plus capacity, unknown-font, and unsupported-domain paths. Links `render2d_font_runtime_support`.
+- `tests/vulkan_glyph_text_render_test.cpp` - Stage 19F end-to-end text smoke: decode → bidi itemize → shape → glyph atlas residency (FreeType raster into an R8 Stage 18 atlas) → position → bridge → real coverage-shader draw → readback, asserting the rendered glyphs produced shaped coverage. Graceful skip without a Vulkan device or system font. Links `render2d_font_runtime_support`.
 - `tests/text_stage9_pipeline_test.cpp` - Full Stage 9 text dirty, dirty glyph update, glyph draw command, and batch pipeline behavior.
 - `tests/native_components_test.cpp` - Native POD ECS component contract checks.
 - `tests/native_runtime_contract_test.cpp` - Native runtime type/result POD contract checks.
@@ -133,6 +144,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_submit_runtime_test.cpp` - Optional Vulkan queue submit smoke test.
 - `tests/vulkan_swapchain_runtime_test.cpp` - Stage 11B state-level swapchain runtime tests for invalid config, reserve paths, stale refs, and unsupported domains.
 - `tests/vulkan_resource_runtime_test.cpp` - Optional Vulkan buffer/image/upload/readback/copy lifecycle smoke test.
+- `tests/vulkan_texture_atlas_runtime_test.cpp` - Stage 18 atlas image runtime test: device-free delegation/propagation and capacity checks, plus an optional GPU create/resolve/release/reuse, stale-reference, two-region sub-rectangle upload-and-readback, and deferred-destroy retire/drain/release smoke.
 - `tests/vulkan_descriptor_runtime_test.cpp` - Optional Vulkan descriptor pool/set/layout/update lifecycle smoke test.
 - `tests/vulkan_pipeline_runtime_test.cpp` - Optional Vulkan shader module, pipeline cache, and dynamic-rendering pipeline lifecycle smoke test.
 - `tests/vulkan_present_runtime_test.cpp` - Stage 11C/11E headless acquire/present runtime tests for invalid init, stale refs, result mapping, invalid commands, and unsupported domains.
@@ -140,7 +152,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_sprite_instance_upload_runtime_test.cpp` - Optional Stage 12C upload-ring to GPU buffer copy/readback smoke test for `SpriteInstance[]`.
 - `tests/vulkan_sprite_pipeline_runtime_test.cpp` - Optional Stage 12D descriptor layout plus sprite graphics pipeline creation smoke test.
 - `tests/vulkan_sprite_render_encoder_test.cpp` - Optional Stage 12E offscreen real sprite draw smoke test using sprite vertex/instance buffers and readback verification.
-- `tests/vulkan_textured_sprite_render_test.cpp` - Optional Stage 13/14/16 offscreen textured sprite smoke test covering sampler runtime, buffer-to-image upload, descriptor update, sampled shader draw, atlas-region UV sampling, multi-packet red/green rendering, stale descriptor rejection, and readback verification.
+- `tests/vulkan_textured_sprite_render_test.cpp` - Optional Stage 13/14/16/18E offscreen textured sprite smoke test covering sampler runtime, buffer-to-image upload, descriptor update, sampled shader draw, atlas-region UV sampling, multi-packet red/green rendering, stale descriptor rejection, a `VulkanTextureAtlasRuntime`-sourced atlas region draw, and readback verification.
 - `tests/vulkan_dynamic_render_encoder_test.cpp` - Optional offscreen dynamic rendering + indirect draw + readback smoke test.
 - `tests/temporary_ecs_storage_test.cpp` - Test-only temporary ECS storage behavior.
 - `tests/negative_non_pod_component.cpp` - Source used for expected compile failure.
@@ -149,7 +161,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/support/ComponentStreamView.hpp` - Test-only view helpers for temporary ECS storage.
 - `tests/support/VulkanSmokeContext.hpp` - Optional Vulkan instance/device/queue setup helper for smoke tests.
 - `tests/support/FullScreenTriangleShaders.hpp` - Embedded SPIR-V for the offscreen full-screen triangle smoke test.
-- `tests/support/SpriteShaders.hpp` - Embedded SPIR-V for Stage 12E color-only and Stage 13C textured sprite offscreen smoke tests.
+- `tests/support/SpriteShaders.hpp` - Embedded SPIR-V for Stage 12E color-only, Stage 13C textured sprite, and Stage 19F glyph-coverage (`kGlyphCoverageFragSpv`, premultiplied `.r` coverage) offscreen smoke tests.
 - `tests/support/TestHarness.hpp` - Lightweight no-dependency assertion helpers for CTest executables.
 
 ## Scripts
@@ -192,6 +204,8 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-10-stage14-sprite-packet-material-texture-binding.md` - ADR for Stage 14 resource-generation sprite contracts, packet build system, and multi-packet sprite encoder.
 - `docs/adr/2026-06-10-stage15-texture-atlas-uv-region.md` - ADR for Stage 15 texture atlas POD components, deterministic shelf packing, and sprite UV region propagation.
 - `docs/adr/2026-06-11-stage16-atlas-textured-sprite-smoke.md` - ADR for Stage 16 one-atlas, one-descriptor textured sprite smoke coverage.
+- `docs/adr/2026-06-11-stage18-texture-atlas-image-runtime.md` - ADR for Stage 18 `VulkanTextureAtlasRuntime` (atlas image ownership behind id + generation, allocation delegated to the resource runtime), the `recordCopyBufferToImageRegion` sub-rectangle copy, and the 18E end-to-end sampled atlas proof.
+- `docs/adr/2026-06-11-stage19-text-font-pipeline.md` - ADR for the Stage 19 real font/text pipeline: decomposed shaping (pure systems + FreeType/HarfBuzz/SheenBidi runtime touchpoints), the new POD shaping components, full bidi, and the dependency/vendoring constraints.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.
@@ -201,8 +215,11 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/architecture/BENCHMARK_BASELINE.md` - Stage 10 benchmark scenarios, runner usage, Debug/Perf captures, and optimization gate rule.
 - `docs/architecture/STAGE10_PERFORMANCE_TODO.md` - Stage 10 completion checklist, ThreadCenter boundary, and remaining performance work items.
 - `docs/architecture/STAGE11_NATIVE_FRAME_TODO.md` - Stage 11 native frame-loop checklist covering frame/present contracts, deferred destroy, swapchain acquire, and present.
+- `docs/architecture/STAGE19_TEXT_FONT_DESIGN.md` - Frozen Stage 19 design: decomposed FreeType + HarfBuzz + SheenBidi text pipeline, the POD ECS component spec, full bidi, GPU reuse via the sprite path, and the sub-stage/vendoring plan.
 
 
 ## Third-party source snapshots
 
-- `third_party/freetype/` - Copied FreeType source snapshot from `E:/Project/MelosyneTest/VulkanRender_New/freetype-master`. It is stored for future text work and is not currently built, linked, or included by Render2D CMake.
+- `third_party/freetype/` - Vendored FreeType source. Built as a static library (self-contained: zlib/png/bzip2/brotli/harfbuzz disabled) behind `RENDER2D_BUILD_FONT_RUNTIME` for the Stage 19 font runtime; provides face loading, glyph rasterization, and metrics.
+- `third_party/harfbuzz/` - Vendored HarfBuzz source. Built as a static library (core shaping + FreeType interop only; subset/raster/vector/gpu/glib/icu disabled) for Stage 19 text shaping (`hb_shape`).
+- `third_party/sheenbidi/` - Vendored SheenBidi source (Apache-2.0, unity build). Built as a static library for Stage 19 UAX#9 bidirectional resolution and script itemization.

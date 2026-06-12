@@ -1089,11 +1089,40 @@ private:
         return true;
     }
 
+    static bool makeRegionByteCount(
+        U32 format_,
+        U32 width_,
+        U32 height_,
+        U64& out_byte_count_) noexcept
+    {
+        U64 bytes_per_pixel = 0U;
+        if (!formatBytesPerPixel(format_, bytes_per_pixel) ||
+            width_ == 0U ||
+            height_ == 0U ||
+            static_cast<U64>(width_) > kMaxU64 / static_cast<U64>(height_)) {
+            out_byte_count_ = 0U;
+            return false;
+        }
+
+        const U64 pixel_count = static_cast<U64>(width_) * static_cast<U64>(height_);
+        if (pixel_count > kMaxU64 / bytes_per_pixel) {
+            out_byte_count_ = 0U;
+            return false;
+        }
+
+        out_byte_count_ = pixel_count * bytes_per_pixel;
+        return true;
+    }
+
     static bool formatBytesPerPixel(
         U32 format_,
         U64& out_bytes_per_pixel_) noexcept
     {
         switch (static_cast<VkFormat>(format_)) {
+        case VK_FORMAT_R8_UNORM:
+        case VK_FORMAT_R8_SRGB:
+            out_bytes_per_pixel_ = 1U;
+            return true;
         case VK_FORMAT_R8G8B8A8_UNORM:
         case VK_FORMAT_R8G8B8A8_SRGB:
         case VK_FORMAT_B8G8R8A8_UNORM:

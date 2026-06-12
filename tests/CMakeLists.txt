@@ -173,6 +173,62 @@ render2d_apply_strict_warnings(render2d_text_glyph_components_test)
 
 add_test(NAME render2d.text_glyph_components COMMAND render2d_text_glyph_components_test)
 
+add_executable(render2d_text_shaping_system_test
+    text_shaping_system_test.cpp
+)
+target_link_libraries(render2d_text_shaping_system_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_text_shaping_system_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_text_shaping_system_test)
+
+add_test(NAME render2d.text_shaping_system COMMAND render2d_text_shaping_system_test)
+
+if(RENDER2D_BUILD_FONT_RUNTIME AND TARGET render2d_font_runtime_support)
+    add_executable(render2d_bidi_itemize_runtime_test
+        bidi_itemize_runtime_test.cpp
+    )
+    target_link_libraries(render2d_bidi_itemize_runtime_test PRIVATE
+        render2d_font_runtime_support
+    )
+    target_include_directories(render2d_bidi_itemize_runtime_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    render2d_apply_strict_warnings(render2d_bidi_itemize_runtime_test)
+
+    add_test(NAME render2d.bidi_itemize_runtime COMMAND render2d_bidi_itemize_runtime_test)
+
+    add_executable(render2d_font_shape_runtime_test
+        font_shape_runtime_test.cpp
+    )
+    target_link_libraries(render2d_font_shape_runtime_test PRIVATE
+        render2d_font_runtime_support
+    )
+    target_include_directories(render2d_font_shape_runtime_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_compile_definitions(render2d_font_shape_runtime_test PRIVATE _CRT_SECURE_NO_WARNINGS)
+    render2d_apply_strict_warnings(render2d_font_shape_runtime_test)
+
+    add_test(NAME render2d.font_shape_runtime COMMAND render2d_font_shape_runtime_test)
+
+    add_executable(render2d_vulkan_glyph_text_render_test
+        vulkan_glyph_text_render_test.cpp
+    )
+    target_link_libraries(render2d_vulkan_glyph_text_render_test PRIVATE
+        render2d_font_runtime_support
+    )
+    target_include_directories(render2d_vulkan_glyph_text_render_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_compile_definitions(render2d_vulkan_glyph_text_render_test PRIVATE _CRT_SECURE_NO_WARNINGS)
+    render2d_apply_strict_warnings(render2d_vulkan_glyph_text_render_test)
+
+    add_test(NAME render2d.vulkan_glyph_text_render COMMAND render2d_vulkan_glyph_text_render_test)
+endif()
+
 add_executable(render2d_text_glyph_system_test
     text_glyph_system_test.cpp
 )
