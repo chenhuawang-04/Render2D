@@ -158,6 +158,8 @@
 **边界**:bindless/material 策略是 runtime 概念;ECS 仍只持有 `id + generation`;非 bindless 路径保留为正确性/兼容参考。
 **验收**:bindless 与 fallback 渲染结果一致;不支持 bindless 的设备自动走 fallback 且 CTest 不失败;stale texture/material generation 负例覆盖。
 
+**进度**:20A status (done, 2026-06-12)。`include/Render2D/Native/VulkanBindlessCapability.hpp` —— 生产侧 bindless 能力探测:`queryVulkanBindlessCapability(VkPhysicalDevice)` 读取四项 descriptor-indexing 特性(`descriptorBindingPartiallyBound` / `runtimeDescriptorArray` / `shaderSampledImageArrayNonUniformIndexing` / `descriptorBindingSampledImageUpdateAfterBind`)与 update-after-bind 采样图限额,`supported` 仅当四项齐备时置位;helper 把能力映射成 `VulkanDescriptorRuntime` 已支持的 pool/layout/binding flag(不支持时返回 0 → 退回每包 combined-image-sampler fallback,既有 descriptor runtime 无需改动)。测试侧 `VulkanSmokeContext` 复用该探测得出 `supports_bindless` 并在建设备时启用全部四项,供 20B/20E 在真实设备上跑 bindless。`tests/vulkan_bindless_capability_test.cpp` 覆盖 null 设备、flag helper 映射与设备探测一致性(优雅跳过)。门禁:Debug `ctest` 47/47、Perf `ctest` 56/56、`-Werror`、clang-tidy 全过。ADR 留待契约成型(20B+)随 20F 收口。20B(bindless 纹理表 runtime)起待续。
+
 ---
 
 ### Stage 21 — 并行尾段与剩余性能项(工程/性能补强)

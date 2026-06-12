@@ -92,6 +92,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/Native/VulkanTextureAtlasRuntime.hpp` - Stage 18 atlas image runtime: owns atlas image slots behind `VulkanAtlasImageRef` id + generation, delegates the backing sampled-image lifetime to `VulkanResourceRuntime`, records `recordUploadRegion` sub-rectangle uploads, retires atlas images frame-safely through `NativeDeferredDestroyRuntime` via `retireAtlasImage`, and rejects stale references after slot reuse.
 - `include/Render2D/Native/VulkanSamplerRuntime.hpp` - Stage 13A Vulkan `VkSampler` lifecycle runtime behind ECS-visible `SamplerRef` id + generation records.
 - `include/Render2D/Native/VulkanDescriptorRuntime.hpp` - Vulkan descriptor pool, set layout, set allocation, and descriptor update runtime.
+- `include/Render2D/Native/VulkanBindlessCapability.hpp` - Stage 20A bindless texturing capability probe: `queryVulkanBindlessCapability(VkPhysicalDevice)` reads the descriptor-indexing features (partially-bound, runtime array, non-uniform sampled-image indexing, sampled-image update-after-bind) and update-after-bind limits, plus helpers mapping the capability onto the `VulkanDescriptorRuntime` pool/layout/binding flags (0 ⇒ the per-packet fallback path).
 - `include/Render2D/Native/VulkanPipelineRuntime.hpp` - Vulkan shader module, pipeline cache, pipeline layout, and dynamic-rendering pipeline runtime.
 - `include/Render2D/Native/VulkanPresentRuntime.hpp` - Stage 11C/11E acquire/present runtime using `vkAcquireNextImageKHR`, `vkQueuePresentKHR`, result mapping, and swapchain image-index validation.
 - `include/Render2D/Native/VulkanUploadRingRuntime.hpp` - MemoryCenter-backed persistent mapped, frame-segmented upload ring runtime exposing `UploadRingSlice`.
@@ -146,6 +147,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_resource_runtime_test.cpp` - Optional Vulkan buffer/image/upload/readback/copy lifecycle smoke test.
 - `tests/vulkan_texture_atlas_runtime_test.cpp` - Stage 18 atlas image runtime test: device-free delegation/propagation and capacity checks, plus an optional GPU create/resolve/release/reuse, stale-reference, two-region sub-rectangle upload-and-readback, and deferred-destroy retire/drain/release smoke.
 - `tests/vulkan_descriptor_runtime_test.cpp` - Optional Vulkan descriptor pool/set/layout/update lifecycle smoke test.
+- `tests/vulkan_bindless_capability_test.cpp` - Stage 20A bindless capability coverage: null-device probe, flag-helper mapping, and an optional on-device probe asserting agreement with the smoke context's bindless flag and positive update-after-bind limits.
 - `tests/vulkan_pipeline_runtime_test.cpp` - Optional Vulkan shader module, pipeline cache, and dynamic-rendering pipeline lifecycle smoke test.
 - `tests/vulkan_present_runtime_test.cpp` - Stage 11C/11E headless acquire/present runtime tests for invalid init, stale refs, result mapping, invalid commands, and unsupported domains.
 - `tests/vulkan_upload_ring_runtime_test.cpp` - Optional Vulkan persistent upload ring frame-slot reuse smoke test.

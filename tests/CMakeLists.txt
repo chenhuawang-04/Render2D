@@ -421,6 +421,16 @@ render2d_apply_strict_warnings(render2d_vulkan_descriptor_runtime_test)
 
 add_test(NAME render2d.vulkan_descriptor_runtime COMMAND render2d_vulkan_descriptor_runtime_test)
 
+add_executable(render2d_vulkan_bindless_capability_test
+    vulkan_bindless_capability_test.cpp
+)
+target_link_libraries(render2d_vulkan_bindless_capability_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_bindless_capability_test)
+
+add_test(NAME render2d.vulkan_bindless_capability COMMAND render2d_vulkan_bindless_capability_test)
+
 add_executable(render2d_vulkan_pipeline_runtime_test
     vulkan_pipeline_runtime_test.cpp
 )

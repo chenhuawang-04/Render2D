@@ -18,12 +18,14 @@ struct VulkanSmokeContext {
     Render2D::U32 api_version;
     bool supports_dynamic_rendering;
     bool supports_descriptor_indexing;
+    bool supports_bindless;
 };
 
 struct VulkanSmokeFeatureSupport {
     Render2D::U32 api_version;
     bool supports_dynamic_rendering;
     bool supports_descriptor_indexing;
+    bool supports_bindless;
 };
 
 inline Render2D::U32 queryInstanceApiVersion() noexcept
@@ -69,6 +71,7 @@ inline VulkanSmokeFeatureSupport queryFeatureSupport(VkPhysicalDevice physical_d
         .api_version = properties.apiVersion,
         .supports_dynamic_rendering = false,
         .supports_descriptor_indexing = false,
+        .supports_bindless = false,
     };
 
     if (properties.apiVersion >= VK_API_VERSION_1_3) {
@@ -92,6 +95,9 @@ inline VulkanSmokeFeatureSupport queryFeatureSupport(VkPhysicalDevice physical_d
         support.supports_descriptor_indexing =
             descriptor_indexing.descriptorBindingPartiallyBound == VK_TRUE &&
             descriptor_indexing.runtimeDescriptorArray == VK_TRUE;
+        support.supports_bindless =
+            Render2D::queryVulkanBindlessCapability(physical_device_).supported ==
+            Render2D::kVulkanBindlessSupported;
     }
 
     return support;
@@ -208,6 +214,8 @@ inline VkResult createDevice(
     descriptor_indexing.pNext = feature_support_.supports_dynamic_rendering ? &dynamic_rendering : nullptr;
     descriptor_indexing.descriptorBindingPartiallyBound = feature_support_.supports_descriptor_indexing ? VK_TRUE : VK_FALSE;
     descriptor_indexing.runtimeDescriptorArray = feature_support_.supports_descriptor_indexing ? VK_TRUE : VK_FALSE;
+    descriptor_indexing.shaderSampledImageArrayNonUniformIndexing = feature_support_.supports_bindless ? VK_TRUE : VK_FALSE;
+    descriptor_indexing.descriptorBindingSampledImageUpdateAfterBind = feature_support_.supports_bindless ? VK_TRUE : VK_FALSE;
 
     const void* feature_chain = nullptr;
     if (feature_support_.supports_descriptor_indexing) {
@@ -269,6 +277,7 @@ inline bool createVulkanSmokeContext(VulkanSmokeContext& out_context_)
             instance_api_version,
         .supports_dynamic_rendering = feature_support.supports_dynamic_rendering,
         .supports_descriptor_indexing = feature_support.supports_descriptor_indexing,
+        .supports_bindless = feature_support.supports_bindless,
     };
     return queue != VK_NULL_HANDLE;
 }
