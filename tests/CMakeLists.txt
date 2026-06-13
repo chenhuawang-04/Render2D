@@ -467,6 +467,16 @@ render2d_apply_strict_warnings(render2d_vulkan_bindless_texture_table_test)
 
 add_test(NAME render2d.vulkan_bindless_texture_table COMMAND render2d_vulkan_bindless_texture_table_test)
 
+add_executable(render2d_vulkan_bindless_sprite_render_test
+    vulkan_bindless_sprite_render_test.cpp
+)
+target_link_libraries(render2d_vulkan_bindless_sprite_render_test PRIVATE
+    Render2D::Render2D
+)
+render2d_apply_strict_warnings(render2d_vulkan_bindless_sprite_render_test)
+
+add_test(NAME render2d.vulkan_bindless_sprite_render COMMAND render2d_vulkan_bindless_sprite_render_test)
+
 add_executable(render2d_vulkan_pipeline_runtime_test
     vulkan_pipeline_runtime_test.cpp
 )

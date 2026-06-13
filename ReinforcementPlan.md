@@ -181,6 +181,12 @@
 
 **范围说明(如实)**:编码器/`CommandBuildSystem`/管线接线**仍未动** —— 真正 ≥8 纹理 × ≥2 sampler 单 set 离屏渲染、与 fallback 像素等价对照是 **20E**。ADR 仍随 20F 收口。门禁:Debug `ctest` 50/50、Perf `ctest` 59/59、`-Werror` 双预设、clang-tidy 全过(config + 3 TU,含改动头的传递覆盖)。**Next: 20E(bindless 离屏渲染 + fallback 等价性对照)。**
 
+**进度**:20E status (done, 2026-06-13)。bindless 单 set 离屏渲染 + fallback 像素等价(20A–20D 栈首次真正画出像素):
+- `VulkanSpriteRenderEncoder::recordBindless` —— 与 `recordPackets` 平行,但用 `VulkanBindlessTextureTable` 取代 descriptor runtime:校验 `isInitialized()`,把表自持的单描述符集**整帧只绑一次**(随每次管线绑定重绑以兼容 layout 变化),逐 packet 仅在管线变化时重绑管线、直接 `vkCmdDraw`,**绝不逐 packet 绑描述符**;packet 的 `texture_id`/`descriptor_*` 在此路径被忽略(单 set 覆盖所有纹理)。新增私有 `validateBindlessPackets`(只查 buffer range + pipeline,跳过描述符校验)。编码器加 `#include VulkanBindlessTextureTable.hpp`。`record`/`recordPackets` 原封未动。
+- 新 `tests/vulkan_bindless_sprite_render_test.cpp`(`render2d.vulkan_bindless_sprite_render`):8 段竖条场景(8 张各异 1×1 纹理、2 个 sampler),同一命令缓冲里**渲染两遍**——一遍走 `recordBindless`(单 set、逐实例 `texture_id`/`sampler_index` 选择器、整帧一个 `SpriteDrawPacket`),一遍走已验证的 `recordPackets` CIS fallback(每纹理一个描述符);断言两次 readback **逐字节 `memcmp` 相等** + 每段显示其纹理色(防双错同样通过)。无 device / 无 bindless 时优雅跳过。
+- **等价性边界(如实)**:1×1 纹理使 NEAREST 与第二 sampler(仅 address mode 不同)采样逐字节一致,故等价性对 sampler *滤波差异* 不敏感 —— 本阶段证明的是「单 set 多纹理多 sampler 能正确渲染且与 fallback 像素一致」,两 sampler 数组项被 8 个实例真实走到(`sampler_index = band % 2`)。
+- 门禁:Debug `ctest` 51/51、Perf `ctest` 60/60、`-Werror` 双预设、clang-tidy clean。提交 `bindless: add stage 20e single-set render + fallback equivalence`(无 co-author)。ADR 仍随 **20F** 收口。**Next: 20F(Stage 20 ADR + 收口)。**
+
 ---
 
 ### Stage 21 — 并行尾段与剩余性能项(工程/性能补强)

@@ -3,6 +3,7 @@
 #include "Render2D/Component/Sprite.hpp"
 #include "Render2D/Native/NativeComponents.hpp"
 #include "Render2D/Native/NativeResult.hpp"
+#include "Render2D/Native/VulkanBindlessTextureTable.hpp"
 #include "Render2D/Native/VulkanCommandRuntime.hpp"
 #include "Render2D/Native/VulkanDescriptorRuntime.hpp"
 #include "Render2D/Native/VulkanPipelineRuntime.hpp"
@@ -403,6 +404,195 @@ public:
         }
     }
 
+    // Stage 20E bindless path. Unlike recordPackets, the per-texture combined-image-
+    // sampler descriptor is gone: the bindless table owns one persistent descriptor
+    // set (binding 0 = SAMPLED_IMAGE[], binding 1 = SAMPLER[]) bound exactly once for
+    // the whole frame, and each instance selects its texture/sampler in-shader via the
+    // location 6/7 attributes. Packets carry only pipeline + vertex/instance ranges
+    // here; their texture_id / descriptor_* fields are intentionally ignored because
+    // the single set covers every texture. The pipeline must have been created with
+    // bindless_table_.nativeDescriptorSetLayout() (see createBindlessPipelineRef).
+    static NativeResult recordBindless(
+        const NativeCommandBufferRef<Provider, Dim>& command_buffer_ref_,
+        const ImageRef<Provider, Dim>& color_target_,
+        const BufferRef<Provider, Dim>& vertex_buffer_ref_,
+        const BufferRef<Provider, Dim>& instance_buffer_ref_,
+        std::span<const SpriteDrawPacket<Provider, Dim>> sprite_draw_packets_,
+        const VulkanCommandRuntime<Provider, Dim>& command_runtime_,
+        VulkanResourceRuntime<Provider, Dim>& resource_runtime_,
+        const VulkanPipelineRuntime<Provider, Dim>& pipeline_runtime_,
+        const VulkanBindlessTextureTable<Provider, Dim>& bindless_table_,
+        const VulkanSpriteRenderEncoderConfig& config_) noexcept
+    {
+        if constexpr (!SupportedRenderDomain<Provider, Dim>) {
+            return makeResult(NativeStatusCode::UnsupportedDomain, NativeObjectKind::CommandBuffer);
+        } else {
+            if (config_.width == 0U ||
+                config_.height == 0U ||
+                sprite_draw_packets_.empty() ||
+                !bindless_table_.isInitialized()) {
+                return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::CommandBuffer);
+            }
+
+            VkCommandBuffer command_buffer = VK_NULL_HANDLE;
+            NativeResult result = command_runtime_.resolveNativeCommandBuffer(
+                command_buffer_ref_,
+                command_buffer);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+
+            VkImage color_image = VK_NULL_HANDLE;
+            VkImageView color_image_view = VK_NULL_HANDLE;
+            result = resource_runtime_.resolveNativeImage(
+                color_target_,
+                color_image,
+                color_image_view);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+            result = validateColorTarget(color_target_, config_);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+
+            VkBuffer vertex_buffer = VK_NULL_HANDLE;
+            result = resource_runtime_.resolveNativeBuffer(vertex_buffer_ref_, vertex_buffer);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+
+            VkBuffer instance_buffer = VK_NULL_HANDLE;
+            result = resource_runtime_.resolveNativeBuffer(instance_buffer_ref_, instance_buffer);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+
+            result = validateBindlessPackets(
+                sprite_draw_packets_,
+                vertex_buffer_ref_,
+                instance_buffer_ref_,
+                pipeline_runtime_,
+                config_);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+
+            result = resource_runtime_.transitionImageLayout(
+                command_buffer,
+                color_target_,
+                VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                0U,
+                VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+
+            const VkClearValue clear_value = makeClearValue(config_.clear_color_rgba8);
+            const VkRenderingAttachmentInfo color_attachment{
+                .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+                .pNext = nullptr,
+                .imageView = color_image_view,
+                .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                .resolveMode = VK_RESOLVE_MODE_NONE,
+                .resolveImageView = VK_NULL_HANDLE,
+                .resolveImageLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+                .clearValue = clear_value,
+            };
+            const VkRenderingInfo rendering_info{
+                .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+                .pNext = nullptr,
+                .flags = static_cast<VkRenderingFlags>(config_.flags),
+                .renderArea = {
+                    .offset = {.x = 0, .y = 0},
+                    .extent = {.width = config_.width, .height = config_.height},
+                },
+                .layerCount = 1U,
+                .viewMask = 0U,
+                .colorAttachmentCount = 1U,
+                .pColorAttachments = &color_attachment,
+                .pDepthAttachment = nullptr,
+                .pStencilAttachment = nullptr,
+            };
+
+            vkCmdBeginRendering(command_buffer, &rendering_info);
+            const VkViewport viewport{
+                .x = 0.0F,
+                .y = 0.0F,
+                .width = static_cast<float>(config_.width),
+                .height = static_cast<float>(config_.height),
+                .minDepth = 0.0F,
+                .maxDepth = 1.0F,
+            };
+            const VkRect2D scissor{
+                .offset = {.x = 0, .y = 0},
+                .extent = {.width = config_.width, .height = config_.height},
+            };
+            vkCmdSetViewport(command_buffer, 0U, 1U, &viewport);
+            vkCmdSetScissor(command_buffer, 0U, 1U, &scissor);
+
+            const std::array<VkBuffer, 2U> vertex_buffers{vertex_buffer, instance_buffer};
+            const std::array<VkDeviceSize, 2U> vertex_offsets{
+                config_.vertex_buffer_offset,
+                config_.instance_buffer_offset,
+            };
+            vkCmdBindVertexBuffers(command_buffer, 0U, static_cast<U32>(vertex_buffers.size()), vertex_buffers.data(), vertex_offsets.data());
+
+            const VkDescriptorSet bindless_set = bindless_table_.nativeDescriptorSet();
+            PipelineRef<Provider, Dim> bound_pipeline_ref{};
+            bool bindless_set_bound = false;
+            for (const auto& packet : sprite_draw_packets_) {
+                const PipelineRef<Provider, Dim> packet_pipeline_ref = makePipelineRef(packet);
+                VkPipeline pipeline = VK_NULL_HANDLE;
+                VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+                result = pipeline_runtime_.resolveNativePipeline(
+                    packet_pipeline_ref,
+                    pipeline,
+                    pipeline_layout);
+                if (result.code != NativeStatusCode::Ok) {
+                    vkCmdEndRendering(command_buffer);
+                    return result;
+                }
+                if (!isSamePipeline(bound_pipeline_ref, packet_pipeline_ref)) {
+                    vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+                    bound_pipeline_ref = packet_pipeline_ref;
+                    // The single bindless set must be (re)bound against each newly bound
+                    // pipeline layout; all pipelines here share the bindless layout, but
+                    // a fresh bind keeps the binding valid across a layout change.
+                    vkCmdBindDescriptorSets(
+                        command_buffer,
+                        VK_PIPELINE_BIND_POINT_GRAPHICS,
+                        pipeline_layout,
+                        0U,
+                        1U,
+                        &bindless_set,
+                        0U,
+                        nullptr);
+                    bindless_set_bound = true;
+                }
+
+                if (!bindless_set_bound) {
+                    vkCmdEndRendering(command_buffer);
+                    return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::CommandBuffer);
+                }
+
+                vkCmdDraw(
+                    command_buffer,
+                    packet.vertex_count,
+                    packet.instance_count,
+                    packet.vertex_first,
+                    packet.instance_first);
+            }
+
+            vkCmdEndRendering(command_buffer);
+            return makeResult(NativeStatusCode::Ok, NativeObjectKind::CommandBuffer);
+        }
+    }
+
 private:
     static constexpr Usize kMaxDescriptorSetCount = 1U;
     static constexpr U64 kMaxU64 = 0xFFFFFFFFFFFFFFFFULL;
@@ -533,6 +723,57 @@ private:
                 if (result.code != NativeStatusCode::Ok) {
                     return result;
                 }
+            }
+        }
+
+        return makeResult(NativeStatusCode::Ok, NativeObjectKind::CommandBuffer);
+    }
+
+    // Bindless variant of validatePackets: the per-packet descriptor is gone (one
+    // shared set covers every texture), so only the vertex/instance ranges and the
+    // pipeline are validated. texture_id / descriptor_* on each packet are ignored.
+    static NativeResult validateBindlessPackets(
+        std::span<const SpriteDrawPacket<Provider, Dim>> sprite_draw_packets_,
+        const BufferRef<Provider, Dim>& vertex_buffer_ref_,
+        const BufferRef<Provider, Dim>& instance_buffer_ref_,
+        const VulkanPipelineRuntime<Provider, Dim>& pipeline_runtime_,
+        const VulkanSpriteRenderEncoderConfig& config_) noexcept
+    {
+        for (const auto& packet : sprite_draw_packets_) {
+            if (packet.vertex_count == 0U ||
+                packet.instance_count == 0U ||
+                packet.pipeline_generation == 0U) {
+                return makeResult(NativeStatusCode::InvalidInput, NativeObjectKind::CommandBuffer);
+            }
+
+            NativeResult result = validateVertexBufferRange(
+                vertex_buffer_ref_,
+                config_.vertex_buffer_offset,
+                packet.vertex_first,
+                packet.vertex_count,
+                kSpriteVertexByteSize);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+
+            result = validateVertexBufferRange(
+                instance_buffer_ref_,
+                config_.instance_buffer_offset,
+                packet.instance_first,
+                packet.instance_count,
+                kSpriteInstanceByteSize);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
+            }
+
+            VkPipeline pipeline = VK_NULL_HANDLE;
+            VkPipelineLayout pipeline_layout = VK_NULL_HANDLE;
+            result = pipeline_runtime_.resolveNativePipeline(
+                makePipelineRef(packet),
+                pipeline,
+                pipeline_layout);
+            if (result.code != NativeStatusCode::Ok) {
+                return result;
             }
         }
 
