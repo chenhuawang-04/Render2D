@@ -215,6 +215,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-11-stage18-texture-atlas-image-runtime.md` - ADR for Stage 18 `VulkanTextureAtlasRuntime` (atlas image ownership behind id + generation, allocation delegated to the resource runtime), the `recordCopyBufferToImageRegion` sub-rectangle copy, and the 18E end-to-end sampled atlas proof.
 - `docs/adr/2026-06-11-stage19-text-font-pipeline.md` - ADR for the Stage 19 real font/text pipeline: decomposed shaping (pure systems + FreeType/HarfBuzz/SheenBidi runtime touchpoints), the new POD shaping components, full bidi, and the dependency constraints.
 - `docs/adr/2026-06-12-third-party-submodules.md` - ADR for acquiring FreeType/HarfBuzz/SheenBidi as git submodules pinned to `VER-2-14-3`/`14.2.1`/`v3.0.0` (replacing in-tree vendored source), with shallow fetch and unchanged CMake wiring.
+- `docs/adr/2026-06-13-stage20-bindless-descriptor-indexing.md` - ADR closing Stage 20: the split SAMPLED_IMAGE+SAMPLER bindless table (vs the CIS-array fallback), sampler-as-material-property, identity texture indexing with a host-supplied generation and CPU-only stale gate, partially-bound-no-backfill, and the encoder binding the table's set once per frame — proven byte-equal to the CIS path.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.
