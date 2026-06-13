@@ -80,12 +80,13 @@ inline VulkanBindlessCapability queryVulkanBindlessCapability(VkPhysicalDevice p
     return capability;
 }
 
-// Binding flags for the combined-image-sampler array binding under bindless:
-// partially bound (not every array slot is resident) plus update-after-bind
-// (descriptors written after the set is bound). Returns 0 when unsupported,
-// which makes VulkanDescriptorRuntime build a plain array binding (the
-// fallback path) rather than a bindless one.
-inline U32 bindlessCombinedImageSamplerBindingFlags(const VulkanBindlessCapability& capability_) noexcept
+// Binding flags for the sampled-image array binding under bindless: partially
+// bound (not every array slot is resident) plus update-after-bind (descriptors
+// written after the set is bound). The probed features above are the
+// sampled-image ones, so this maps directly onto the split SAMPLED_IMAGE +
+// SAMPLER bindless layout. Returns 0 when unsupported, which makes the caller
+// take the per-packet combined-image-sampler fallback path instead.
+inline U32 bindlessSampledImageBindingFlags(const VulkanBindlessCapability& capability_) noexcept
 {
     if (capability_.supported != kVulkanBindlessSupported) {
         return 0U;

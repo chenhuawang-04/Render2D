@@ -34,6 +34,7 @@
 #include "Render2D/Native/ResourceRuntime.hpp"
 #include "Render2D/Native/SwapchainRuntime.hpp"
 #include "Render2D/Native/VulkanBindlessCapability.hpp"
+#include "Render2D/Native/VulkanBindlessTextureTable.hpp"
 #include "Render2D/Native/VulkanCommandRuntime.hpp"
 #include "Render2D/Native/VulkanDescriptorRuntime.hpp"
 #include "Render2D/Native/VulkanPipelineRuntime.hpp"

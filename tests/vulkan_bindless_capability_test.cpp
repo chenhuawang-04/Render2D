@@ -26,7 +26,7 @@ void testNullDeviceCapability()
     assert(capability.max_descriptor_set_sampled_images == 0U);
     assert(capability.api_version == 0U);
 
-    assert(R2D::bindlessCombinedImageSamplerBindingFlags(capability) == 0U);
+    assert(R2D::bindlessSampledImageBindingFlags(capability) == 0U);
     assert(R2D::bindlessDescriptorPoolFlags(capability) == 0U);
     assert(R2D::bindlessDescriptorSetLayoutFlags(capability) == 0U);
 }
@@ -38,7 +38,7 @@ void testFlagHelpers()
 {
     R2D::VulkanBindlessCapability supported{};
     supported.supported = R2D::kVulkanBindlessSupported;
-    assert(R2D::bindlessCombinedImageSamplerBindingFlags(supported) ==
+    assert(R2D::bindlessSampledImageBindingFlags(supported) ==
         static_cast<R2D::U32>(
             VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT |
             VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT));
@@ -50,7 +50,7 @@ void testFlagHelpers()
     R2D::VulkanBindlessCapability unsupported{};
     unsupported.supported = 0U;
     unsupported.partially_bound = 1U; // partial features alone never unlock the flags
-    assert(R2D::bindlessCombinedImageSamplerBindingFlags(unsupported) == 0U);
+    assert(R2D::bindlessSampledImageBindingFlags(unsupported) == 0U);
     assert(R2D::bindlessDescriptorPoolFlags(unsupported) == 0U);
     assert(R2D::bindlessDescriptorSetLayoutFlags(unsupported) == 0U);
 }
@@ -72,7 +72,7 @@ void testDeviceCapability(const Render2DTest::VulkanSmokeContext& context_)
         assert(capability.sampled_image_update_after_bind == 1U);
         assert(capability.max_per_stage_sampled_images > 0U);
         assert(capability.max_descriptor_set_sampled_images > 0U);
-        assert(R2D::bindlessCombinedImageSamplerBindingFlags(capability) != 0U);
+        assert(R2D::bindlessSampledImageBindingFlags(capability) != 0U);
         assert(R2D::bindlessDescriptorPoolFlags(capability) != 0U);
         assert(R2D::bindlessDescriptorSetLayoutFlags(capability) != 0U);
     }
