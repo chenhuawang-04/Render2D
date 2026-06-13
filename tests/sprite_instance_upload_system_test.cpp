@@ -43,6 +43,7 @@ constexpr SpriteInstance makeInstance(R2D::U32 source_index_) noexcept
         .sort_key = 40U,
         .layer = 1U,
         .flags = 0U,
+        .sampler_index = 0U,
     };
 }
 

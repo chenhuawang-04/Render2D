@@ -93,6 +93,7 @@ constexpr SpriteInstance makeInstance() noexcept
         .sort_key = 0U,
         .layer = 0U,
         .flags = 0U,
+        .sampler_index = 0U,
     };
 }
 

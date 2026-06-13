@@ -171,6 +171,16 @@
 
 **范围说明(如实)**:`SpriteInstance` **未改** —— 每实例 `sampler_index` 推迟到 **20D**(material graph 给它真实来源前,着色器恒用 `samplers[0]`);`CommandBuildSystem`/编码器/管线接线**未动** —— 真正出 bindless 画面、≥8 纹理单 set 离屏与 fallback 等价性对照是 **20E**。ADR 仍随 20F 收口。门禁:Debug `ctest` 49/49、Perf `ctest` 58/58、`-Werror`、clang-tidy 全过。**Next: 20D(material graph + 每实例 sampler 选择)或 20E(bindless 离屏渲染等价性对照)。**
 
+**进度**:20D status (done, 2026-06-13)。material graph + 每实例 sampler 选择(按拍板的「sampler 是 material 属性」方案落地):
+- `SpriteInstance` 与 `SpriteMaterialBinding` 各加尾字段 `U32 sampler_index`(POD 不破;`SpriteInstance` 加在 `flags` 后,既有 attribute 偏移不动)。全部 designated-init 站点补 `.sampler_index`(库内 `SpriteInstanceBuildSystem` 两处 + `TextShapingSystem` 默认 0;`SpriteMaterialBinding` 仅 `bindless_batch_system_test`/`sprite_instance_system_test` 两文件构造)。
+- `SpriteInstanceBuildSystem::resolveSamplerIndices(instances, material_bindings)` —— 纯 pass,按 instance 的 `material_id`+generation 查 binding 把 `sampler_index` 盖到每个实例;缺失/陈旧 material 一律 `InvalidInput`,绝不静默落 slot 0。
+- bindless 着色器改写(替掉 20C 的 `samplers[0]`):顶点加 `location=7 in uint in_sampler_index`(`flat` 传片元),片元 `samplers[nonuniformEXT(in_sampler_index)]`,glslc `--target-env=vulkan1.2` 重编并重嵌 `kSpriteBindless{Vert,Frag}Spv`。
+- `VulkanSpritePipelineRuntime`:加 `kVulkanSpriteTextureIdLocation=6`/`kVulkanSpriteSamplerIndexLocation=7` 与 **8 属性**的 `kBindlessVertexAttributes`(两个 `R32_UINT`,instance binding,偏移取 `texture_id`/`sampler_index`)+ `createBindlessPipelineRef`;6 属性的非 bindless 布局原封不动,二者共用 `createPipelineRefImpl`。
+- 新 `include/Render2D/Native/VulkanSpriteMaterialGraph.hpp`(CPU-only runtime):`material_id`+generation → `{PipelineRef, sampler_index, VulkanSpriteMaterialParams}`(POD tint/blend 扩展点),身份直映射 + `McVector` 记录,`registerMaterial`/`evict`/`resolveBinding`/`resolveSamplerIndex` 全程 generation 校验、stale-reject,产出 `SpriteMaterialBinding` 行。不持任何 Vulkan handle(只存 id+gen ref),CPU/GPU 两路通用。已并入 umbrella `Render2D.hpp`。
+- 测试:`sprite_pipeline_contract_test` 加 bindless 8 属性/location 6,7 契约;新 `tests/sprite_material_graph_test.cpp` 覆盖注册/解析/generation-stale/double-evict/容量与零代越界拒绝 + resolve pass 跨 material 盖不同 sampler 槽与陈旧拒绝(poison 不被覆盖)。
+
+**范围说明(如实)**:编码器/`CommandBuildSystem`/管线接线**仍未动** —— 真正 ≥8 纹理 × ≥2 sampler 单 set 离屏渲染、与 fallback 像素等价对照是 **20E**。ADR 仍随 20F 收口。门禁:Debug `ctest` 50/50、Perf `ctest` 59/59、`-Werror` 双预设、clang-tidy 全过(config + 3 TU,含改动头的传递覆盖)。**Next: 20E(bindless 离屏渲染 + fallback 等价性对照)。**
+
 ---
 
 ### Stage 21 — 并行尾段与剩余性能项(工程/性能补强)

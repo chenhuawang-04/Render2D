@@ -49,6 +49,11 @@ struct SpriteInstance {
     U32 sort_key;
     U32 layer;
     U32 flags;
+    // Stage 20D: bindless per-instance sampler selector, resolved from the
+    // material binding via SpriteInstanceBuildSystem::resolveSamplerIndices and
+    // sampled in-shader as samplers[nonuniformEXT(in_sampler_index)]. Defaults
+    // to 0 (the slot-0 sampler) when no material resolve pass runs.
+    U32 sampler_index;
 };
 
 template<class Provider, class Dim>
@@ -82,6 +87,10 @@ struct SpriteMaterialBinding {
     U32 pipeline_id;
     U32 pipeline_generation;
     U32 flags;
+    // Stage 20D: per-material bindless sampler slot (index into the bindless
+    // table's sampler array). resolveSamplerIndices stamps this onto every
+    // instance of the material so cross-material draws can share one set.
+    U32 sampler_index;
 };
 
 template<class Provider, class Dim>

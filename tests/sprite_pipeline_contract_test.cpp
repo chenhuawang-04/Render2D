@@ -55,6 +55,33 @@ void testVertexInputContract(R2DT::TestContext& context_)
     R2D_TEST_CHECK_EQ(context_, attributes[5U].offset, offsetof(SpriteInstance, color_rgba8));
 }
 
+void testBindlessVertexInputContract(R2DT::TestContext& context_)
+{
+    // The bindless attribute set is the six base attributes plus the two R32_UINT
+    // per-instance selectors at locations 6/7, all on the instance binding at the
+    // SpriteInstance field offsets. The bindings (and stride) are unchanged.
+    const auto& base = SpritePipelineRuntime::kVertexAttributes;
+    const auto& attributes = SpritePipelineRuntime::kBindlessVertexAttributes;
+    R2D_TEST_CHECK_EQ(context_, attributes.size(), R2D::kVulkanSpriteBindlessVertexAttributeCount);
+    R2D_TEST_CHECK_EQ(context_, attributes.size(), base.size() + 2U);
+
+    for (std::size_t index = 0U; index < base.size(); ++index) {
+        R2D_TEST_CHECK_EQ(context_, attributes[index].location, base[index].location);
+        R2D_TEST_CHECK_EQ(context_, attributes[index].binding, base[index].binding);
+        R2D_TEST_CHECK_EQ(context_, attributes[index].format, base[index].format);
+        R2D_TEST_CHECK_EQ(context_, attributes[index].offset, base[index].offset);
+    }
+
+    R2D_TEST_CHECK_EQ(context_, attributes[6U].location, R2D::kVulkanSpriteTextureIdLocation);
+    R2D_TEST_CHECK_EQ(context_, attributes[6U].binding, R2D::kVulkanSpriteInstanceBinding);
+    R2D_TEST_CHECK_EQ(context_, attributes[6U].format, VK_FORMAT_R32_UINT);
+    R2D_TEST_CHECK_EQ(context_, attributes[6U].offset, offsetof(SpriteInstance, texture_id));
+    R2D_TEST_CHECK_EQ(context_, attributes[7U].location, R2D::kVulkanSpriteSamplerIndexLocation);
+    R2D_TEST_CHECK_EQ(context_, attributes[7U].binding, R2D::kVulkanSpriteInstanceBinding);
+    R2D_TEST_CHECK_EQ(context_, attributes[7U].format, VK_FORMAT_R32_UINT);
+    R2D_TEST_CHECK_EQ(context_, attributes[7U].offset, offsetof(SpriteInstance, sampler_index));
+}
+
 void testDescriptorConfig(R2DT::TestContext& context_)
 {
     const auto config = SpritePipelineRuntime::makeDescriptorRuntimeConfig(
@@ -95,6 +122,7 @@ void testUnsupportedDomain(R2DT::TestContext& context_)
 {
     R2DT::TestContext context{};
     testVertexInputContract(context);
+    testBindlessVertexInputContract(context);
     testDescriptorConfig(context);
     testUnsupportedDomain(context);
     return context.result();

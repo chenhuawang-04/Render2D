@@ -220,6 +220,7 @@ void testBuildSpriteDrawPackets(R2DT::TestContext& context_)
             .pipeline_id = 3U,
             .pipeline_generation = 30U,
             .flags = 0x10U,
+            .sampler_index = 0U,
         },
         {
             .material_id = 8U,
@@ -227,6 +228,7 @@ void testBuildSpriteDrawPackets(R2DT::TestContext& context_)
             .pipeline_id = 4U,
             .pipeline_generation = 40U,
             .flags = 0x20U,
+            .sampler_index = 0U,
         },
     }};
     constexpr std::array<SpriteTextureBinding, 2U> kTextures{{
@@ -304,6 +306,7 @@ void testPacketBuildInvalidInput(R2DT::TestContext& context_)
             .pipeline_id = 3U,
             .pipeline_generation = 30U,
             .flags = 0U,
+            .sampler_index = 0U,
         },
     }};
     constexpr std::array<SpriteTextureBinding, 1U> kTextures{{

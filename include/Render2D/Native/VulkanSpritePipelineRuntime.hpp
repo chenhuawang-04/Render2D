@@ -22,8 +22,16 @@ inline constexpr U32 kVulkanSpriteTransformRow0Location = 2U;
 inline constexpr U32 kVulkanSpriteTransformRow1Location = 3U;
 inline constexpr U32 kVulkanSpriteUvRectLocation = 4U;
 inline constexpr U32 kVulkanSpriteColorLocation = 5U;
+// Stage 20D bindless attributes: per-instance texture and sampler selectors read
+// by the bindless shaders (textures[nonuniformEXT(in_texture_id)] /
+// samplers[nonuniformEXT(in_sampler_index)]). Both live on the instance binding
+// at the SpriteInstance field offsets, so the bindless pipeline reuses the same
+// bindings and only adds two R32_UINT attributes.
+inline constexpr U32 kVulkanSpriteTextureIdLocation = 6U;
+inline constexpr U32 kVulkanSpriteSamplerIndexLocation = 7U;
 inline constexpr U32 kVulkanSpriteVertexBindingCount = 2U;
 inline constexpr U32 kVulkanSpriteVertexAttributeCount = 6U;
+inline constexpr U32 kVulkanSpriteBindlessVertexAttributeCount = 8U;
 inline constexpr U32 kVulkanSpriteTextureDescriptorCount = 1U;
 
 struct VulkanSpritePipelineConfig {
@@ -93,6 +101,32 @@ struct VulkanSpritePipelineRuntime {
             },
         }};
 
+    // Stage 20D bindless attribute set: the six base attributes plus the two
+    // R32_UINT instance selectors at locations 6/7. Used by createBindlessPipelineRef
+    // against the bindless table's single descriptor set; the non-bindless
+    // kVertexAttributes set above is unchanged for the fallback path.
+    inline static constexpr std::array<VkVertexInputAttributeDescription, kVulkanSpriteBindlessVertexAttributeCount>
+        kBindlessVertexAttributes{{
+            kVertexAttributes[0],
+            kVertexAttributes[1],
+            kVertexAttributes[2],
+            kVertexAttributes[3],
+            kVertexAttributes[4],
+            kVertexAttributes[5],
+            {
+                .location = kVulkanSpriteTextureIdLocation,
+                .binding = kVulkanSpriteInstanceBinding,
+                .format = VK_FORMAT_R32_UINT,
+                .offset = static_cast<U32>(offsetof(SpriteInstanceType, texture_id)),
+            },
+            {
+                .location = kVulkanSpriteSamplerIndexLocation,
+                .binding = kVulkanSpriteInstanceBinding,
+                .format = VK_FORMAT_R32_UINT,
+                .offset = static_cast<U32>(offsetof(SpriteInstanceType, sampler_index)),
+            },
+        }};
+
     static VulkanDescriptorRuntimeConfig makeDescriptorRuntimeConfig(
         VkDevice device_,
         U32 max_descriptor_sets_,
@@ -115,6 +149,39 @@ struct VulkanSpritePipelineRuntime {
     static NativeResult createPipelineRef(
         VulkanPipelineRuntime<Provider, Dim>& pipeline_runtime_,
         const VulkanSpritePipelineConfig& config_,
+        PipelineRef<Provider, Dim>& out_ref_)
+    {
+        return createPipelineRefImpl(
+            pipeline_runtime_,
+            config_,
+            kVertexAttributes.data(),
+            static_cast<U32>(kVertexAttributes.size()),
+            out_ref_);
+    }
+
+    // Stage 20D: build the bindless sprite pipeline. Identical to createPipelineRef
+    // but with the 8-attribute bindless layout (locations 6/7 added) and the
+    // caller-supplied descriptor_set_layout expected to be the bindless table's
+    // single set (binding 0 = texture2D[], binding 1 = sampler[]).
+    static NativeResult createBindlessPipelineRef(
+        VulkanPipelineRuntime<Provider, Dim>& pipeline_runtime_,
+        const VulkanSpritePipelineConfig& config_,
+        PipelineRef<Provider, Dim>& out_ref_)
+    {
+        return createPipelineRefImpl(
+            pipeline_runtime_,
+            config_,
+            kBindlessVertexAttributes.data(),
+            static_cast<U32>(kBindlessVertexAttributes.size()),
+            out_ref_);
+    }
+
+private:
+    static NativeResult createPipelineRefImpl(
+        VulkanPipelineRuntime<Provider, Dim>& pipeline_runtime_,
+        const VulkanSpritePipelineConfig& config_,
+        const VkVertexInputAttributeDescription* vertex_attributes_,
+        U32 vertex_attribute_count_,
         PipelineRef<Provider, Dim>& out_ref_)
     {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
@@ -151,9 +218,9 @@ struct VulkanSpritePipelineRuntime {
                     .sample_count = VK_SAMPLE_COUNT_1_BIT,
                     .flags = config_.flags,
                     .vertex_binding_descriptions = kVertexBindings.data(),
-                    .vertex_attribute_descriptions = kVertexAttributes.data(),
+                    .vertex_attribute_descriptions = vertex_attributes_,
                     .vertex_binding_description_count = static_cast<U32>(kVertexBindings.size()),
-                    .vertex_attribute_description_count = static_cast<U32>(kVertexAttributes.size()),
+                    .vertex_attribute_description_count = vertex_attribute_count_,
                 },
                 out_ref_);
         }

@@ -43,6 +43,7 @@
 #include "Render2D/Native/VulkanResourceRuntime.hpp"
 #include "Render2D/Native/VulkanSamplerRuntime.hpp"
 #include "Render2D/Native/VulkanSpriteInstanceUploadRuntime.hpp"
+#include "Render2D/Native/VulkanSpriteMaterialGraph.hpp"
 #include "Render2D/Native/VulkanSpritePipelineRuntime.hpp"
 #include "Render2D/Native/VulkanSpriteRenderEncoder.hpp"
 #include "Render2D/Native/VulkanSubmitRuntime.hpp"

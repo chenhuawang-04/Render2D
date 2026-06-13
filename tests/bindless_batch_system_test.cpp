@@ -123,6 +123,7 @@ int main()
         .pipeline_id = 7U,
         .pipeline_generation = 1U,
         .flags = 0U,
+        .sampler_index = 0U,
     };
     const std::array<SpriteMaterialBinding, 1U> material_bindings{{material}};
     const SpriteTextureBinding bindless_binding{
@@ -169,6 +170,7 @@ int main()
         .pipeline_id = 7U,
         .pipeline_generation = 0U,
         .flags = 0U,
+        .sampler_index = 0U,
     };
     const std::array<SpriteMaterialBinding, 1U> stale_material_bindings{{stale_material}};
     result = PacketBuild::runBindless(

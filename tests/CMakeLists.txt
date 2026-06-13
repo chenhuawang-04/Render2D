@@ -91,6 +91,19 @@ render2d_apply_strict_warnings(render2d_bindless_batch_system_test)
 
 add_test(NAME render2d.bindless_batch_system COMMAND render2d_bindless_batch_system_test)
 
+add_executable(render2d_sprite_material_graph_test
+    sprite_material_graph_test.cpp
+)
+target_link_libraries(render2d_sprite_material_graph_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_sprite_material_graph_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_sprite_material_graph_test)
+
+add_test(NAME render2d.sprite_material_graph COMMAND render2d_sprite_material_graph_test)
+
 add_executable(render2d_sprite_instance_system_test
     sprite_instance_system_test.cpp
 )

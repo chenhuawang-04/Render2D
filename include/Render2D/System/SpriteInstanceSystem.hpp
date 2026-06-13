@@ -85,6 +85,7 @@ struct SpriteInstanceBuildSystem {
                     .sort_key = draw.sort_key,
                     .layer = draw.layer,
                     .flags = draw.flags,
+                    .sampler_index = 0U,
                 };
             }
 
@@ -187,6 +188,7 @@ struct SpriteInstanceBuildSystem {
                     .sort_key = draw.sort_key,
                     .layer = draw.layer,
                     .flags = draw.flags,
+                    .sampler_index = 0U,
                 };
             }
 
@@ -198,7 +200,72 @@ struct SpriteInstanceBuildSystem {
         }
     }
 
+    // Stage 20D: stamp each instance's bindless sampler slot from its material
+    // binding. The sampler is a material property (see SpriteMaterialBinding),
+    // so every instance of a material shares its sampler_index; resolving it
+    // per-instance lets the bindless path merge draws across materials (the
+    // shader indexes samplers[nonuniformEXT(in_sampler_index)]). A missing or
+    // stale (generation-mismatched) material is rejected, never silently bound
+    // to slot 0. The instance's own material_id/material_generation, written by
+    // run/runWithTextureRegions, drive the lookup.
+    static SystemResult resolveSamplerIndices(
+        std::span<SpriteInstance<Provider, Dim>> sprite_instances_,
+        std::span<const SpriteMaterialBinding<Provider, Dim>> material_bindings_) noexcept
+    {
+        if constexpr (!SupportedRenderDomain<Provider, Dim>) {
+            return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
+        } else {
+            if (!isSystemResultCountRepresentable(sprite_instances_.size()) ||
+                !isSystemResultCountRepresentable(material_bindings_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
+
+            U32 write_count = 0U;
+            for (auto& instance : sprite_instances_) {
+                const auto* material = findMaterialBinding(
+                    instance.material_id,
+                    instance.material_generation,
+                    material_bindings_);
+                if (material == nullptr) {
+                    return {
+                        .code = SystemStatusCode::InvalidInput,
+                        .read_count = write_count,
+                        .write_count = write_count,
+                    };
+                }
+                instance.sampler_index = material->sampler_index;
+                ++write_count;
+            }
+
+            return {
+                .code = SystemStatusCode::Ok,
+                .read_count = write_count,
+                .write_count = write_count,
+            };
+        }
+    }
+
 private:
+    static const SpriteMaterialBinding<Provider, Dim>* findMaterialBinding(
+        U32 material_id_,
+        U32 material_generation_,
+        std::span<const SpriteMaterialBinding<Provider, Dim>> bindings_) noexcept
+    {
+        if (material_id_ < bindings_.size() &&
+            bindings_[material_id_].material_id == material_id_ &&
+            bindings_[material_id_].material_generation == material_generation_) {
+            return &bindings_[material_id_];
+        }
+
+        for (const auto& binding : bindings_) {
+            if (binding.material_id == material_id_ &&
+                binding.material_generation == material_generation_) {
+                return &binding;
+            }
+        }
+        return nullptr;
+    }
+
     static bool hasValidTextureRegion(
         const Sprite<Provider, Dim>& sprite_,
         const DrawCommand<Provider, Dim>& draw_,

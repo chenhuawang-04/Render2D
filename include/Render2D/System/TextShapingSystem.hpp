@@ -356,6 +356,7 @@ struct GlyphInstanceToSpriteSystem {
                     .sort_key = glyph.sort_key,
                     .layer = glyph.layer,
                     .flags = glyph.flags,
+                    .sampler_index = 0U,
                 };
                 ++write_count;
             }
