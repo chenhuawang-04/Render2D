@@ -16,6 +16,29 @@ struct BatchSystem {
         std::span<const DrawCommand<Provider, Dim>> draw_commands_,
         std::span<BatchCommand<Provider, Dim>> batch_commands_) noexcept
     {
+        return runImpl<false>(draw_commands_, batch_commands_);
+    }
+
+    // Bindless batching: draws differing only by texture merge into one batch
+    // because the per-instance texture is resolved in-shader against a single
+    // descriptor set, so it no longer pins a draw to a descriptor binding.
+    // Material/pipeline/layer/flags are still compared in full (see
+    // drawCommandsHaveEqualBindlessBatchKey), so a stale material generation can
+    // never be merged away. Requires draws sorted with makeBindlessDrawSortKey so
+    // equal-key draws are adjacent.
+    static SystemResult runBindless(
+        std::span<const DrawCommand<Provider, Dim>> draw_commands_,
+        std::span<BatchCommand<Provider, Dim>> batch_commands_) noexcept
+    {
+        return runImpl<true>(draw_commands_, batch_commands_);
+    }
+
+private:
+    template<bool Bindless>
+    static SystemResult runImpl(
+        std::span<const DrawCommand<Provider, Dim>> draw_commands_,
+        std::span<BatchCommand<Provider, Dim>> batch_commands_) noexcept
+    {
         if constexpr (!SupportedRenderDomain<Provider, Dim>) {
             return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
         } else {
@@ -40,7 +63,7 @@ struct BatchSystem {
             for (Usize draw_index = 1U; draw_index < draw_commands_.size(); ++draw_index) {
                 const auto& previous_draw = draw_commands_[draw_index - 1U];
                 const auto& current_draw = draw_commands_[draw_index];
-                if (canMerge(previous_draw, current_draw)) {
+                if (canMerge<Bindless>(previous_draw, current_draw)) {
                     ++batch_commands_[batch_index].draw_count;
                     continue;
                 }
@@ -64,12 +87,16 @@ struct BatchSystem {
         }
     }
 
-private:
+    template<bool Bindless>
     static bool canMerge(
         const DrawCommand<Provider, Dim>& left_,
         const DrawCommand<Provider, Dim>& right_) noexcept
     {
-        return drawCommandsHaveEqualBatchKey(left_, right_);
+        if constexpr (Bindless) {
+            return drawCommandsHaveEqualBindlessBatchKey(left_, right_);
+        } else {
+            return drawCommandsHaveEqualBatchKey(left_, right_);
+        }
     }
 
     static BatchCommand<Provider, Dim> makeBatch(

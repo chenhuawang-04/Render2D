@@ -535,12 +535,86 @@ struct SpriteDrawPacketBuildSystem {
                 }
 
                 SpriteDrawPacket<Provider, Dim> packet{};
-                if (!makePacket(
+                if (!makePacket<false>(
                         batch,
                         static_cast<U32>(batch_index),
                         draw_commands_,
                         *material,
                         *texture,
+                        packet)) {
+                    return {
+                        .code = SystemStatusCode::InvalidInput,
+                        .read_count = static_cast<U32>(batch_index),
+                        .write_count = write_count,
+                    };
+                }
+
+                sprite_draw_packets_[write_count] = packet;
+                ++write_count;
+            }
+
+            return {
+                .code = SystemStatusCode::Ok,
+                .read_count = static_cast<U32>(batch_commands_.size()),
+                .write_count = write_count,
+            };
+        }
+    }
+
+    // Bindless packet build: one descriptor set (the bindless texture table)
+    // serves every texture, so there is no per-texture descriptor lookup and
+    // batches merged across textures (see BatchSystem::runBindless) collapse to a
+    // single packet. The caller supplies that one binding; material identity and
+    // generation are still validated in full so a stale material cannot bind.
+    static SystemResult runBindless(
+        std::span<const BatchCommand<Provider, Dim>> batch_commands_,
+        std::span<const DrawCommand<Provider, Dim>> draw_commands_,
+        std::span<const SpriteMaterialBinding<Provider, Dim>> material_bindings_,
+        SpriteTextureBinding<Provider, Dim> bindless_binding_,
+        std::span<SpriteDrawPacket<Provider, Dim>> sprite_draw_packets_) noexcept
+    {
+        if constexpr (!SupportedRenderDomain<Provider, Dim>) {
+            return {.code = SystemStatusCode::UnsupportedDomain, .read_count = 0U, .write_count = 0U};
+        } else {
+            if (!isSystemResultCountRepresentable(batch_commands_.size()) ||
+                !isSystemResultCountRepresentable(draw_commands_.size()) ||
+                !isSystemResultCountRepresentable(material_bindings_.size()) ||
+                !isSystemResultCountRepresentable(sprite_draw_packets_.size())) {
+                return {.code = SystemStatusCode::InvalidInput, .read_count = 0U, .write_count = 0U};
+            }
+            if (batch_commands_.empty()) {
+                return {.code = SystemStatusCode::Ok, .read_count = 0U, .write_count = 0U};
+            }
+            if (sprite_draw_packets_.size() < batch_commands_.size()) {
+                return {
+                    .code = SystemStatusCode::InsufficientCapacity,
+                    .read_count = static_cast<U32>(batch_commands_.size()),
+                    .write_count = static_cast<U32>(sprite_draw_packets_.size()),
+                };
+            }
+
+            U32 write_count = 0U;
+            for (Usize batch_index = 0U; batch_index < batch_commands_.size(); ++batch_index) {
+                const auto& batch = batch_commands_[batch_index];
+                const auto* material = findMaterialBinding(
+                    batch.material_id,
+                    batch.material_generation,
+                    material_bindings_);
+                if (material == nullptr) {
+                    return {
+                        .code = SystemStatusCode::InvalidInput,
+                        .read_count = static_cast<U32>(batch_index),
+                        .write_count = write_count,
+                    };
+                }
+
+                SpriteDrawPacket<Provider, Dim> packet{};
+                if (!makePacket<true>(
+                        batch,
+                        static_cast<U32>(batch_index),
+                        draw_commands_,
+                        *material,
+                        bindless_binding_,
                         packet)) {
                     return {
                         .code = SystemStatusCode::InvalidInput,
@@ -602,6 +676,7 @@ private:
         return nullptr;
     }
 
+    template<bool Bindless>
     static bool makePacket(
         const BatchCommand<Provider, Dim>& batch_,
         U32 batch_index_,
@@ -627,7 +702,7 @@ private:
                 first_draw.instance_first > 0xFFFFFFFFU - instance_count) {
                 return false;
             }
-            if (!isCompatibleDraw(first_draw, draw, batch_) ||
+            if (!isDrawCompatible<Bindless>(first_draw, draw, batch_) ||
                 draw.instance_count == 0U ||
                 draw.instance_first != first_draw.instance_first + instance_count) {
                 return false;
@@ -660,21 +735,31 @@ private:
         return true;
     }
 
-    static bool isCompatibleDraw(
+    template<bool Bindless>
+    static bool isDrawCompatible(
         const DrawCommand<Provider, Dim>& first_draw_,
         const DrawCommand<Provider, Dim>& draw_,
         const BatchCommand<Provider, Dim>& batch_) noexcept
     {
-        return draw_.material_id == batch_.material_id &&
+        const bool base_compatible =
+            draw_.material_id == batch_.material_id &&
             draw_.material_generation == batch_.material_generation &&
-            draw_.texture_id == batch_.texture_id &&
-            draw_.texture_generation == batch_.texture_generation &&
             draw_.vertex_first == first_draw_.vertex_first &&
             draw_.vertex_count == first_draw_.vertex_count &&
             draw_.index_first == first_draw_.index_first &&
             draw_.index_count == first_draw_.index_count &&
             draw_.layer == first_draw_.layer &&
             draw_.flags == first_draw_.flags;
+        if constexpr (Bindless) {
+            // The texture is per-instance and resolved in-shader, so cross-texture
+            // draws coalesce into one packet; texture identity is intentionally
+            // not compared here.
+            return base_compatible;
+        } else {
+            return base_compatible &&
+                draw_.texture_id == batch_.texture_id &&
+                draw_.texture_generation == batch_.texture_generation;
+        }
     }
 };
 

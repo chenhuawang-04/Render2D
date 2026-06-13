@@ -53,9 +53,9 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `include/Render2D/System/BoundsSystem.hpp` - Converts local bounds plus world transforms to world bounds, including dirty-index updates.
 - `include/Render2D/System/CullingSystem.hpp` - Produces `VisibleItem[]` using camera bounds and visibility masks.
 - `include/Render2D/System/CommandBuildSystem.hpp` - Builds `DrawCommand[]` from visible items and sprites.
-- `include/Render2D/System/SpriteInstanceSystem.hpp` - Component-stream systems building `SpriteInstance[]`, optional texture-region UVs, texture atlas region output, sprite instance upload commands, and `SpriteDrawPacket[]` from batch/material/texture binding streams. `TextureAtlasBuildSystem` offers input-order shelf packing plus Stage 18C `runHeightSorted` First-Fit Decreasing Height packing over a caller-owned scratch order span.
-- `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands.
-- `include/Render2D/System/SortKey.hpp` - Packed draw sort/batch key helpers.
+- `include/Render2D/System/SpriteInstanceSystem.hpp` - Component-stream systems building `SpriteInstance[]`, optional texture-region UVs, texture atlas region output, sprite instance upload commands, and `SpriteDrawPacket[]` from batch/material/texture binding streams. `SpriteDrawPacketBuildSystem::runBindless` (Stage 20C) builds one packet per batch against a single bindless descriptor set, coalescing cross-texture draws since the texture is resolved per-instance in-shader. `TextureAtlasBuildSystem` offers input-order shelf packing plus Stage 18C `runHeightSorted` First-Fit Decreasing Height packing over a caller-owned scratch order span.
+- `include/Render2D/System/BatchSystem.hpp` - Builds `BatchCommand[]` by merging compatible adjacent draw commands; `runBindless` (Stage 20C) merges draws that differ only by texture into one batch while still comparing material id/generation, layer and flags.
+- `include/Render2D/System/SortKey.hpp` - Packed draw sort/batch key helpers, including the Stage 20C texture-agnostic `makeBindlessDrawSortKey` / `drawCommandsHaveEqualBindlessBatchKey` variants for the bindless batch path.
 - `include/Render2D/System/SortSystem.hpp` - Stable radix sort over `DrawCommand.sort_key` using caller-owned scratch spans.
 - `include/Render2D/System/UploadDescriptorCompactionSystem.hpp` - Stage 10I allocation-free upload coalescing and descriptor slice compaction over ECS component streams.
 - `include/Render2D/System/CommandBufferSystem.hpp` - Builds and clears POD `CommandBuffer` range descriptors.
@@ -118,6 +118,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/threaded_cpu_pipeline_test.cpp` - Stage 10H single-thread equivalence and deterministic chunk merge coverage for `ThreadedCpuPipelineRuntime`.
 - `tests/cpu_system_pipeline_test.cpp` - Full CPU pipeline test from transform to batch command.
 - `tests/draw_sort_system_test.cpp` - Packed sort key, radix draw sort, batch merge, and collision-safety coverage.
+- `tests/bindless_batch_system_test.cpp` - Stage 20C bindless batch-merge coverage: texture-agnostic sort/batch key helpers, cross-texture merge into one batch (with the non-bindless path kept split as contrast), material-generation stale guard, single bindless `SpriteDrawPacket` spanning all instances, missing/stale material/descriptor rejection, and a SPIR-V magic-number check on the embedded bindless shaders.
 - `tests/sprite_instance_system_test.cpp` - Sprite GPU instance, packet build, texture atlas shelf packing, Stage 18C FFDH height-sorted packing, and texture-region UV propagation system coverage.
 - `tests/sprite_instance_upload_system_test.cpp` - Stage 12C typed sprite instance upload command conversion coverage.
 - `tests/sprite_pipeline_contract_test.cpp` - Stage 12D sprite vertex input and descriptor config contract coverage.
@@ -165,7 +166,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/support/ComponentStreamView.hpp` - Test-only view helpers for temporary ECS storage.
 - `tests/support/VulkanSmokeContext.hpp` - Optional Vulkan instance/device/queue setup helper for smoke tests.
 - `tests/support/FullScreenTriangleShaders.hpp` - Embedded SPIR-V for the offscreen full-screen triangle smoke test.
-- `tests/support/SpriteShaders.hpp` - Embedded SPIR-V for Stage 12E color-only, Stage 13C textured sprite, and Stage 19F glyph-coverage (`kGlyphCoverageFragSpv`, premultiplied `.r` coverage) offscreen smoke tests.
+- `tests/support/SpriteShaders.hpp` - Embedded SPIR-V for Stage 12E color-only, Stage 13C textured sprite, Stage 19F glyph-coverage (`kGlyphCoverageFragSpv`, premultiplied `.r` coverage), and Stage 20C bindless sprite (`kSpriteBindlessVertSpv` / `kSpriteBindlessFragSpv`, split `texture2D[]` + `sampler[]` with `nonuniformEXT(texture_id)`, vulkan1.2 target) offscreen smoke tests.
 - `tests/support/TestHarness.hpp` - Lightweight no-dependency assertion helpers for CTest executables.
 
 ## Scripts

@@ -162,6 +162,15 @@
 
 **进度**:20B status (done, 2026-06-13)。`include/Render2D/Native/VulkanBindlessTextureTable.hpp` —— bindless 纹理表 runtime,按商定采用**拆分布局**:自有一个持久 descriptor set,binding 0 = 身份直映射的 `SAMPLED_IMAGE` 数组(容量 `texture_capacity`,`PARTIALLY_BOUND | UPDATE_AFTER_BIND`)、binding 1 = 小 `SAMPLER` 数组;**不复用** `VulkanDescriptorRuntime`(通用 runtime 原封不动留作非 bindless fallback 的正确性参考)。`setResident`/`evict`/`isResident` 以 `texture_id` + generation 记账,stale 校验落在 CPU(着色器只看下标);唯一的 `McVector` 是 CPU 驻留记录(GPU 数组是定容 Vulkan binding,本就不能、也不该 McVector);容量超 `capability.max_descriptor_set_sampled_images` 即拒;不支持 bindless 的设备返回 `UnsupportedDomain` → 调用方走既有 combined-image-sampler fallback。空洞按最佳性能纯 `PARTIALLY_BOUND` 留空(零显存/零写入),Debug 可选 1×1 fill view 兜底(Release 零成本)。20A 的 binding-flag helper 随之改名 `bindlessSampledImageBindingFlags`(它探测的本就是 sampled-image 系特性)。`tests/vulkan_bindless_texture_table_test.cpp` 覆盖设备无关的拒绝路径 + 真实设备全生命周期(建 set、容量拒绝、采样器/驻留写、generation-stale 与越界、stale-image 与 double-evict、再驻留)。门禁:Debug `ctest` 48/48、Perf `ctest` 57/57、`-Werror`、clang-tidy 全过。ADR 仍随 20F 收口。20C(从 batch key 去 `texture_id` + `nonuniformEXT` 着色器 + 每实例 `sampler_index`)起待续。
 
+**进度**:20C status (done, 2026-06-13)。多纹理批次合并的 CPU 系统 + bindless 着色器落地:
+- `SortKey.hpp` 新增**纹理无关**的 `makeBindlessDrawSortKey`(把打包键的 texture 位清零,使仅纹理不同的 draw 同键相邻)与 `drawCommandsHaveEqualBindlessBatchKey`(在原 batch key 基础上去掉 `texture_id`/`texture_generation` 两项,仍全量比较 material id/generation、sort_key、layer、flags,故陈旧 material generation 绝不会被并掉)。
+- `BatchSystem` 抽出 `runImpl<bool Bindless>` 共享循环,新增 `runBindless`:仅纹理不同的 draw 合并为一个 batch;非 bindless `run` 行为不变(仍按纹理拆分,作对照)。
+- `SpriteDrawPacketBuildSystem::runBindless`:整帧单一 bindless descriptor set,无逐纹理查找,把跨纹理合并的 batch 收成**一个** `SpriteDrawPacket`(`makePacket<Bindless>` + `isDrawCompatible<Bindless>` 统一,bindless 下不比较纹理);material 身份/generation 仍全量校验,缺失/陈旧 material 与陈旧 descriptor 被拒。
+- bindless 着色器 `kSpriteBindlessVertSpv`/`kSpriteBindlessFragSpv`(`tests/support/SpriteShaders.hpp`,glslc `--target-env=vulkan1.2`):**拆分** `texture2D textures[]`(binding 0)+ `sampler samplers[]`(binding 1),与 20B 拆分表布局一致;顶点把 `in_texture_id` 以 `flat` 传给片元,片元 `texture(sampler2D(textures[nonuniformEXT(in_texture_id)], samplers[0]), uv) * color`。
+- `tests/bindless_batch_system_test.cpp`:键 helper 的 `static_assert`、跨纹理合并 vs 非 bindless 拆分对照、generation 陈旧边界、单包跨实例、缺失/陈旧 material 与 descriptor 拒绝、SPIR-V magic 校验。
+
+**范围说明(如实)**:`SpriteInstance` **未改** —— 每实例 `sampler_index` 推迟到 **20D**(material graph 给它真实来源前,着色器恒用 `samplers[0]`);`CommandBuildSystem`/编码器/管线接线**未动** —— 真正出 bindless 画面、≥8 纹理单 set 离屏与 fallback 等价性对照是 **20E**。ADR 仍随 20F 收口。门禁:Debug `ctest` 49/49、Perf `ctest` 58/58、`-Werror`、clang-tidy 全过。**Next: 20D(material graph + 每实例 sampler 选择)或 20E(bindless 离屏渲染等价性对照)。**
+
 ---
 
 ### Stage 21 — 并行尾段与剩余性能项(工程/性能补强)
