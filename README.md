@@ -11,12 +11,14 @@ For architecture, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the fil
 
 ## Dependencies
 
-Render2D builds against four host-engine source trees and the Vulkan SDK. The four engine trees are
-**not vendored and not fetched automatically**: one (`Vector_New`) has no git remote and the others
-live in private repositories, so the build cannot pull them on a clean or CI machine. Point the build
-at a local checkout instead.
+Render2D builds against four host-engine source trees and the Vulkan SDK. Each engine tree is resolved
+in three tiers, **downloading only as a last resort**: (1) reuse it if the enclosing CMake project
+already defines its target; (2) `add_subdirectory` a local checkout if one is present; (3) otherwise
+fetch it from git. Two of the four repos are private (`MemoryCenter`, `Vector`), so a fetch on a clean
+or CI machine needs git credentials with read access to them.
 
-Set **one** umbrella path and the four locations are derived from it:
+To build against local checkouts (no download), set **one** umbrella path and the four locations are
+derived from it:
 
 ```bash
 cmake --preset clang-ninja-debug -DRENDER2D_ENGINE_DEPS_ROOT=/path/to/MelosyneTest
@@ -32,9 +34,18 @@ individually (an individual override takes precedence over the umbrella default)
 | Vector_New (`McVector`)| `<root>/Vector_New/include`               | `RENDER2D_VECTOR_NEW_INCLUDE_DIR`   | `Center/Memory/Container/Vector/McVector.hpp`   |
 | ThreadCenter           | `<root>/ThreadCenter`                     | `RENDER2D_THREAD_CENTER_SOURCE_DIR` | `CMakeLists.txt`                                |
 
-If a tree is missing, configure fails fast with the expected marker path, the variable that was used,
-and the fix. `RENDER2D_ENGINE_DEPS_ROOT` only seeds the per-dependency defaults at first configure; to
-re-point an existing build directory, either reconfigure a fresh build or set the individual variables.
+If neither an existing target nor a local tree is found, that dependency is **fetched from git**. The
+repository and ref are overridable per dependency, so CI can pin an exact commit instead of a branch:
+
+| Dependency              | Fetch repo (default)                            | Repo / ref override variables                         |
+| ----------------------- | ----------------------------------------------- | ----------------------------------------------------- |
+| MemoryCenterNew         | `chenhuawang-04/MelosyneMemoryCenter` (private) | `RENDER2D_MEMORY_CENTER_GIT_REPOSITORY` / `…_GIT_TAG` |
+| fast_math (`MMath`)     | `chenhuawang-04/Melosyne-Math`                  | `RENDER2D_FAST_MATH_GIT_REPOSITORY` / `…_GIT_TAG`     |
+| Vector_New (`McVector`) | `chenhuawang-04/Vector` (private)               | `RENDER2D_VECTOR_NEW_GIT_REPOSITORY` / `…_GIT_TAG`    |
+| ThreadCenter            | `chenhuawang-04/Melosyne_ThreadCenter`          | `RENDER2D_THREAD_CENTER_GIT_REPOSITORY` / `…_GIT_TAG` |
+
+`RENDER2D_ENGINE_DEPS_ROOT` only seeds the per-dependency local defaults at first configure; to re-point
+an existing build directory, reconfigure a fresh build or set the individual variables.
 
 ### Vulkan SDK
 
@@ -103,16 +114,17 @@ CI is a single workflow, `.github/workflows/ci.yml`, in two tiers:
   and every pull request. They need no engine dependencies, Vulkan SDK, GPU, or build — the constraint
   scan, a merge-conflict-marker scan, and a `CMakePresets.json` validity check. This is the always-on
   safety net.
-- **Full build** (`full-build`, self-hosted) runs configure → build → `ctest` (Debug + Perf) →
-  clang-tidy → constraint scan → bench smoke. Because the four engine dependencies cannot be fetched on
-  a clean machine (Vector_New has no remote; the others are private), this tier runs on a **self-hosted
-  runner** where those trees and the Clang/Ninja/Vulkan toolchain already live. It is **manual**
-  (`workflow_dispatch`) so it never queues against an offline runner.
+- **Full build** (`full-build`, hosted `ubuntu-latest`) runs configure → build → `ctest` (Debug + Perf) →
+  clang-tidy → constraint scan → bench smoke. It installs clang + Ninja and the Vulkan loader/headers,
+  then lets CMake fetch the four engine deps from git. It is **manual** (`workflow_dispatch`) to control
+  cost. No GPU is present, so the `vulkan_*` smokes skip — the build is green but GPU paths are not
+  exercised here (see [No GPU required](#no-gpu-required)).
 
-To enable the full tier, register a self-hosted runner (repository *Settings → Actions → Runners*) with
-the label `render2d` on a machine that has the Vulkan SDK, Clang/Ninja, and the four engine dependency
-trees (see [Dependencies](#dependencies)); the font submodules are public and are fetched by the
-workflow. Then start the **CI** workflow via *Run workflow*, optionally overriding the engine-deps root.
+To enable the full tier: the two private deps (`MemoryCenter`, `Vector`) are fetched over HTTPS, so add a
+repository secret **`ENGINE_DEPS_TOKEN`** — a personal access token with read access to them
+(*Settings → Secrets and variables → Actions*). Then start the **CI** workflow via *Run workflow*; leave
+`engine_deps_root` empty to fetch, or set it to a pre-staged local root to skip fetching. The font
+submodules are public and are checked out by the workflow.
 
 ## No GPU required
 

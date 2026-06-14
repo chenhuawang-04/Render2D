@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       engine_deps_root:
-        description: "Root containing the four engine dependency trees (MemoryCenterNew, Math/fast_math, Vector_New, ThreadCenter)."
+        description: "Optional local root holding the four engine dep trees. Leave empty to fetch them from git (the default)."
         required: false
-        default: "E:/Project/MelosyneTest"
+        default: ""
 
 permissions:
   contents: read
@@ -41,36 +41,85 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Full tier: configure -> build -> ctest (Debug + Perf) -> clang-tidy ->
-  # constraint scan -> bench smoke. Requires the four engine dependency source
-  # trees and the Vulkan SDK, which are NOT fetchable on a clean machine
-  # (Vector_New has no git remote; the others are private). It therefore runs on
-  # a self-hosted runner where those deps and the Clang/Ninja/Vulkan toolchain
-  # live, and is triggered manually (workflow_dispatch) so it never queues
-  # against an offline runner during normal push/PR flow. See
-  # README.md > Continuous integration for how to register the runner.
+  # constraint scan -> bench smoke, on a HOSTED runner. Render2D's CMake now
+  # fetches the four engine deps from git (reuse/local/fetch tiers), so this job
+  # needs only a toolchain it can install: clang + Ninja, the Vulkan loader +
+  # headers, and -- for the two PRIVATE deps (MemoryCenter, Vector) -- a PAT in
+  # the ENGINE_DEPS_TOKEN secret with read access to them. No GPU is present, so
+  # the vulkan_* smokes skip: the build is green but GPU paths are NOT exercised
+  # on hosted. Manual (workflow_dispatch) to control cost; set the
+  # engine_deps_root input to use a pre-staged local checkout instead of fetching.
   # ---------------------------------------------------------------------------
   full-build:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: [self-hosted, render2d]
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
     env:
-      RENDER2D_ENGINE_DEPS_ROOT: ${{ github.event.inputs.engine_deps_root }}
+      FETCHCONTENT_BASE_DIR: ${{ github.workspace }}/.deps-cache
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
 
+      - name: Install toolchain (clang 22, ninja)
+        run: |
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22 all
+          sudo apt-get install -y ninja-build
+          sudo update-alternatives --install /usr/bin/clang      clang      /usr/bin/clang-22      100
+          sudo update-alternatives --install /usr/bin/clang++    clang++    /usr/bin/clang++-22    100
+          sudo update-alternatives --install /usr/bin/clang-tidy  clang-tidy /usr/bin/clang-tidy-22 100
+
+      - name: Install Vulkan loader + headers + validation layers
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvulkan-dev vulkan-validationlayers
+
+      - name: Configure git credentials for the private engine deps
+        env:
+          ENGINE_DEPS_TOKEN: ${{ secrets.ENGINE_DEPS_TOKEN }}
+        run: |
+          if [ -n "$ENGINE_DEPS_TOKEN" ]; then
+            git config --global url."https://x-access-token:${ENGINE_DEPS_TOKEN}@github.com/".insteadOf "https://github.com/"
+            echo "credential rewrite configured for github.com (private deps fetchable)"
+          else
+            echo "::warning::ENGINE_DEPS_TOKEN not set -- private deps (MemoryCenter, Vector) will fail to fetch"
+          fi
+
+      - name: Cache fetched engine dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.deps-cache
+          key: engine-deps-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: engine-deps-
+
+      - name: Resolve engine-deps root (local override vs fetch)
+        run: |
+          ROOT="${{ github.event.inputs.engine_deps_root }}"
+          # Empty input -> point at a path with no dep trees so all four fetch.
+          if [ -z "$ROOT" ]; then ROOT="$GITHUB_WORKSPACE/.no-local-engine-deps"; fi
+          echo "ENGINE_DEPS_ROOT=$ROOT" >> "$GITHUB_ENV"
+
       - name: Configure (Debug)
-        run: cmake --preset clang-ninja-debug -DRENDER2D_ENGINE_DEPS_ROOT="$RENDER2D_ENGINE_DEPS_ROOT"
+        run: >
+          cmake --preset clang-ninja-debug
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+          -DRENDER2D_ENGINE_DEPS_ROOT="$ENGINE_DEPS_ROOT"
+          -DFETCHCONTENT_BASE_DIR="$FETCHCONTENT_BASE_DIR"
       - name: Build (Debug)
         run: cmake --build --preset clang-ninja-debug
       - name: Test (Debug)
         run: ctest --preset clang-ninja-debug
 
       - name: Configure (Perf)
-        run: cmake --preset clang-ninja-perf -DRENDER2D_ENGINE_DEPS_ROOT="$RENDER2D_ENGINE_DEPS_ROOT"
+        run: >
+          cmake --preset clang-ninja-perf
+          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+          -DRENDER2D_ENGINE_DEPS_ROOT="$ENGINE_DEPS_ROOT"
+          -DFETCHCONTENT_BASE_DIR="$FETCHCONTENT_BASE_DIR"
       - name: Build (Perf)
         run: cmake --build --preset clang-ninja-perf
       - name: Test (Perf)
