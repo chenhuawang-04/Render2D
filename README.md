@@ -120,3 +120,7 @@ Every `render2d.vulkan_*` smoke test creates an instance/device and **returns 0 
 (the `main()` guard in `tests/vulkan_*_test.cpp`). The tests render offscreen and verify by readback —
 no window or swapchain. A green `ctest` run therefore confirms the contract/state logic and that the
 GPU paths did not crash where a device was present; it does not by itself prove the GPU paths executed.
+
+The `render2d.vulkan_validation_layer_smoke` test additionally runs an offscreen workload under the
+Vulkan validation layer and fails on any validation error; it skips (still passing) when the validation
+layer is not installed.
