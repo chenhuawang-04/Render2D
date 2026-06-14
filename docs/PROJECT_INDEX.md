@@ -5,12 +5,15 @@ This document is the living file index for Render2D. It summarizes the purpose o
 ## Root files
 
 - `.clang-tidy` - Project clang-tidy configuration adapted from the Melosyne style rules.
-- `.gitignore` - Ignores CMake/Ninja build output, user files, and generated compiler artifacts.
+- `.gitattributes` - Pins `*.sh` to LF so the constraint scanner runs on Linux CI runners and under Git-bash regardless of `core.autocrlf` (Stage 17B).
+- `.github/workflows/ci.yml` - Two-tier CI (Stage 17B): a portable `portable-checks` job (constraint scan, merge-conflict-marker scan, `CMakePresets.json` validity) on hosted `ubuntu-latest`, and a self-hosted `full-build` job (configure/build/ctest Debug+Perf, clang-tidy, constraint scan, bench smoke) triggered via `workflow_dispatch` because the engine deps are not fetchable on a clean runner.
+- `.gitignore` - Ignores CMake/Ninja build output, user files, generated compiler artifacts, and the date-prefixed local session transcripts.
 - `AGENTS.md` - Contributor guide for this repository.
 - `CLAUDE.md` - Guidance for Claude Code instances: build/test/run commands, external dependency paths, the three-layer architecture, non-negotiable invariants, and naming conventions.
-- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, the internal `render2d_thread_runtime_support` and (Stage 19, behind `RENDER2D_BUILD_FONT_RUNTIME`) `render2d_font_runtime_support` targets, the MemoryCenter/Vector_New/fast_math/ThreadCenter/Vulkan dependencies, the FreeType/HarfBuzz/SheenBidi submodule static libraries, warnings, tests, and benchmarks.
+- `CMakeLists.txt` - Root CMake project. Defines the `Render2D::Render2D` interface target, the internal `render2d_thread_runtime_support` and (Stage 19, behind `RENDER2D_BUILD_FONT_RUNTIME`) `render2d_font_runtime_support` targets, the MemoryCenter/Vector_New/fast_math/ThreadCenter/Vulkan dependencies, the FreeType/HarfBuzz/SheenBidi submodule static libraries, warnings, tests, and benchmarks. Stage 17A added the `RENDER2D_ENGINE_DEPS_ROOT` umbrella override (deriving the four engine-dependency paths, each still individually overridable) with fail-fast actionable missing-dependency errors.
 - `CMakePresets.json` - Debug and Perf configure/build/test presets, now aligned to the CMake 3.28 minimum required by embedded ThreadCenter.
 - `Plan.md` - Long-term implementation plan and phase tracking.
+- `README.md` - Top-level setup guide: engine-dependency layout and override variables, Vulkan SDK, font submodules, build/test/benchmark presets, the constraint scan, the CI tiers, and the no-GPU skip contract.
 - `ReinforcementPlan.md` - Reinforcement plan continuing `Plan.md` from Stage 17: build portability/CI gate, production texture-atlas image runtime, real FreeType font/text runtime, material/descriptor (bindless) policy, parallel tail stages, on-screen presentation/capture, and host-engine merge.
 
 ## Public include tree
@@ -149,6 +152,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `tests/vulkan_submit_runtime_test.cpp` - Optional Vulkan queue submit smoke test.
 - `tests/vulkan_swapchain_runtime_test.cpp` - Stage 11B state-level swapchain runtime tests for invalid config, reserve paths, stale refs, and unsupported domains.
 - `tests/vulkan_resource_runtime_test.cpp` - Optional Vulkan buffer/image/upload/readback/copy lifecycle smoke test.
+- `tests/vulkan_validation_layer_smoke_test.cpp` - Stage 17C validation-layer smoke: builds its own instance with `VK_LAYER_KHRONOS_validation` + `VK_EXT_debug_utils` and a debug messenger, drives an offscreen buffer-copy/readback + image lifecycle through the Render2D runtimes, and asserts zero validation errors. Skips when the validation layer or a GPU is absent.
 - `tests/vulkan_texture_atlas_runtime_test.cpp` - Stage 18 atlas image runtime test: device-free delegation/propagation and capacity checks, plus an optional GPU create/resolve/release/reuse, stale-reference, two-region sub-rectangle upload-and-readback, and deferred-destroy retire/drain/release smoke.
 - `tests/vulkan_descriptor_runtime_test.cpp` - Optional Vulkan descriptor pool/set/layout/update lifecycle smoke test.
 - `tests/vulkan_bindless_capability_test.cpp` - Stage 20A bindless capability coverage: null-device probe, flag-helper mapping, and an optional on-device probe asserting agreement with the smoke context's bindless flag and positive update-after-bind limits.
@@ -176,6 +180,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 
 - `scripts/run_null_cpu_benchmarks.ps1` - Runs standard, dirty-transform, sorted, large, and huge local Null CPU benchmark suites; supports `-BuildDir` for Debug/Perf trees and writes timestamped CSV/Markdown reports.
 - `scripts/run_threaded_cpu_benchmarks.ps1` - Runs Stage 10H ThreadCenter-backed sprite CPU pipeline benchmark scenarios and writes timestamped CSV/Markdown reports.
+- `scripts/scan_constraints.sh` - Stage 17D constraint scanner: fails on `std::vector`, direct Vulkan memory API, or Render2D-local math structs in Render2D-owned source (`include/`/`src/`/`tests/`/`bench/`); never scans `third_party/`. Portable POSIX grep; exits nonzero with `file:line`. Invoked by both CI tiers.
 
 ## Benchmarks
 
@@ -216,6 +221,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-11-stage19-text-font-pipeline.md` - ADR for the Stage 19 real font/text pipeline: decomposed shaping (pure systems + FreeType/HarfBuzz/SheenBidi runtime touchpoints), the new POD shaping components, full bidi, and the dependency constraints.
 - `docs/adr/2026-06-12-third-party-submodules.md` - ADR for acquiring FreeType/HarfBuzz/SheenBidi as git submodules pinned to `VER-2-14-3`/`14.2.1`/`v3.0.0` (replacing in-tree vendored source), with shallow fetch and unchanged CMake wiring.
 - `docs/adr/2026-06-13-stage20-bindless-descriptor-indexing.md` - ADR closing Stage 20: the split SAMPLED_IMAGE+SAMPLER bindless table (vs the CIS-array fallback), sampler-as-material-property, identity texture indexing with a host-supplied generation and CPU-only stale gate, partially-bound-no-backfill, and the encoder binding the table's set once per frame — proven byte-equal to the CIS path.
+- `docs/adr/2026-06-14-stage17-build-portability-ci.md` - ADR closing Stage 17: dependency portability via the `RENDER2D_ENGINE_DEPS_ROOT` local-override path (engine deps are not fetchable), GitHub-Actions-only two-tier CI (portable hosted checks + self-hosted full build), the scripted constraint scan, and the standalone validation-layer smoke; records the accepted limitation that the full build runs only on a self-hosted runner.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

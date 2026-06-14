@@ -69,6 +69,15 @@
 **边界**:不改变任何 ECS/系统契约;纯构建与门禁加固。
 **验收**:干净环境可 configure/build;CI 全绿;约束扫描脚本可独立运行并在违例时失败;`docs/PROJECT_INDEX.md` 收录新脚本。
 
+**进度**:Stage 17 全套完成并关闭(17A–17D,2026-06-14)。按既定两点决策落地——CI **仅 GitHub Actions**;4 个引擎依赖**仅改进本地覆盖+指引**(`Vector_New` 无 remote、其余私有,无法在干净机拉取,故不引入 FetchContent/submodule)。
+
+- **17A 依赖解耦(commit bd59547)**:新增 umbrella `RENDER2D_ENGINE_DEPS_ROOT`(默认 `E:/Project/MelosyneTest`)派生 4 个 `*_SOURCE_DIR/INCLUDE_DIR`,各仍可单独覆盖且优先;`render2d_require_engine_dependency()` 把 4 处简陋 FATAL_ERROR 换成可操作指引(期望 marker / 所用变量 / 修复方式 / README 指针)。新增根 `README.md`(依赖布局、覆盖变量、Vulkan SDK、字体 submodule、preset、no-GPU skip),`AGENTS.md` 构建段对齐四依赖。`.gitignore` 排除日期前缀会话 transcript。**实证**:bogus root 干净 configure 触发可操作报错;default root 干净 configure 经派生成功。
+- **17D 约束扫描脚本化(commit cdc0f38)**:`scripts/scan_constraints.sh` 固化 10K 起手动的三类扫描——禁 `std::vector`、禁直连 Vulkan memory API、禁 Render2D 本地 math struct(含已删除的 `Affine2X3`)。仅扫 Render2D 自有源(`include/`/`src/`/`tests/`/`bench/`),永不扫 `third_party/`;纯 POSIX grep,Linux CI 与 Windows Git-bash 通用,违例 file:line 非零退出。**实证**:干净树 3/3 ok;注入三类违例全部被抓(exit 1)。
+- **17B GitHub Actions(commit daac0c8)**:`.github/workflows/ci.yml` 两层——`portable-checks`(hosted `ubuntu-latest`,push main/master + PR):约束扫描 + conflict-marker 扫描 + `CMakePresets.json` 校验,无依赖/无 Vulkan/无 GPU/无构建,常绿安全网;`full-build`(self-hosted,label `render2d`,`workflow_dispatch`):configure→build→ctest(Debug+Perf)→clang-tidy→约束扫描→bench smoke,engine-deps root 可由 dispatch input 覆盖,手动触发故不会对离线 runner 排队。分层是两点决策的必然结果(依赖不可拉取→hosted 不能构建→构建门禁落在 deps 所在处)。`.gitattributes` 把 `*.sh` 锁 LF。**实证**:ci.yml 合法 YAML;三个 portable 步骤本地全过。
+- **17C Validation-layer smoke(commit 79e77ec)**:`render2d.vulkan_validation_layer_smoke` 自建带 `VK_LAYER_KHRONOS_validation` + `VK_EXT_debug_utils` + debug messenger 的 instance,经 Render2D resource/command/sync/submit runtime 跑真实离屏负载(upload→device copy→readback + image 建/销),断言 validation error 为 0(warning 打印但不致命)。只复用 smoke context 的设备选择 helper、不碰共享无层 instance,故其余 ~50 个 vulkan smoke 不受影响;validation 层缺失 / 无 ICD / 无 GPU 时 graceful skip。**实证**:GPU+SDK 机上负载零 validation error;注入泄漏 buffer 被抓(`VUID-vkDestroyDevice-device-05137`,非零退出),证明 messenger 真活。
+
+**Stage 17 全部完成并关闭(17A–17D)** —— 在 Stage 18–20 三个 runtime 落地之后补齐工程安全网:依赖**位置**契约可移植(umbrella 覆盖 + 指引)、约束扫描脚本化并入 CI、validation-layer 离屏 smoke、两层 GitHub Actions。架构红线未动(系统仍吃 `std::span`、组件仍 Strict POD、ref 仍 `id+generation`、umbrella `Render2D.hpp` 未变),仅依赖位置契约与门禁基础设施变化。如实记录的边界:`full-build` 因依赖不可拉取,只能在带 4 个引擎依赖的 self-hosted runner 上跑——Render2D 推到 remote 且注册该 runner 前,仅 `portable-checks` 生效;让依赖可拉取(公开/镜像 `Vector_New`、开放私有库)即可把全量门禁迁到 hosted,留作未来决策。ADR `docs/adr/2026-06-14-stage17-build-portability-ci.md`(**Accepted**)。门禁:Debug `ctest` 52/52、Perf `ctest` 61/61 全绿(各 +1 即新 validation smoke),约束扫描通过、`clang-tidy --verify-config` clean、`git diff --check` 干净。roadmap 余下 Stage 21(并行尾段)、22(上屏)、23(host-engine 合并)。**Next: Stage 21。**
+
 ---
 
 ### Stage 18 — 生产级 Texture Atlas 图片 Runtime(功能补强)
