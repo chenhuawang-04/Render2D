@@ -82,6 +82,19 @@ cmake --preset clang-ninja-perf && cmake --build --preset clang-ninja-perf
 # Standard suites: scripts/run_null_cpu_benchmarks.ps1, scripts/run_threaded_cpu_benchmarks.ps1
 ```
 
+## Constraint scans
+
+`scripts/scan_constraints.sh` enforces the non-negotiable source invariants — no `std::vector` (use
+`Render2D::McVector<T>`), no direct Vulkan memory API (route through `VulkanMemoryCenterAllocator`), and
+no Render2D-local math structs (use the `MMath` aliases). It scans only Render2D-owned source
+(`include/`, `src/`, `tests/`, `bench/`) and never the vendored `third_party/` trees. It needs no build
+or GPU, runs on Linux and on Windows under Git-bash, and exits nonzero printing `file:line` for any
+violation:
+
+```bash
+bash scripts/scan_constraints.sh
+```
+
 ## No GPU required
 
 Every `render2d.vulkan_*` smoke test creates an instance/device and **returns 0 (pass) if it cannot**
