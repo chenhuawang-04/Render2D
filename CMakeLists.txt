@@ -18,11 +18,16 @@ option(RENDER2D_BUILD_FONT_RUNTIME "Build the FreeType+HarfBuzz+SheenBidi font/t
 # ----------------------------------------------------------------------------
 # Engine dependencies (host-engine source trees, NOT vendored in this repo).
 #
-# These four trees are not fetched automatically: one (Vector_New) has no git
-# remote and the others live in private repositories, so Render2D cannot pull
-# them on a clean / CI machine. Point the build at a local checkout instead.
+# Each dependency is resolved in three tiers, downloading only as a last resort:
+#   1. Reuse  - if the enclosing project already defines the dependency's target
+#               (host-engine merge), Render2D reuses it untouched.
+#   2. Local  - if a local source tree exists (the umbrella / individual paths
+#               below), it is add_subdirectory()'d -- no download.
+#   3. Fetch  - otherwise FetchContent pulls it from git (see the *_GIT_*
+#               variables). Two of the four repos are private, so a fetch on a
+#               clean / CI machine needs git credentials with access to them.
 #
-# Set ONE umbrella path and the four locations are derived from it:
+# Point the build at a local checkout with ONE umbrella path:
 #     -DRENDER2D_ENGINE_DEPS_ROOT=/path/to/MelosyneTest
 # or override any individual tree (takes precedence over the umbrella default):
 #     -DRENDER2D_FAST_MATH_SOURCE_DIR=/custom/fast_math
@@ -45,27 +50,48 @@ set(RENDER2D_VECTOR_NEW_INCLUDE_DIR "${RENDER2D_ENGINE_DEPS_ROOT}/Vector_New/inc
 set(RENDER2D_THREAD_CENTER_SOURCE_DIR "${RENDER2D_ENGINE_DEPS_ROOT}/ThreadCenter" CACHE PATH
     "Path to ThreadCenter source tree.")
 
-# Fail fast with actionable guidance when a dependency tree is missing.
-function(render2d_require_engine_dependency dep_name dep_var dep_path marker_rel)
-    if(NOT EXISTS "${dep_path}/${marker_rel}")
-        message(FATAL_ERROR
-            "Render2D engine dependency '${dep_name}' was not found.\n"
-            "  expected marker : ${dep_path}/${marker_rel}\n"
-            "  configured via  : ${dep_var}='${dep_path}'\n"
-            "  fix             : pass -DRENDER2D_ENGINE_DEPS_ROOT=<root> to derive all four, "
-            "or -D${dep_var}=<path> to set this one.\n"
-            "  See README.md > Dependencies for the expected directory layout.")
-    endif()
-endfunction()
+# Git sources used by the fetch tier when no target or local tree is found.
+# Each repo/tag is overridable so CI can pin an exact commit instead of a branch.
+set(RENDER2D_MEMORY_CENTER_GIT_REPOSITORY "https://github.com/chenhuawang-04/MelosyneMemoryCenter.git" CACHE STRING
+    "Git URL fetched for MemoryCenterNew when no target/local tree is available (private repo).")
+set(RENDER2D_MEMORY_CENTER_GIT_TAG "master" CACHE STRING "Git ref fetched for MemoryCenterNew.")
+set(RENDER2D_FAST_MATH_GIT_REPOSITORY "https://github.com/chenhuawang-04/Melosyne-Math.git" CACHE STRING
+    "Git URL fetched for fast_math when no target/local tree is available.")
+set(RENDER2D_FAST_MATH_GIT_TAG "master" CACHE STRING "Git ref fetched for fast_math.")
+set(RENDER2D_VECTOR_NEW_GIT_REPOSITORY "https://github.com/chenhuawang-04/Vector.git" CACHE STRING
+    "Git URL fetched for Vector_New (McVector) when no local include tree is available (private repo).")
+set(RENDER2D_VECTOR_NEW_GIT_TAG "master" CACHE STRING "Git ref fetched for Vector_New (McVector).")
+set(RENDER2D_THREAD_CENTER_GIT_REPOSITORY "https://github.com/chenhuawang-04/Melosyne_ThreadCenter.git" CACHE STRING
+    "Git URL fetched for ThreadCenter when no target/local tree is available.")
+set(RENDER2D_THREAD_CENTER_GIT_TAG "master" CACHE STRING "Git ref fetched for ThreadCenter.")
 
-render2d_require_engine_dependency("MemoryCenterNew" RENDER2D_MEMORY_CENTER_SOURCE_DIR
-    "${RENDER2D_MEMORY_CENTER_SOURCE_DIR}" "CMakeLists.txt")
-render2d_require_engine_dependency("fast_math" RENDER2D_FAST_MATH_SOURCE_DIR
-    "${RENDER2D_FAST_MATH_SOURCE_DIR}" "CMakeLists.txt")
-render2d_require_engine_dependency("Vector_New (McVector)" RENDER2D_VECTOR_NEW_INCLUDE_DIR
-    "${RENDER2D_VECTOR_NEW_INCLUDE_DIR}" "Center/Memory/Container/Vector/McVector.hpp")
-render2d_require_engine_dependency("ThreadCenter" RENDER2D_THREAD_CENTER_SOURCE_DIR
-    "${RENDER2D_THREAD_CENTER_SOURCE_DIR}" "CMakeLists.txt")
+include(FetchContent)
+
+# Resolve a subdirectory-style engine dependency in three tiers: reuse an
+# existing target, else add_subdirectory a local tree, else FetchContent it from
+# git. Defined as a macro so add_subdirectory()/FetchContent run in this
+# (top-level) scope, exactly as the prior inline add_subdirectory() calls did.
+macro(render2d_provide_engine_dependency dep_name target_name local_dir bin_subdir git_repo git_tag)
+    if(TARGET ${target_name})
+        message(STATUS "Render2D: reusing existing target '${target_name}' for ${dep_name} (no fetch).")
+    elseif(EXISTS "${local_dir}/CMakeLists.txt")
+        message(STATUS "Render2D: using local ${dep_name} at '${local_dir}' (no fetch).")
+        add_subdirectory("${local_dir}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/${bin_subdir}")
+    else()
+        message(STATUS "Render2D: fetching ${dep_name} from ${git_repo} @ ${git_tag}.")
+        FetchContent_Declare(${dep_name}
+            GIT_REPOSITORY "${git_repo}"
+            GIT_TAG "${git_tag}"
+            GIT_SUBMODULES_RECURSE TRUE)
+        FetchContent_MakeAvailable(${dep_name})
+    endif()
+    if(NOT TARGET ${target_name})
+        message(FATAL_ERROR
+            "Render2D: ${dep_name} was resolved but target '${target_name}' is not defined.\n"
+            "  fix: point -DRENDER2D_ENGINE_DEPS_ROOT=<root> at a local checkout, or\n"
+            "       set the *_GIT_REPOSITORY / *_GIT_TAG cache variables for ${dep_name}.")
+    endif()
+endmacro()
 
 set(MCENTER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MCENTER_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
@@ -90,9 +116,36 @@ set(THREAD_CENTER_BUILD_BENCH_HEADER OFF CACHE BOOL "" FORCE)
 set(THREAD_CENTER_BUILD_BENCH_MODULE OFF CACHE BOOL "" FORCE)
 set(THREAD_CENTER_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 
-add_subdirectory("${RENDER2D_MEMORY_CENTER_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/MemoryCenterNew")
-add_subdirectory("${RENDER2D_FAST_MATH_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/fast_math")
-add_subdirectory("${RENDER2D_THREAD_CENTER_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/ThreadCenter")
+render2d_provide_engine_dependency("MemoryCenterNew" Center.Memory.Headers
+    "${RENDER2D_MEMORY_CENTER_SOURCE_DIR}" "MemoryCenterNew"
+    "${RENDER2D_MEMORY_CENTER_GIT_REPOSITORY}" "${RENDER2D_MEMORY_CENTER_GIT_TAG}")
+render2d_provide_engine_dependency("fast_math" fast_math
+    "${RENDER2D_FAST_MATH_SOURCE_DIR}" "fast_math"
+    "${RENDER2D_FAST_MATH_GIT_REPOSITORY}" "${RENDER2D_FAST_MATH_GIT_TAG}")
+render2d_provide_engine_dependency("ThreadCenter" Center.Thread.Headers
+    "${RENDER2D_THREAD_CENTER_SOURCE_DIR}" "ThreadCenter"
+    "${RENDER2D_THREAD_CENTER_GIT_REPOSITORY}" "${RENDER2D_THREAD_CENTER_GIT_TAG}")
+
+# Vector_New (McVector) is consumed as a header include directory, not a target,
+# so it has no "reuse target" tier. Use the local include tree if present, else
+# fetch the repo headers-only (SOURCE_SUBDIR points at a path with no
+# CMakeLists.txt, so FetchContent populates the tree without add_subdirectory).
+if(EXISTS "${RENDER2D_VECTOR_NEW_INCLUDE_DIR}/Center/Memory/Container/Vector/McVector.hpp")
+    message(STATUS "Render2D: using local McVector include at '${RENDER2D_VECTOR_NEW_INCLUDE_DIR}' (no fetch).")
+else()
+    message(STATUS "Render2D: fetching McVector from ${RENDER2D_VECTOR_NEW_GIT_REPOSITORY} @ ${RENDER2D_VECTOR_NEW_GIT_TAG}.")
+    FetchContent_Declare(Vector
+        GIT_REPOSITORY "${RENDER2D_VECTOR_NEW_GIT_REPOSITORY}"
+        GIT_TAG "${RENDER2D_VECTOR_NEW_GIT_TAG}"
+        SOURCE_SUBDIR ".render2d-headers-only")
+    FetchContent_MakeAvailable(Vector)
+    set(RENDER2D_VECTOR_NEW_INCLUDE_DIR "${vector_SOURCE_DIR}/include")
+endif()
+if(NOT EXISTS "${RENDER2D_VECTOR_NEW_INCLUDE_DIR}/Center/Memory/Container/Vector/McVector.hpp")
+    message(FATAL_ERROR
+        "Render2D: McVector was resolved but its header was not found under\n"
+        "  '${RENDER2D_VECTOR_NEW_INCLUDE_DIR}'.")
+endif()
 
 get_target_property(RENDER2D_THREAD_CENTER_INCLUDE_DIRS
     Center.Thread.Headers
