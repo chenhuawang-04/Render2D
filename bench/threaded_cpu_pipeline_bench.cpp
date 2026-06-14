@@ -455,6 +455,10 @@ int main(int argc_, char** argv_)
         auto runtime = PipelineRuntime{{
             .worker_count = config.worker_count,
             .min_items_per_task = config.min_items_per_task,
+            // Force the threaded path regardless of size: this benchmark exists
+            // to measure threaded-vs-reference, so it must not silently fall back
+            // to the single-thread path below the default parallel threshold.
+            .parallel_threshold = 1U,
         }};
         BenchTotals totals{
             .reference_total_ms = 0.0,

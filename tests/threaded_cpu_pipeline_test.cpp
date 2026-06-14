@@ -207,8 +207,10 @@ void checkPipelineEqual(
     auto runtime = PipelineRuntime{{
         .worker_count = 4U,
         .min_items_per_task = 3U,
+        .parallel_threshold = 1U,
     }};
     R2D_TEST_CHECK_EQ(context, runtime.workerCount(), 4U);
+    R2D_TEST_CHECK(context, runtime.shouldParallelize(kItemCount));
 
     const auto threaded_result = runtime.runSpritePipeline(
         kCamera,
@@ -234,6 +236,7 @@ void checkPipelineEqual(
     auto single_worker_runtime = PipelineRuntime{{
         .worker_count = 1U,
         .min_items_per_task = 1U,
+        .parallel_threshold = 1U,
     }};
     const auto single_worker_result = single_worker_runtime.runSpritePipeline(
         kCamera,
@@ -249,6 +252,36 @@ void checkPipelineEqual(
     R2D_TEST_REQUIRE(context, single_worker_result.code == R2D::SystemStatusCode::Ok);
     R2D_TEST_CHECK_EQ(context, single_worker_result.visible_count, reference_counts.visible_count);
     checkPipelineEqual(context, reference_buffers, single_worker_buffers, reference_counts);
+
+    // Stage 21E: a multi-worker runtime whose threshold is above the workload
+    // must route to the single-thread reference path and still produce output
+    // byte-identical to the reference.
+    PipelineBuffers gated_buffers{};
+    auto gated_runtime = PipelineRuntime{{
+        .worker_count = 4U,
+        .min_items_per_task = 3U,
+        .parallel_threshold = 1000U,
+    }};
+    R2D_TEST_CHECK(context, !gated_runtime.shouldParallelize(kItemCount));
+    R2D_TEST_CHECK(context, gated_runtime.shouldParallelize(1000U));
+    const auto gated_result = gated_runtime.runSpritePipeline(
+        kCamera,
+        transforms,
+        local_bounds,
+        visibility_masks,
+        sprites,
+        gated_buffers.world_transforms,
+        gated_buffers.world_bounds,
+        gated_buffers.visible_items,
+        gated_buffers.draw_commands,
+        gated_buffers.batch_commands);
+    R2D_TEST_REQUIRE(context, gated_result.code == R2D::SystemStatusCode::Ok);
+    R2D_TEST_CHECK_EQ(context, gated_result.transform_count, kItemCount);
+    R2D_TEST_CHECK_EQ(context, gated_result.bounds_count, kItemCount);
+    R2D_TEST_CHECK_EQ(context, gated_result.visible_count, reference_counts.visible_count);
+    R2D_TEST_CHECK_EQ(context, gated_result.draw_count, reference_counts.draw_count);
+    R2D_TEST_CHECK_EQ(context, gated_result.batch_count, reference_counts.batch_count);
+    checkPipelineEqual(context, reference_buffers, gated_buffers, reference_counts);
 
     std::array<VisibleItem, 1U> short_visible_items{};
     const auto capacity_result = runtime.runSpritePipeline(

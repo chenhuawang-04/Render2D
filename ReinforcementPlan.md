@@ -220,6 +220,8 @@
 
 **Stage 21 前置增量 —— 自动性能回归门禁(先于并行实做落地)** —— 用户决策:在动并行之前先把"性能回归门禁"补全,让后续 21A/21B 一上来就有自动护栏。设计依据基准 harness 的两类输出:**确定性 work-count**(visible/total_draws/glyph_draws/batches,逐机逐次完全一致)与**机器相关 wall-clock**。据此分两层(`bench/support/BenchmarkFramework.hpp`):① `null_cpu_bench` 报告后跑 `checkGate`,`--expect-visible/-total-draws/-glyph-draws/-batches` 断言确定性计数(算法回归——culling 停止剔除、batch 停止合并、sort 失效——精确改变整数,这是硬门禁、永不抖动);② `--max-total-avg-ms`(`RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS`,默认 25)对逐帧 stage 时间求和设**宽松灾难预算**,只抓 O(n²) 级慢化与热路径分配(10k 下即便优化也要数百 ms),远高于任何真实基线故不在共享 runner 上抖动。如实边界:绿门禁只证明"输出结构正确 + 无灾难性慢化",**不**证明"无小幅回归"——小幅回归仍靠 `BENCHMARK_BASELINE.md` 手动 before/after。落地为 7 个 `render2d.perf_gate_*` CTest 用例(Debug 关基准故仅 Perf 档构建运行,自动搭 CI 既有 `Test (Perf)` 步,无需改 workflow)。预期计数冻结在 `BENCHMARK_BASELINE.md`(与历史 capture 一致)。**实证**:Perf `ctest` 68/68(61 + 7 gate),Debug 52/52 不受影响,约束扫描 3/3,`clang-tidy --verify-config` clean,`git diff --check` 干净;手动注入错误计数 / 极紧预算均如期 exit 2。**Next: 21E 阈值门控 → 21A 文本并行 → 21B 尾段。**
 
+**Stage 21E 落地（2026-06-14，先做的门控底座）** —— 统一并行阈值门控，给 21A/21B 一个共享底座。新 `include/Render2D/System/ParallelPolicy.hpp`：`kDefaultParallelThreshold=32768` + `shouldParallelizeItemCount(item_count, threshold, worker_count)`（worker≤1 或低于阈值 → 单线程）。`ThreadedCpuPipelineConfig` 加 `parallel_threshold` 字段（默认 `kDefaultParallelThreshold`），`ThreadedCpuPipelineRuntime` 加 `shouldParallelize(count)` 访问器与私有 `runSingleThreadedSpritePipeline` 参考路径；低于阈值时跑同一批单线程 system，**输出逐字节等价**（落实 `ProjectMergeTODO.md` #22「小负载默认单线程」）。门控纯属性能路由，两分支系统相同故输出不变。test/bench 显式设 `parallel_threshold=1` 保持线程路径覆盖/测量；新增 gate 用例验证「超阈值 → 单线程且等于参考」。**实证**：Debug `ctest` 52/52、Perf 68/68 全绿，约束扫描 3/3，`clang-tidy`（含 threaded TU）clean，`git diff --check` 干净。**Next: 21A 文本并行。**
+
 ---
 
 ### Stage 22 — 上屏呈现与可见抓帧(功能/集成补强)

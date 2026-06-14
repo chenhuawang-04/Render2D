@@ -300,6 +300,8 @@ Merge rule:
 - enable `ThreadedCpuPipelineRuntime` only when host-side workload size justifies scheduling and merge overhead;
 - tune `worker_count` and `min_items_per_task` per platform.
 
+Status (Stage 21E): implemented. `ThreadedCpuPipelineConfig::parallel_threshold` (default `kDefaultParallelThreshold = 32768`) plus the shared `shouldParallelizeItemCount` gate in `include/Render2D/System/ParallelPolicy.hpp` route sub-threshold or single-worker workloads to the single-thread reference path automatically. The host should tune the threshold per platform; the threaded benchmark (`render2d_threaded_cpu_pipeline_bench`) forces the threaded path for measurement.
+
 ## 23. Deferred destroy is a runtime queue, not ECS ownership
 
 Stage 11 adds `DeferredDestroyCommand` as an ECS-visible POD record and `NativeDeferredDestroyRuntime` as the runtime-owned pending queue.

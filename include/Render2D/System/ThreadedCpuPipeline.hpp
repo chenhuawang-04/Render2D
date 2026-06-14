@@ -14,6 +14,7 @@
 #include "Render2D/System/BoundsSystem.hpp"
 #include "Render2D/System/CommandBuildSystem.hpp"
 #include "Render2D/System/CullingSystem.hpp"
+#include "Render2D/System/ParallelPolicy.hpp"
 #include "Render2D/System/TransformSystem.hpp"
 
 #include <thread_center/thread_center.hpp>
@@ -26,11 +27,13 @@ namespace Render2D {
 struct ThreadedCpuPipelineConfig {
     U32 worker_count;
     U32 min_items_per_task;
+    U32 parallel_threshold;
 };
 
 inline constexpr ThreadedCpuPipelineConfig kDefaultThreadedCpuPipelineConfig{
     .worker_count = 0U,
     .min_items_per_task = 1024U,
+    .parallel_threshold = kDefaultParallelThreshold,
 };
 
 struct ThreadedSpritePipelineResult {
@@ -79,6 +82,14 @@ public:
         return config_;
     }
 
+    // Stage 21E threshold gate: small workloads run on the single-thread
+    // reference path (same systems, byte-identical output) to avoid ThreadCenter
+    // scheduling/merge overhead. See ParallelPolicy.hpp / ProjectMergeTODO #22.
+    [[nodiscard]] auto shouldParallelize(U32 item_count_) const noexcept -> bool
+    {
+        return shouldParallelizeItemCount(item_count_, config_.parallel_threshold, workerCount());
+    }
+
     [[nodiscard]] auto runSpritePipeline(
         const CameraType& camera_,
         std::span<const TransformType> transforms_,
@@ -116,6 +127,22 @@ public:
                 batch_commands_);
             if (validation_code != SystemStatusCode::Ok) {
                 result.code = validation_code;
+                return result;
+            }
+
+            if (!shouldParallelize(static_cast<U32>(transforms_.size()))) {
+                result.code = runSingleThreadedSpritePipeline(
+                    camera_,
+                    transforms_,
+                    local_bounds_,
+                    visibility_masks_,
+                    sprites_,
+                    world_transforms_,
+                    world_bounds_,
+                    visible_items_,
+                    draw_commands_,
+                    batch_commands_,
+                    result);
                 return result;
             }
 
@@ -163,6 +190,71 @@ private:
             config_.min_items_per_task = 1U;
         }
         return config_;
+    }
+
+    // Single-thread reference path used below the parallel threshold. Runs the
+    // same deterministic systems in sequence as the threaded path's per-chunk
+    // work, so its output is byte-identical; it simply avoids the executor.
+    [[nodiscard]] auto runSingleThreadedSpritePipeline(
+        const CameraType& camera_,
+        std::span<const TransformType> transforms_,
+        std::span<const LocalBoundsType> local_bounds_,
+        std::span<const VisibilityMaskType> visibility_masks_,
+        std::span<const SpriteType> sprites_,
+        std::span<WorldTransformType> world_transforms_,
+        std::span<WorldBoundsType> world_bounds_,
+        std::span<VisibleItemType> visible_items_,
+        std::span<DrawCommandType> draw_commands_,
+        std::span<BatchCommandType> batch_commands_,
+        ThreadedSpritePipelineResult& result_) const -> SystemStatusCode
+    {
+        const auto item_count = transforms_.size();
+
+        auto system_result = TransformSystem<Provider, Dim>::run(
+            transforms_,
+            world_transforms_.subspan(0U, item_count));
+        if (!isOk(system_result)) {
+            return system_result.code;
+        }
+        result_.transform_count = static_cast<U32>(item_count);
+
+        system_result = BoundsSystem<Provider, Dim>::run(
+            world_transforms_.subspan(0U, item_count),
+            local_bounds_,
+            world_bounds_.subspan(0U, item_count));
+        if (!isOk(system_result)) {
+            return system_result.code;
+        }
+        result_.bounds_count = static_cast<U32>(local_bounds_.size());
+
+        system_result = CullingSystem<Provider, Dim>::run(
+            camera_,
+            world_bounds_.subspan(0U, item_count),
+            visibility_masks_,
+            visible_items_);
+        if (!isOk(system_result)) {
+            return system_result.code;
+        }
+        result_.visible_count = system_result.write_count;
+
+        if (draw_commands_.size() < result_.visible_count) {
+            return SystemStatusCode::InsufficientCapacity;
+        }
+
+        system_result = CommandBuildSystem<Provider, Dim>::run(
+            std::span<const VisibleItemType>{visible_items_.data(), result_.visible_count},
+            sprites_,
+            draw_commands_);
+        if (!isOk(system_result)) {
+            return system_result.code;
+        }
+        result_.draw_count = system_result.write_count;
+
+        const auto batch_result = BatchSystem<Provider, Dim>::run(
+            std::span<const DrawCommandType>{draw_commands_.data(), result_.draw_count},
+            batch_commands_);
+        result_.batch_count = batch_result.write_count;
+        return batch_result.code;
     }
 
     [[nodiscard]] static auto makeExecutorConfig(ThreadedCpuPipelineConfig config_) noexcept
