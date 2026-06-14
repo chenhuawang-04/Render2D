@@ -69,9 +69,8 @@ jobs:
           chmod +x llvm.sh
           sudo ./llvm.sh 22 all
           sudo apt-get install -y ninja-build
-          sudo update-alternatives --install /usr/bin/clang      clang      /usr/bin/clang-22      100
-          sudo update-alternatives --install /usr/bin/clang++    clang++    /usr/bin/clang++-22    100
-          sudo update-alternatives --install /usr/bin/clang-tidy  clang-tidy /usr/bin/clang-tidy-22 100
+          # The steps below call the versioned clang-22 / clang++-22 / clang-tidy-22
+          # binaries directly (ubuntu-latest's default clang is older).
 
       - name: Install Vulkan loader + headers + validation layers
         run: |
@@ -106,7 +105,7 @@ jobs:
       - name: Configure (Debug)
         run: >
           cmake --preset clang-ninja-debug
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+          -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22
           -DRENDER2D_ENGINE_DEPS_ROOT="$ENGINE_DEPS_ROOT"
           -DFETCHCONTENT_BASE_DIR="$FETCHCONTENT_BASE_DIR"
       - name: Build (Debug)
@@ -117,7 +116,7 @@ jobs:
       - name: Configure (Perf)
         run: >
           cmake --preset clang-ninja-perf
-          -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+          -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22
           -DRENDER2D_ENGINE_DEPS_ROOT="$ENGINE_DEPS_ROOT"
           -DFETCHCONTENT_BASE_DIR="$FETCHCONTENT_BASE_DIR"
       - name: Build (Perf)
@@ -127,8 +126,8 @@ jobs:
 
       - name: clang-tidy (config + representative TU)
         run: |
-          clang-tidy --verify-config --config-file=.clang-tidy
-          clang-tidy -p build --quiet tests/compile_smoke.cpp
+          clang-tidy-22 --verify-config --config-file=.clang-tidy
+          clang-tidy-22 -p build --quiet tests/compile_smoke.cpp
 
       - name: Constraint scan
         run: bash scripts/scan_constraints.sh

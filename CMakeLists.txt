@@ -66,6 +66,8 @@ set(RENDER2D_THREAD_CENTER_GIT_REPOSITORY "https://github.com/chenhuawang-04/Mel
 set(RENDER2D_THREAD_CENTER_GIT_TAG "master" CACHE STRING "Git ref fetched for ThreadCenter.")
 
 include(FetchContent)
+# Show clone/populate progress in CI logs (helps diagnose fetch failures).
+set(FETCHCONTENT_QUIET OFF)
 
 # Resolve a subdirectory-style engine dependency in three tiers: reuse an
 # existing target, else add_subdirectory a local tree, else FetchContent it from
@@ -79,11 +81,19 @@ macro(render2d_provide_engine_dependency dep_name target_name local_dir bin_subd
         add_subdirectory("${local_dir}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/${bin_subdir}")
     else()
         message(STATUS "Render2D: fetching ${dep_name} from ${git_repo} @ ${git_tag}.")
+        string(TOLOWER "${dep_name}" _render2d_dep_lc)
+        # Download only (SOURCE_SUBDIR points at a path with no CMakeLists.txt, so
+        # MakeAvailable populates but does NOT auto add_subdirectory), then add the
+        # real source root ourselves -- identical to the local tier, removing any
+        # ambiguity in MakeAvailable's auto-add decision.
         FetchContent_Declare(${dep_name}
             GIT_REPOSITORY "${git_repo}"
             GIT_TAG "${git_tag}"
-            GIT_SUBMODULES_RECURSE TRUE)
+            GIT_SUBMODULES_RECURSE TRUE
+            SOURCE_SUBDIR "render2d-no-autoadd")
         FetchContent_MakeAvailable(${dep_name})
+        add_subdirectory("${${_render2d_dep_lc}_SOURCE_DIR}"
+            "${CMAKE_CURRENT_BINARY_DIR}/_deps/${bin_subdir}")
     endif()
     if(NOT TARGET ${target_name})
         message(FATAL_ERROR
