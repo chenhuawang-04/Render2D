@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      engine_deps_root:
+        description: "Root containing the four engine dependency trees (MemoryCenterNew, Math/fast_math, Vector_New, ThreadCenter)."
+        required: false
+        default: "E:/Project/MelosyneTest"
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Portable tier: architecture-invariant guardrails that need no engine
+  # dependencies, no Vulkan SDK, no GPU, and no build. Runs on free hosted
+  # runners for every push to main/master and every pull request.
+  # ---------------------------------------------------------------------------
+  portable-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Constraint scan (std::vector / Vulkan memory API / local math)
+        run: bash scripts/scan_constraints.sh
+
+      - name: Merge-conflict marker scan
+        run: |
+          if git grep -nI -E '^(<<<<<<<|>>>>>>>)( |$)' -- ':(exclude)third_party'; then
+            echo "::error::merge conflict markers found"
+            exit 1
+          fi
+          echo "no conflict markers"
+
+      - name: Validate CMakePresets.json
+        run: python3 -c "import json; json.load(open('CMakePresets.json')); print('CMakePresets.json is valid JSON')"
+
+  # ---------------------------------------------------------------------------
+  # Full tier: configure -> build -> ctest (Debug + Perf) -> clang-tidy ->
+  # constraint scan -> bench smoke. Requires the four engine dependency source
+  # trees and the Vulkan SDK, which are NOT fetchable on a clean machine
+  # (Vector_New has no git remote; the others are private). It therefore runs on
+  # a self-hosted runner where those deps and the Clang/Ninja/Vulkan toolchain
+  # live, and is triggered manually (workflow_dispatch) so it never queues
+  # against an offline runner during normal push/PR flow. See
+  # README.md > Continuous integration for how to register the runner.
+  # ---------------------------------------------------------------------------
+  full-build:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, render2d]
+    defaults:
+      run:
+        shell: bash
+    env:
+      RENDER2D_ENGINE_DEPS_ROOT: ${{ github.event.inputs.engine_deps_root }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure (Debug)
+        run: cmake --preset clang-ninja-debug -DRENDER2D_ENGINE_DEPS_ROOT="$RENDER2D_ENGINE_DEPS_ROOT"
+      - name: Build (Debug)
+        run: cmake --build --preset clang-ninja-debug
+      - name: Test (Debug)
+        run: ctest --preset clang-ninja-debug
+
+      - name: Configure (Perf)
+        run: cmake --preset clang-ninja-perf -DRENDER2D_ENGINE_DEPS_ROOT="$RENDER2D_ENGINE_DEPS_ROOT"
+      - name: Build (Perf)
+        run: cmake --build --preset clang-ninja-perf
+      - name: Test (Perf)
+        run: ctest --preset clang-ninja-perf
+
+      - name: clang-tidy (config + representative TU)
+        run: |
+          clang-tidy --verify-config --config-file=.clang-tidy
+          clang-tidy -p build --quiet tests/compile_smoke.cpp
+
+      - name: Constraint scan
+        run: bash scripts/scan_constraints.sh
+
+      - name: Benchmark smoke
+        run: |
+          bench_bin="$(ls build_perf/bench/render2d_null_cpu_bench* 2>/dev/null | head -1)"
+          if [ -z "$bench_bin" ]; then
+            echo "::error::null_cpu bench binary not found under build_perf/bench"
+            exit 1
+          fi
+          "$bench_bin" --scenario mixed --sprites 256 --texts 64 --frames 2 --warmup 1

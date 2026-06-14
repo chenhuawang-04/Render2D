@@ -95,6 +95,25 @@ violation:
 bash scripts/scan_constraints.sh
 ```
 
+## Continuous integration
+
+CI is a single workflow, `.github/workflows/ci.yml`, in two tiers:
+
+- **Portable checks** (`portable-checks`, hosted `ubuntu-latest`) run on every push to `main`/`master`
+  and every pull request. They need no engine dependencies, Vulkan SDK, GPU, or build — the constraint
+  scan, a merge-conflict-marker scan, and a `CMakePresets.json` validity check. This is the always-on
+  safety net.
+- **Full build** (`full-build`, self-hosted) runs configure → build → `ctest` (Debug + Perf) →
+  clang-tidy → constraint scan → bench smoke. Because the four engine dependencies cannot be fetched on
+  a clean machine (Vector_New has no remote; the others are private), this tier runs on a **self-hosted
+  runner** where those trees and the Clang/Ninja/Vulkan toolchain already live. It is **manual**
+  (`workflow_dispatch`) so it never queues against an offline runner.
+
+To enable the full tier, register a self-hosted runner (repository *Settings → Actions → Runners*) with
+the label `render2d` on a machine that has the Vulkan SDK, Clang/Ninja, and the four engine dependency
+trees (see [Dependencies](#dependencies)); the font submodules are public and are fetched by the
+workflow. Then start the **CI** workflow via *Run workflow*, optionally overriding the engine-deps root.
+
 ## No GPU required
 
 Every `render2d.vulkan_*` smoke test creates an instance/device and **returns 0 (pass) if it cannot**
