@@ -89,10 +89,21 @@ to a pre-staged local root to skip fetching.
   was not completed from the dev sandbox (flaky egress), but `gh`/`push` confirm
   GitHub reachability on a normal network.
 - **Honest limitations (the accepted tradeoffs):**
-  - The hosted `full-build` workflow is **authored but not yet executed**:
-    Render2D still has no git remote, so CI cannot run until the repo is pushed
-    **and** the `ENGINE_DEPS_TOKEN` secret is added. First green run will confirm
-    the toolchain/Vulkan install and fetch steps.
+  - **Verified green on hosted.** The `full-build` tier ran end-to-end on a
+    GitHub-hosted `ubuntu-latest` runner (run 27493439786): clang-22 + the Vulkan
+    loader/headers installed, all four engine deps fetched (the two private ones
+    via the `ENGINE_DEPS_TOKEN` secret), and Debug + Perf `ctest` (52 / 61),
+    clang-tidy, the constraint scan, and the bench smoke all passed. Three
+    follow-up fixes were needed to get the first run green: (a) ThreadCenter's
+    public targets had been renamed to `Center.Thread.Headers` /
+    `Center.Thread.Modules` only in its working tree — that rename was
+    committed/pushed so the fetched copy matches what Render2D consumes; (b) the
+    runner defaulted to clang-18, so the configure now pins the explicit
+    `clang-22` / `clang++-22` (and `clang-tidy-22`) binaries; (c) the fetch tier
+    downloads then `add_subdirectory`s explicitly (MakeAvailable was silently
+    skipping the auto-add for a dep whose CMakeLists emits no output), and writes
+    the resolved source dir back into the dep's `*_SOURCE_DIR` so the
+    negative-compile test's manual `-I` wiring points at the fetched paths.
   - **No GPU on hosted** → every `vulkan_*` smoke (incl. the validation smoke)
     skips; the build is green but GPU paths are not exercised there.
   - The clang-22 install (apt.llvm.org) and the Vulkan apt packages target the
