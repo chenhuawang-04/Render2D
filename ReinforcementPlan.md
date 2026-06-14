@@ -222,6 +222,8 @@
 
 **Stage 21E 落地（2026-06-14，先做的门控底座）** —— 统一并行阈值门控，给 21A/21B 一个共享底座。新 `include/Render2D/System/ParallelPolicy.hpp`：`kDefaultParallelThreshold=32768` + `shouldParallelizeItemCount(item_count, threshold, worker_count)`（worker≤1 或低于阈值 → 单线程）。`ThreadedCpuPipelineConfig` 加 `parallel_threshold` 字段（默认 `kDefaultParallelThreshold`），`ThreadedCpuPipelineRuntime` 加 `shouldParallelize(count)` 访问器与私有 `runSingleThreadedSpritePipeline` 参考路径；低于阈值时跑同一批单线程 system，**输出逐字节等价**（落实 `ProjectMergeTODO.md` #22「小负载默认单线程」）。门控纯属性能路由，两分支系统相同故输出不变。test/bench 显式设 `parallel_threshold=1` 保持线程路径覆盖/测量；新增 gate 用例验证「超阈值 → 单线程且等于参考」。**实证**：Debug `ctest` 52/52、Perf 68/68 全绿，约束扫描 3/3，`clang-tidy`（含 threaded TU）clean，`git diff --check` 干净。**Next: 21A 文本并行。**
 
+**Stage 21A 落地（2026-06-14，数据驱动收窄范围）** —— 先 profile 文本路径（RelWithDebInfo）：`GlyphInstanceBuildSystem` 在 1M glyph 时占文本路径 ≈70%（6.1ms）且线性增长，其余 stage 都很小。据「无数据不优化」收窄目标为该 stage——它也是唯一**天然可并行**的（每个 dirty range 写不相交的 glyph 切片 `glyph_first..+count`，无 prefix-sum、无 compaction）。新 `include/Render2D/System/ThreadedTextCpuPipeline.hpp`：`ThreadedTextCpuPipelineRuntime::runGlyphInstanceBuildDirty` 把 dirty ranges 分块给 worker，**每块复用现有 `GlyphInstanceBuildSystem::runDirty`**（不自写 glyph 逻辑），切片不相交故**输出与单线程逐字节等价**（`render2d.threaded_text_cpu_pipeline` memcmp 测试证实）；用 21E 共享阈值门控，小负载走单线程。较便宜的 prefix-sum（`TextDirty`）与 compaction（`GlyphBatch`）stage 有意保留单线程（无数据支撑并行其开销）。新 bench `render2d_threaded_text_cpu_pipeline_bench`。**实证**：4 worker 下 262k/1M/2M glyph 加速 2.35×/2.02×/1.93×，逐字节一致；Debug `ctest` 53/53、Perf 70/70（+1 test、+1 bench smoke），约束扫描 3/3（bench 用 `McVector` 非 `std::vector`），`clang-tidy`（test+bench TU）clean，`git diff --check` 干净。属大文本场景（密集文档/日志/终端）优化，小负载经门控不受影响。**Next: 21B 并行 batch/sort 尾段（高风险：确定性并行排序）。**
+
 ---
 
 ### Stage 22 — 上屏呈现与可见抓帧(功能/集成补强)

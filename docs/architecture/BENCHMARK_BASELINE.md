@@ -335,3 +335,47 @@ step automatically. Expected counts (frozen here; identical to the captures abov
 When a future stage intentionally changes a count (e.g. parallel batching that alters
 the batch total, or a sort change), update the expected value in `bench/CMakeLists.txt`
 **and** the table above in the same commit, with the before/after recorded.
+
+## Stage 21A Parallel Glyph Instance Build
+
+Stage 21A parallelizes the dominant text-path stage. The text path was profiled at
+scale (RelWithDebInfo, Clang 22) to find the data-backed target rather than
+parallelizing blindly:
+
+| texts (glyphs) | text_dirty ms | glyph_run ms | **glyph_instance ms** | glyph_batch ms |
+|---|---:|---:|---:|---:|
+| 8192 (65k) | 0.071 | 0.027 | **0.344** | 0.070 |
+| 32768 (262k) | 0.276 | 0.134 | **1.515** | 0.242 |
+| 131072 (1M) | 1.223 | 0.511 | **6.105** | 1.074 |
+
+`GlyphInstanceBuildSystem::runDirty` dominates (≈70% of text-path time at 1M glyphs)
+and scales linearly, while the other stages stay small. It is also the only text
+stage that is embarrassingly parallel: each dirty range writes a disjoint glyph
+slice (`glyph_first .. glyph_first + glyph_count`), so no prefix-sum or compaction
+merge is needed. The cheaper prefix-sum (`TextDirtySystem`) and compaction
+(`GlyphBatchSystem`) stages remain the single-thread reference.
+
+`ThreadedTextCpuPipelineRuntime::runGlyphInstanceBuildDirty` partitions the dirty
+ranges across workers and reuses `GlyphInstanceBuildSystem::runDirty` per chunk; the
+output is byte-identical to the single-thread system (verified by
+`render2d.threaded_text_cpu_pipeline`, a `memcmp` equivalence test). It is gated by
+the shared Stage 21E threshold (`ParallelPolicy.hpp`), so sub-threshold workloads run
+single-threaded.
+
+Threaded vs single-thread, `render2d_threaded_text_cpu_pipeline_bench --workers 4
+--min-glyphs-per-task 8192 --frames 8 --warmup 2` (RelWithDebInfo, Clang 22):
+
+| glyphs | reference ms | threaded ms | speedup |
+|---:|---:|---:|---:|
+| 262144 | 1.493 | 0.636 | 2.35x |
+| 1048576 | 5.970 | 2.955 | 2.02x |
+| 2097152 | 12.000 | 6.212 | 1.93x |
+
+Interpretation:
+
+- A consistent ~2x speedup with 4 workers at large glyph counts, byte-identical to the
+  reference. This is a large-text-scene optimization (e.g. dense document/log/terminal
+  rendering); small text loads stay single-threaded via the threshold gate.
+- The runtime parallelizes only `GlyphInstanceBuild`. The other text stages were
+  measured small and were intentionally left single-threaded (no data-backed reason to
+  pay ThreadCenter overhead for them); revisit if a future workload makes them hot.
