@@ -11,7 +11,7 @@ Render2D is a C++23, CMake-based rendering library currently exposed as the `Ren
 - `ctest --preset clang-ninja-debug` runs the CTest suite with failure output.
 - To enable benchmarks, configure with `-DRENDER2D_BUILD_BENCHMARKS=ON`, then build `render2d_bench_smoke`.
 
-The build expects a Vulkan SDK and local dependency source trees for `MemoryCenterNew` and `fast_math`. Override `RENDER2D_MEMORY_CENTER_SOURCE_DIR` and `RENDER2D_FAST_MATH_SOURCE_DIR` if the defaults in `CMakeLists.txt` do not match your machine.
+The build expects a Vulkan SDK and four local engine dependency source trees (`MemoryCenterNew`, `fast_math`, `Vector_New`, `ThreadCenter`), which are not vendored or fetched automatically. Point the build at a local checkout with the umbrella `-DRENDER2D_ENGINE_DEPS_ROOT=<root>` (defaults to `E:/Project/MelosyneTest`), or override any tree individually (`RENDER2D_MEMORY_CENTER_SOURCE_DIR`, `RENDER2D_FAST_MATH_SOURCE_DIR`, `RENDER2D_VECTOR_NEW_INCLUDE_DIR`, `RENDER2D_THREAD_CENTER_SOURCE_DIR`). See `README.md` > Dependencies for the expected layout.
 
 ## Coding Style & Naming Conventions
 

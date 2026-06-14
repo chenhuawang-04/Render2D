@@ -15,27 +15,57 @@ option(RENDER2D_BUILD_BENCHMARKS "Build Render2D benchmark smoke targets" OFF)
 option(RENDER2D_REQUIRE_VULKAN "Require the Vulkan SDK at configure time" ON)
 option(RENDER2D_BUILD_FONT_RUNTIME "Build the FreeType+HarfBuzz+SheenBidi font/text runtime support target (Stage 19)" ON)
 
-set(RENDER2D_MEMORY_CENTER_SOURCE_DIR "E:/Project/MelosyneTest/MemoryCenterNew" CACHE PATH
+# ----------------------------------------------------------------------------
+# Engine dependencies (host-engine source trees, NOT vendored in this repo).
+#
+# These four trees are not fetched automatically: one (Vector_New) has no git
+# remote and the others live in private repositories, so Render2D cannot pull
+# them on a clean / CI machine. Point the build at a local checkout instead.
+#
+# Set ONE umbrella path and the four locations are derived from it:
+#     -DRENDER2D_ENGINE_DEPS_ROOT=/path/to/MelosyneTest
+# or override any individual tree (takes precedence over the umbrella default):
+#     -DRENDER2D_FAST_MATH_SOURCE_DIR=/custom/fast_math
+#
+# Expected layout under RENDER2D_ENGINE_DEPS_ROOT (see README.md > Dependencies):
+#     <root>/MemoryCenterNew/        marker: CMakeLists.txt
+#     <root>/Math/fast_math/         marker: CMakeLists.txt
+#     <root>/Vector_New/include/     marker: Center/Memory/Container/Vector/McVector.hpp
+#     <root>/ThreadCenter/           marker: CMakeLists.txt
+# ----------------------------------------------------------------------------
+set(RENDER2D_ENGINE_DEPS_ROOT "E:/Project/MelosyneTest" CACHE PATH
+    "Root directory containing the four engine dependency source trees. Used to derive the per-dependency defaults below; each may also be overridden individually.")
+
+set(RENDER2D_MEMORY_CENTER_SOURCE_DIR "${RENDER2D_ENGINE_DEPS_ROOT}/MemoryCenterNew" CACHE PATH
     "Path to MemoryCenterNew source tree.")
-set(RENDER2D_FAST_MATH_SOURCE_DIR "E:/Project/MelosyneTest/Math/fast_math" CACHE PATH
+set(RENDER2D_FAST_MATH_SOURCE_DIR "${RENDER2D_ENGINE_DEPS_ROOT}/Math/fast_math" CACHE PATH
     "Path to fast_math source tree.")
-set(RENDER2D_VECTOR_NEW_INCLUDE_DIR "E:/Project/MelosyneTest/Vector_New/include" CACHE PATH
+set(RENDER2D_VECTOR_NEW_INCLUDE_DIR "${RENDER2D_ENGINE_DEPS_ROOT}/Vector_New/include" CACHE PATH
     "Path to Vector_New include tree providing Center/Memory/Container/Vector/McVector.hpp.")
-set(RENDER2D_THREAD_CENTER_SOURCE_DIR "E:/Project/MelosyneTest/ThreadCenter" CACHE PATH
+set(RENDER2D_THREAD_CENTER_SOURCE_DIR "${RENDER2D_ENGINE_DEPS_ROOT}/ThreadCenter" CACHE PATH
     "Path to ThreadCenter source tree.")
 
-if(NOT EXISTS "${RENDER2D_MEMORY_CENTER_SOURCE_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "MemoryCenterNew was not found at RENDER2D_MEMORY_CENTER_SOURCE_DIR='${RENDER2D_MEMORY_CENTER_SOURCE_DIR}'.")
-endif()
-if(NOT EXISTS "${RENDER2D_FAST_MATH_SOURCE_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "fast_math was not found at RENDER2D_FAST_MATH_SOURCE_DIR='${RENDER2D_FAST_MATH_SOURCE_DIR}'.")
-endif()
-if(NOT EXISTS "${RENDER2D_VECTOR_NEW_INCLUDE_DIR}/Center/Memory/Container/Vector/McVector.hpp")
-    message(FATAL_ERROR "McVector was not found at RENDER2D_VECTOR_NEW_INCLUDE_DIR='${RENDER2D_VECTOR_NEW_INCLUDE_DIR}'.")
-endif()
-if(NOT EXISTS "${RENDER2D_THREAD_CENTER_SOURCE_DIR}/CMakeLists.txt")
-    message(FATAL_ERROR "ThreadCenter was not found at RENDER2D_THREAD_CENTER_SOURCE_DIR='${RENDER2D_THREAD_CENTER_SOURCE_DIR}'.")
-endif()
+# Fail fast with actionable guidance when a dependency tree is missing.
+function(render2d_require_engine_dependency dep_name dep_var dep_path marker_rel)
+    if(NOT EXISTS "${dep_path}/${marker_rel}")
+        message(FATAL_ERROR
+            "Render2D engine dependency '${dep_name}' was not found.\n"
+            "  expected marker : ${dep_path}/${marker_rel}\n"
+            "  configured via  : ${dep_var}='${dep_path}'\n"
+            "  fix             : pass -DRENDER2D_ENGINE_DEPS_ROOT=<root> to derive all four, "
+            "or -D${dep_var}=<path> to set this one.\n"
+            "  See README.md > Dependencies for the expected directory layout.")
+    endif()
+endfunction()
+
+render2d_require_engine_dependency("MemoryCenterNew" RENDER2D_MEMORY_CENTER_SOURCE_DIR
+    "${RENDER2D_MEMORY_CENTER_SOURCE_DIR}" "CMakeLists.txt")
+render2d_require_engine_dependency("fast_math" RENDER2D_FAST_MATH_SOURCE_DIR
+    "${RENDER2D_FAST_MATH_SOURCE_DIR}" "CMakeLists.txt")
+render2d_require_engine_dependency("Vector_New (McVector)" RENDER2D_VECTOR_NEW_INCLUDE_DIR
+    "${RENDER2D_VECTOR_NEW_INCLUDE_DIR}" "Center/Memory/Container/Vector/McVector.hpp")
+render2d_require_engine_dependency("ThreadCenter" RENDER2D_THREAD_CENTER_SOURCE_DIR
+    "${RENDER2D_THREAD_CENTER_SOURCE_DIR}" "CMakeLists.txt")
 
 set(MCENTER_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(MCENTER_BUILD_BENCHMARKS OFF CACHE BOOL "" FORCE)
