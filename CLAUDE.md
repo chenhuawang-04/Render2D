@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Render2D is a C++23, **header-only `INTERFACE` library** (`Render2D::Render2D`) implementing a component-first, Vulkan-native 2D renderer. There is no application or shared/static lib output — the library is validated entirely through CTest executables under `tests/` and benchmark executables under `bench/`. It is designed to be merged into a host engine later; see `docs/ProjectMergeTODO.md` for the integration contracts that constrain current design.
 
+**Scope — Render2D is a 2D *rendering module*, not a game engine.** Windowing/app loop, input, audio, the production ECS/scene graph, the asset pipeline, animation, physics, gameplay/scripting, particles/tilemaps/UI, editor tooling, and networking are **intentionally out of scope and must not be added here** — they are the host engine's job, filled in at merge. Do not propose or build these subsystems in this repo. See `docs/ARCHITECTURE.md` → *Scope and non-goals* for the authoritative list.
+
 ## Build, test, run
 
 The project uses CMake presets (Ninja + Clang). Two presets:

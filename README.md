@@ -5,6 +5,13 @@ component-first, Vulkan-native 2D renderer. There is no application or shared/st
 the library is validated entirely through CTest executables under `tests/` and benchmark executables
 under `bench/`. It is designed to be merged into a host engine later.
 
+> **Scope:** Render2D is a 2D *rendering module*, **not a game engine.** Windowing/app loop, input,
+> audio, the production ECS/scene graph, the asset pipeline, animation, physics, gameplay/scripting,
+> particles/tilemaps/UI, editor tooling, and networking are **intentionally out of scope** — they are
+> the host engine's responsibility, filled in at merge. See
+> [Scope and non-goals](docs/ARCHITECTURE.md#scope-and-non-goals). Measure completeness against "a
+> complete 2D *renderer*", not "a complete 2D *engine*".
+
 For architecture, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the file-by-file
 [`docs/PROJECT_INDEX.md`](docs/PROJECT_INDEX.md). For the working conventions and invariants, see
 [`CLAUDE.md`](CLAUDE.md) and [`AGENTS.md`](AGENTS.md).

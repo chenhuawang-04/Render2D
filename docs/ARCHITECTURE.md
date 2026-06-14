@@ -2,6 +2,26 @@
 
 Render2D is a C++23, component-first, Vulkan-native rendering module. The current implementation keeps ECS-visible data as Strict POD streams while native runtimes own Vulkan object lifetimes behind `id + generation` references.
 
+## Scope and non-goals
+
+**Render2D is a 2D *rendering module*, not a game engine.** It is deliberately scoped to turn render data (transforms, sprites, text, cameras) into batched, submitted GPU work, and nothing else. It is designed to be merged into a host engine, which owns everything around the renderer.
+
+The following subsystems are **intentionally NOT part of Render2D** and will never be added here — they are the **host engine's responsibility** and are filled in at merge time (see `docs/ProjectMergeTODO.md`):
+
+- **Application & windowing** — the OS window, surface creation, and the main/event loop. Render2D renders into a surface/target the host provides; it does not own a window or run a loop.
+- **Input** — keyboard, mouse, gamepad, and touch.
+- **Audio** — playback, mixing, spatialization.
+- **Production ECS / scene graph / entity management** — the ECS under `tests/support/` is *test-only scaffolding*. The host engine's ECS replaces it; Render2D systems only consume non-owning `std::span` streams.
+- **Asset pipeline** — loading textures/fonts/scenes from disk, import/cooking, hot-reload, and serialization/save. Render2D consumes already-resident bytes and `id + generation` handles.
+- **Animation** — sprite-frame, skeletal, and tweening systems.
+- **Physics & collision.**
+- **Gameplay & scripting** — game logic, scripting VMs, state machines.
+- **High-level 2D content** — particles, tilemaps, and a UI/widget framework.
+- **Editor & tooling** — level/scene editors and authoring tools.
+- **Networking.**
+
+What Render2D *does* own is the rendering layer below all of the above: the Strict POD render components, the deterministic CPU systems that transform/cull/batch/sort them, and the Vulkan runtimes that own backend object lifetimes. When evaluating completeness, measure Render2D against "a complete 2D *renderer*", not "a complete 2D *engine*" — the breadth above is delegated by design, not missing.
+
 ## Core principles
 
 1. **ECS owns components.** All render data records are ECS components, including `VisibleItem`, `DrawCommand`, `BatchCommand`, `UploadCommand`, and `NativeSubmitCommand`.
