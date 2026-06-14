@@ -286,3 +286,52 @@ Before any Stage 10 optimization is accepted:
 3. Run the same suite after the change.
 4. Record delta and correctness verification.
 5. Keep `ctest`, clang-tidy, `std::vector` scan, and direct Vulkan memory API scan green.
+
+## Stage 21 Automated Performance-Regression Gate
+
+Stage 21 promotes the manual "Gate Rule" above into an automated CTest gate. The
+benchmark harness gained a perf-gate mode (`bench/support/BenchmarkFramework.hpp`):
+after the normal report, `null_cpu_bench` evaluates any expectation flags and exits
+non-zero on violation. The gate has two deliberately separated layers.
+
+### Layer 1 - deterministic work-count expectations (always on, never flaky)
+
+The pipeline produces identical visible / total-draw / glyph-draw / batch counts on
+every machine and every run, so these are the precise regression net: a broken
+culling, batch-merge, or sort changes the exact integer. Flags:
+`--expect-visible`, `--expect-total-draws`, `--expect-glyph-draws`, `--expect-batches`.
+
+### Layer 2 - generous wall-clock catastrophe budget
+
+`--max-total-avg-ms <ms>` asserts the summed per-frame stage time stays under a
+budget. Wall-clock is machine-dependent, so the budget (`RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS`,
+default `25`) is set far above any real baseline. It catches O(n^2)-class slowdowns
+or hot-loop allocations (which run into hundreds of ms at 10k items even optimized),
+not micro-regressions, so it never flakes on shared CI runners. It is honest about
+what it does and does not prove: a green gate guarantees correct output structure and
+"no catastrophic slowdown", **not** "no small regression" - those still need the
+manual before/after capture above.
+
+### CTest cases (`render2d.perf_gate_*`, Perf preset only)
+
+Benchmarks are OFF in the Debug preset, so the gate cases build and run only under
+`clang-ninja-perf` (optimized RelWithDebInfo) and ride the existing `Test (Perf)` CI
+step automatically. Expected counts (frozen here; identical to the captures above):
+
+| Gate case | Scenario | Visible | Total draws | Glyph draws | Batches |
+|---|---|---:|---:|---:|---:|
+| `perf_gate_sprite_high` | sprite 10k high | 10000 | 10000 | - | 79 |
+| `perf_gate_sprite_low` | sprite 10k low | 1250 | 1250 | - | 79 |
+| `perf_gate_sprite_sorted` | sprite 10k high, sorted | 10000 | 10000 | - | 8 |
+| `perf_gate_text` | text 2048 x8 | 0 | 2048 | 2048 | 2048 |
+| `perf_gate_text_sorted` | text 2048 x8, sorted | 0 | 2048 | 2048 | 16 |
+| `perf_gate_mixed` | mixed 10k/2048, dirty-text 8 | 10000 | 12048 | 2048 | 2127 |
+| `perf_gate_mixed_sorted` | mixed, sorted | 10000 | 12048 | 2048 | 24 |
+
+- Verified UTC: 2026-06-14. Build tree: `build_perf` (Clang 22, RelWithDebInfo).
+- Correctness gate: `ctest --preset clang-ninja-perf` passed 68/68 (61 prior + 7 gate cases).
+- Each gate case completes in ~0.01 s, far under the 25 ms budget.
+
+When a future stage intentionally changes a count (e.g. parallel batching that alters
+the batch total, or a sort change), update the expected value in `bench/CMakeLists.txt`
+**and** the table above in the same commit, with the before/after recorded.

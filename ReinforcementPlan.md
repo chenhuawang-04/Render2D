@@ -218,6 +218,8 @@
 **边界**:ThreadCenter 不进组件;并行路径必须写 per-thread 流并确定性合并;无数据不优化。
 **验收**:并行输出与单线程逐字节一致;benchmark 显示目标负载下净收益;小负载未被并行开销拖慢(或已被阈值门控规避)。
 
+**Stage 21 前置增量 —— 自动性能回归门禁(先于并行实做落地)** —— 用户决策:在动并行之前先把"性能回归门禁"补全,让后续 21A/21B 一上来就有自动护栏。设计依据基准 harness 的两类输出:**确定性 work-count**(visible/total_draws/glyph_draws/batches,逐机逐次完全一致)与**机器相关 wall-clock**。据此分两层(`bench/support/BenchmarkFramework.hpp`):① `null_cpu_bench` 报告后跑 `checkGate`,`--expect-visible/-total-draws/-glyph-draws/-batches` 断言确定性计数(算法回归——culling 停止剔除、batch 停止合并、sort 失效——精确改变整数,这是硬门禁、永不抖动);② `--max-total-avg-ms`(`RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS`,默认 25)对逐帧 stage 时间求和设**宽松灾难预算**,只抓 O(n²) 级慢化与热路径分配(10k 下即便优化也要数百 ms),远高于任何真实基线故不在共享 runner 上抖动。如实边界:绿门禁只证明"输出结构正确 + 无灾难性慢化",**不**证明"无小幅回归"——小幅回归仍靠 `BENCHMARK_BASELINE.md` 手动 before/after。落地为 7 个 `render2d.perf_gate_*` CTest 用例(Debug 关基准故仅 Perf 档构建运行,自动搭 CI 既有 `Test (Perf)` 步,无需改 workflow)。预期计数冻结在 `BENCHMARK_BASELINE.md`(与历史 capture 一致)。**实证**:Perf `ctest` 68/68(61 + 7 gate),Debug 52/52 不受影响,约束扫描 3/3,`clang-tidy --verify-config` clean,`git diff --check` 干净;手动注入错误计数 / 极紧预算均如期 exit 2。**Next: 21E 阈值门控 → 21A 文本并行 → 21B 尾段。**
+
 ---
 
 ### Stage 22 — 上屏呈现与可见抓帧(功能/集成补强)

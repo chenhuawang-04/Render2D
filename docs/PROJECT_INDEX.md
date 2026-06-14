@@ -184,12 +184,12 @@ This document is the living file index for Render2D. It summarizes the purpose o
 
 ## Benchmarks
 
-- `bench/CMakeLists.txt` - Benchmark target registration.
+- `bench/CMakeLists.txt` - Benchmark target registration plus the bench-backed CTest cases: the `null_cpu_bench` smokes and the Stage 21 `render2d.perf_gate_*` performance-regression gate (deterministic work-count expectations + a generous `--max-total-avg-ms` catastrophe budget; Perf-preset only, since benchmarks are OFF in Debug).
 - `bench/bench_smoke.cpp` - Minimal benchmark target smoke.
-- `bench/null_cpu_bench.cpp` - Deterministic CPU-only sprite/text/mixed ECS pipeline benchmark.
+- `bench/null_cpu_bench.cpp` - Deterministic CPU-only sprite/text/mixed ECS pipeline benchmark; runs the perf-regression gate (`checkGate`) after the report when `--expect-*` / `--max-total-avg-ms` flags are present, exiting non-zero on any violation.
 - `bench/upload_descriptor_compaction_bench.cpp` - Stage 10I Perf benchmark for synthetic upload-command coalescing and descriptor-slice compaction.
 - `bench/threaded_cpu_pipeline_bench.cpp` - Stage 10H Perf benchmark comparing single-thread sprite CPU reference against `ThreadedCpuPipelineRuntime`.
-- `bench/support/BenchmarkFramework.hpp` - Shared benchmark config parsing, timing accumulation, and text/CSV report helpers.
+- `bench/support/BenchmarkFramework.hpp` - Shared benchmark config parsing, timing accumulation, text/CSV report helpers, and the Stage 21 perf-gate (`GateSpec` / `parseBenchmarkConfig` gate flags / `checkGate`): deterministic machine-independent work-count expectations plus a generous summed-stage-time catastrophe budget.
 
 ## Documentation
 
@@ -223,6 +223,7 @@ This document is the living file index for Render2D. It summarizes the purpose o
 - `docs/adr/2026-06-13-stage20-bindless-descriptor-indexing.md` - ADR closing Stage 20: the split SAMPLED_IMAGE+SAMPLER bindless table (vs the CIS-array fallback), sampler-as-material-property, identity texture indexing with a host-supplied generation and CPU-only stale gate, partially-bound-no-backfill, and the encoder binding the table's set once per frame — proven byte-equal to the CIS path.
 - `docs/adr/2026-06-14-stage17-build-portability-ci.md` - ADR closing Stage 17: dependency portability via the `RENDER2D_ENGINE_DEPS_ROOT` local-override path (engine deps are not fetchable), GitHub-Actions-only two-tier CI (portable hosted checks + self-hosted full build), the scripted constraint scan, and the standalone validation-layer smoke; records the accepted limitation that the full build runs only on a self-hosted runner.
 - `docs/adr/2026-06-14-stage17e-engine-dep-fetch.md` - ADR for Stage 17E, superseding the prior ADR's local-override-only and self-hosted-only decisions (their premise — unfetchable deps — no longer holds): a three-tier engine-dep resolver (reuse target → local → git fetch) and a hosted `ubuntu-latest` `full-build` that installs the toolchain/Vulkan and fetches the deps with an `ENGINE_DEPS_TOKEN` secret for the two private repos. Records that the hosted workflow is authored but unrun until Render2D has a remote + the secret, and that hosted runs skip GPU paths.
+- `docs/adr/2026-06-14-stage21-perf-regression-gate.md` - ADR for the Stage 21 prerequisite automated perf-regression gate: a deterministic, machine-independent work-count layer (`--expect-*`, the hard always-on net) plus a generous wall-clock catastrophe budget (`--max-total-avg-ms`, Perf-preset only), registered as `render2d.perf_gate_*` CTest cases that ride the existing CI `Test (Perf)` step. Records the honest limitation that a green gate proves correct output structure + no catastrophic slowdown, not the absence of micro-regressions.
 - `docs/architecture/ECS_COMPONENT_STREAMS.md` - ECS stream and temporary storage boundary.
 - `docs/architecture/STRICT_POD_COMPONENTS.md` - Strict POD component rules.
 - `docs/architecture/PROVIDER_DIM_META.md` - Provider/Dim compile-time meta contract.

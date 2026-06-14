@@ -66,6 +66,49 @@ struct BenchmarkTotals {
     U32 batch_count;
 };
 
+// Performance-regression gate specification (Stage 21 perf gate).
+//
+// Two complementary, independently-optional layers:
+//   * Work-count expectations (expect_*) are DETERMINISTIC and machine-
+//     independent: the pipeline produces the same visible/draw/batch/glyph
+//     counts on every machine and every run, so they catch algorithmic
+//     regressions exactly (e.g. culling stops culling, batching stops merging,
+//     sorting breaks). These are the hard, always-on gate.
+//   * max_total_avg_ms is a generous wall-clock budget on the summed per-frame
+//     stage time. It is machine-dependent, so it is set far above any real
+//     baseline (Perf preset only) and is meant to catch CATASTROPHIC slowdowns
+//     (accidental O(n^2), hot-loop allocation), not micro-regressions.
+//
+// A field set to its "unset" sentinel is not checked, so the gate is fully
+// backward-compatible with bench invocations that pass no expectation flags.
+inline constexpr U32 kGateUnsetU32 = (std::numeric_limits<U32>::max)();
+inline constexpr double kGateUnsetMs = -1.0;
+
+struct GateSpec {
+    U32 expect_visible;
+    U32 expect_total_draws;
+    U32 expect_batches;
+    U32 expect_glyph_draws;
+    double max_total_avg_ms;
+};
+
+inline constexpr GateSpec kNoGate{
+    .expect_visible = kGateUnsetU32,
+    .expect_total_draws = kGateUnsetU32,
+    .expect_batches = kGateUnsetU32,
+    .expect_glyph_draws = kGateUnsetU32,
+    .max_total_avg_ms = kGateUnsetMs,
+};
+
+[[nodiscard]] inline bool gateIsActive(const GateSpec& gate_) noexcept
+{
+    return gate_.expect_visible != kGateUnsetU32 ||
+        gate_.expect_total_draws != kGateUnsetU32 ||
+        gate_.expect_batches != kGateUnsetU32 ||
+        gate_.expect_glyph_draws != kGateUnsetU32 ||
+        gate_.max_total_avg_ms >= 0.0;
+}
+
 inline constexpr BenchmarkConfig kDefaultBenchmarkConfig{
     .sprite_count = 10000U,
     .text_count = 2048U,
@@ -215,9 +258,32 @@ inline bool parseU32(std::string_view text_, U32& out_value_) noexcept
     return true;
 }
 
-inline bool parseBenchmarkConfig(int argc_, char** argv_, BenchmarkConfig& out_config_) noexcept
+inline bool parseNonNegativeDouble(std::string_view text_, double& out_value_) noexcept
+{
+    if (text_.empty() || text_.front() < '0' || text_.front() > '9') {
+        return false;
+    }
+
+    double value = 0.0;
+    const char* const first = text_.data();
+    const char* const last = text_.data() + text_.size();
+    const auto result = std::from_chars(first, last, value);
+    if (result.ec != std::errc{} || result.ptr != last) {
+        return false;
+    }
+
+    out_value_ = value;
+    return true;
+}
+
+inline bool parseBenchmarkConfig(
+    int argc_,
+    char** argv_,
+    BenchmarkConfig& out_config_,
+    GateSpec& out_gate_) noexcept
 {
     out_config_ = kDefaultBenchmarkConfig;
+    out_gate_ = kNoGate;
     for (int index = 1; index < argc_; ++index) {
         const std::string_view option{argv_[index]};
         if (option == "--sprites" && index + 1 < argc_) {
@@ -272,6 +338,31 @@ inline bool parseBenchmarkConfig(int argc_, char** argv_, BenchmarkConfig& out_c
                 return false;
             }
             ++index;
+        } else if (option == "--expect-visible" && index + 1 < argc_) {
+            if (!parseU32(argv_[index + 1], out_gate_.expect_visible)) {
+                return false;
+            }
+            ++index;
+        } else if (option == "--expect-total-draws" && index + 1 < argc_) {
+            if (!parseU32(argv_[index + 1], out_gate_.expect_total_draws)) {
+                return false;
+            }
+            ++index;
+        } else if (option == "--expect-batches" && index + 1 < argc_) {
+            if (!parseU32(argv_[index + 1], out_gate_.expect_batches)) {
+                return false;
+            }
+            ++index;
+        } else if (option == "--expect-glyph-draws" && index + 1 < argc_) {
+            if (!parseU32(argv_[index + 1], out_gate_.expect_glyph_draws)) {
+                return false;
+            }
+            ++index;
+        } else if (option == "--max-total-avg-ms" && index + 1 < argc_) {
+            if (!parseNonNegativeDouble(argv_[index + 1], out_gate_.max_total_avg_ms)) {
+                return false;
+            }
+            ++index;
         } else if (option == "--list-scenarios") {
             return false;
         } else if (option == "--help") {
@@ -307,7 +398,13 @@ inline void printBenchmarkUsage(std::ostream& out_)
          << "  --dirty-text-stride <0|N>\n"
          << "  --dirty-transform-stride <0|N>\n"
          << "  --enable-sort\n"
-         << "  --format text|csv\n";
+         << "  --format text|csv\n"
+         << "Perf-regression gate (non-zero exit on violation):\n"
+         << "  --expect-visible <count>      assert visible == count\n"
+         << "  --expect-total-draws <count>  assert total draws == count\n"
+         << "  --expect-batches <count>      assert batches == count\n"
+         << "  --expect-glyph-draws <count>  assert glyph draws == count\n"
+         << "  --max-total-avg-ms <ms>       assert summed per-frame stage time <= ms\n";
 }
 
 inline double elapsedMs(
@@ -431,6 +528,46 @@ inline void printBenchmarkReport(
         return;
     }
     printTextReport(out_, config_, totals_);
+}
+
+inline double totalStageMs(const StageTimeTotals& times_) noexcept
+{
+    return times_.transform_ms + times_.bounds_ms + times_.culling_ms +
+        times_.sprite_command_ms + times_.text_dirty_ms + times_.glyph_run_ms +
+        times_.glyph_instance_ms + times_.glyph_batch_ms + times_.sort_ms +
+        times_.batch_ms + times_.command_buffer_ms;
+}
+
+// Evaluate the perf-regression gate. Returns true when every active expectation
+// holds; writes a one-line diagnostic per failed expectation to err_.
+[[nodiscard]] inline bool checkGate(
+    std::ostream& err_,
+    const BenchmarkConfig& config_,
+    const GateSpec& gate_,
+    const BenchmarkTotals& totals_)
+{
+    bool ok = true;
+    const auto check_count = [&](const char* name_, U32 expected_, U32 actual_) {
+        if (expected_ != kGateUnsetU32 && actual_ != expected_) {
+            err_ << "perf-gate: FAIL " << name_ << " expected=" << expected_
+                 << " actual=" << actual_ << '\n';
+            ok = false;
+        }
+    };
+    check_count("visible", gate_.expect_visible, totals_.visible_count);
+    check_count("total_draws", gate_.expect_total_draws, totals_.total_draw_count);
+    check_count("batches", gate_.expect_batches, totals_.batch_count);
+    check_count("glyph_draws", gate_.expect_glyph_draws, totals_.glyph_draw_count);
+
+    if (gate_.max_total_avg_ms >= 0.0) {
+        const double actual_ms = averageMs(totalStageMs(totals_.times), config_.frame_count);
+        if (actual_ms > gate_.max_total_avg_ms) {
+            err_ << "perf-gate: FAIL total_avg_ms budget=" << gate_.max_total_avg_ms
+                 << " actual=" << actual_ms << '\n';
+            ok = false;
+        }
+    }
+    return ok;
 }
 
 } // namespace Render2D::Bench

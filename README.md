@@ -93,6 +93,16 @@ cmake --preset clang-ninja-perf && cmake --build --preset clang-ninja-perf
 # Standard suites: scripts/run_null_cpu_benchmarks.ps1, scripts/run_threaded_cpu_benchmarks.ps1
 ```
 
+The Perf preset also registers an automated **performance-regression gate**
+(`render2d.perf_gate_*` CTest cases). Each asserts the pipeline's deterministic,
+machine-independent work counts (visible / draws / glyph draws / batches) and a
+generous summed-stage-time catastrophe budget (`--max-total-avg-ms`), so it catches
+algorithmic regressions and O(n²)-class slowdowns without flaking on CI noise. It
+rides the `Test (Perf)` CI step automatically. See
+`docs/architecture/BENCHMARK_BASELINE.md` and
+`docs/adr/2026-06-14-stage21-perf-regression-gate.md` for what it does and does not
+prove (it is not a micro-regression detector — those still use the manual baseline).
+
 ## Constraint scans
 
 `scripts/scan_constraints.sh` enforces the non-negotiable source invariants — no `std::vector` (use

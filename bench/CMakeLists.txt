@@ -64,4 +64,63 @@ if(RENDER2D_BUILD_TESTS)
     set_tests_properties(render2d.null_cpu_bench_invalid_frames PROPERTIES
         WILL_FAIL TRUE
     )
+
+    # ------------------------------------------------------------------------
+    # Performance-regression gate (Stage 21). These cases only build under the
+    # Perf preset (benchmarks are OFF in Debug), so the wall-clock budgets are
+    # always measured on optimized RelWithDebInfo codegen.
+    #
+    # Each case asserts the DETERMINISTIC, machine-independent work counts the
+    # pipeline must produce (visible / total draws / glyph draws / batches) plus
+    # a deliberately generous --max-total-avg-ms catastrophe budget. The counts
+    # are the precise regression net (a broken culling/batch/sort changes them
+    # exactly); the budget only trips on O(n^2)-class slowdowns and is set far
+    # above any real baseline so it never flakes on shared CI runners. Expected
+    # counts match docs/architecture/BENCHMARK_BASELINE.md.
+    # ------------------------------------------------------------------------
+    set(RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS "25" CACHE STRING
+        "Per-frame summed stage-time budget (ms) for the perf-regression gate.")
+
+    add_test(NAME render2d.perf_gate_sprite_high
+        COMMAND render2d_null_cpu_bench --scenario sprite --sprites 10000 --visibility high
+            --frames 4 --warmup 1
+            --expect-visible 10000 --expect-total-draws 10000 --expect-batches 79
+            --max-total-avg-ms ${RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS}
+    )
+    add_test(NAME render2d.perf_gate_sprite_low
+        COMMAND render2d_null_cpu_bench --scenario sprite --sprites 10000 --visibility low
+            --frames 4 --warmup 1
+            --expect-visible 1250 --expect-total-draws 1250 --expect-batches 79
+            --max-total-avg-ms ${RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS}
+    )
+    add_test(NAME render2d.perf_gate_sprite_sorted
+        COMMAND render2d_null_cpu_bench --scenario sprite --sprites 10000 --visibility high --enable-sort
+            --frames 4 --warmup 1
+            --expect-visible 10000 --expect-total-draws 10000 --expect-batches 8
+            --max-total-avg-ms ${RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS}
+    )
+    add_test(NAME render2d.perf_gate_text
+        COMMAND render2d_null_cpu_bench --scenario text --texts 2048 --glyphs-per-text 8 --dirty-text-stride 0
+            --frames 4 --warmup 1
+            --expect-total-draws 2048 --expect-glyph-draws 2048 --expect-batches 2048
+            --max-total-avg-ms ${RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS}
+    )
+    add_test(NAME render2d.perf_gate_text_sorted
+        COMMAND render2d_null_cpu_bench --scenario text --texts 2048 --glyphs-per-text 8 --dirty-text-stride 0 --enable-sort
+            --frames 4 --warmup 1
+            --expect-total-draws 2048 --expect-glyph-draws 2048 --expect-batches 16
+            --max-total-avg-ms ${RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS}
+    )
+    add_test(NAME render2d.perf_gate_mixed
+        COMMAND render2d_null_cpu_bench --scenario mixed --sprites 10000 --texts 2048
+            --glyphs-per-text 8 --dirty-text-stride 8 --frames 4 --warmup 1
+            --expect-visible 10000 --expect-total-draws 12048 --expect-glyph-draws 2048 --expect-batches 2127
+            --max-total-avg-ms ${RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS}
+    )
+    add_test(NAME render2d.perf_gate_mixed_sorted
+        COMMAND render2d_null_cpu_bench --scenario mixed --sprites 10000 --texts 2048
+            --glyphs-per-text 8 --dirty-text-stride 8 --enable-sort --frames 4 --warmup 1
+            --expect-visible 10000 --expect-total-draws 12048 --expect-glyph-draws 2048 --expect-batches 24
+            --max-total-avg-ms ${RENDER2D_PERF_GATE_MAX_TOTAL_AVG_MS}
+    )
 endif()

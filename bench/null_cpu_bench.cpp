@@ -590,7 +590,8 @@ int main(int argc_, char** argv_)
 {
     try {
         R2DB::BenchmarkConfig config{};
-        if (!R2DB::parseBenchmarkConfig(argc_, argv_, config)) {
+        R2DB::GateSpec gate{};
+        if (!R2DB::parseBenchmarkConfig(argc_, argv_, config, gate)) {
             if (hasOption(argc_, argv_, "--list-scenarios")) {
                 R2DB::printScenarioList(std::cout);
                 return 0;
@@ -617,6 +618,9 @@ int main(int argc_, char** argv_)
             return result;
         }
         R2DB::printBenchmarkReport(std::cout, config, totals);
+        if (R2DB::gateIsActive(gate) && !R2DB::checkGate(std::cerr, config, gate, totals)) {
+            return 2;
+        }
         return 0;
     } catch (...) {
         static_cast<void>(std::fputs("benchmark failed with an unexpected exception\n", stderr));
