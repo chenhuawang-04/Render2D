@@ -73,12 +73,16 @@ set(FETCHCONTENT_QUIET OFF)
 # existing target, else add_subdirectory a local tree, else FetchContent it from
 # git. Defined as a macro so add_subdirectory()/FetchContent run in this
 # (top-level) scope, exactly as the prior inline add_subdirectory() calls did.
-macro(render2d_provide_engine_dependency dep_name target_name local_dir bin_subdir git_repo git_tag)
+# The resolved source tree is written back into out_source_dir_var so downstream
+# consumers (e.g. the negative-compile test's manual -I wiring) use the actual
+# location -- the fetched path when a dependency was downloaded.
+macro(render2d_provide_engine_dependency dep_name target_name local_dir bin_subdir git_repo git_tag out_source_dir_var)
     if(TARGET ${target_name})
         message(STATUS "Render2D: reusing existing target '${target_name}' for ${dep_name} (no fetch).")
     elseif(EXISTS "${local_dir}/CMakeLists.txt")
         message(STATUS "Render2D: using local ${dep_name} at '${local_dir}' (no fetch).")
         add_subdirectory("${local_dir}" "${CMAKE_CURRENT_BINARY_DIR}/_deps/${bin_subdir}")
+        set(${out_source_dir_var} "${local_dir}")
     else()
         message(STATUS "Render2D: fetching ${dep_name} from ${git_repo} @ ${git_tag}.")
         string(TOLOWER "${dep_name}" _render2d_dep_lc)
@@ -94,6 +98,7 @@ macro(render2d_provide_engine_dependency dep_name target_name local_dir bin_subd
         FetchContent_MakeAvailable(${dep_name})
         add_subdirectory("${${_render2d_dep_lc}_SOURCE_DIR}"
             "${CMAKE_CURRENT_BINARY_DIR}/_deps/${bin_subdir}")
+        set(${out_source_dir_var} "${${_render2d_dep_lc}_SOURCE_DIR}")
     endif()
     if(NOT TARGET ${target_name})
         message(FATAL_ERROR
@@ -128,13 +133,16 @@ set(THREAD_CENTER_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
 
 render2d_provide_engine_dependency("MemoryCenterNew" Center.Memory.Headers
     "${RENDER2D_MEMORY_CENTER_SOURCE_DIR}" "MemoryCenterNew"
-    "${RENDER2D_MEMORY_CENTER_GIT_REPOSITORY}" "${RENDER2D_MEMORY_CENTER_GIT_TAG}")
+    "${RENDER2D_MEMORY_CENTER_GIT_REPOSITORY}" "${RENDER2D_MEMORY_CENTER_GIT_TAG}"
+    RENDER2D_MEMORY_CENTER_SOURCE_DIR)
 render2d_provide_engine_dependency("fast_math" fast_math
     "${RENDER2D_FAST_MATH_SOURCE_DIR}" "fast_math"
-    "${RENDER2D_FAST_MATH_GIT_REPOSITORY}" "${RENDER2D_FAST_MATH_GIT_TAG}")
+    "${RENDER2D_FAST_MATH_GIT_REPOSITORY}" "${RENDER2D_FAST_MATH_GIT_TAG}"
+    RENDER2D_FAST_MATH_SOURCE_DIR)
 render2d_provide_engine_dependency("ThreadCenter" Center.Thread.Headers
     "${RENDER2D_THREAD_CENTER_SOURCE_DIR}" "ThreadCenter"
-    "${RENDER2D_THREAD_CENTER_GIT_REPOSITORY}" "${RENDER2D_THREAD_CENTER_GIT_TAG}")
+    "${RENDER2D_THREAD_CENTER_GIT_REPOSITORY}" "${RENDER2D_THREAD_CENTER_GIT_TAG}"
+    RENDER2D_THREAD_CENTER_SOURCE_DIR)
 
 # Vector_New (McVector) is consumed as a header include directory, not a target,
 # so it has no "reuse target" tier. Use the local include tree if present, else
