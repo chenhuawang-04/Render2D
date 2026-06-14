@@ -41,6 +41,14 @@ target_link_libraries(render2d_threaded_text_cpu_pipeline_bench PRIVATE
 )
 render2d_apply_strict_warnings(render2d_threaded_text_cpu_pipeline_bench)
 
+add_executable(render2d_threaded_draw_sort_bench
+    threaded_draw_sort_bench.cpp
+)
+target_link_libraries(render2d_threaded_draw_sort_bench PRIVATE
+    render2d_thread_runtime_support
+)
+render2d_apply_strict_warnings(render2d_threaded_draw_sort_bench)
+
 if(RENDER2D_BUILD_TESTS)
     add_test(NAME render2d.null_cpu_bench_smoke
         COMMAND render2d_null_cpu_bench --scenario mixed --sprites 1024 --texts 128 --frames 2 --warmup 1
@@ -68,6 +76,9 @@ if(RENDER2D_BUILD_TESTS)
     )
     add_test(NAME render2d.threaded_text_cpu_pipeline_bench_smoke
         COMMAND render2d_threaded_text_cpu_pipeline_bench --texts 1024 --glyphs-per-text 8 --frames 2 --warmup 1 --workers 2 --min-glyphs-per-task 128
+    )
+    add_test(NAME render2d.threaded_draw_sort_bench_smoke
+        COMMAND render2d_threaded_draw_sort_bench --draws 4096 --frames 2 --warmup 1 --workers 2 --min-items-per-task 128
     )
     add_test(NAME render2d.null_cpu_bench_invalid_frames
         COMMAND render2d_null_cpu_bench --scenario mixed --frames nope

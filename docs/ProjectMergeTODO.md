@@ -206,6 +206,12 @@ Stage 10H integration note:
 - Culling writes per-chunk scratch and merges visible items in chunk order;
 - Batch remains the single-thread reference tail stage until a dedicated parallel batch design lands.
 
+Stage 21B integration note:
+
+- `ThreadedDrawSortRuntime` (the dedicated deterministic parallel sort anticipated above) parallelizes only the radix sort; its output is byte-identical to `DrawSortSystem::run` (bucket-major-then-chunk-order scatter offsets reproduce the serial stable permutation — see ADR `2026-06-15-stage21-parallel-deterministic-draw-sort.md`);
+- `BatchSystem` still has no parallel design and remains the single-thread reference tail (measured tiny and inherently sequential);
+- the runtime consumes/produces `std::span`, owns only `McVector` histogram/offset scratch, and is threshold-gated via `ParallelPolicy.hpp` (#22).
+
 ## 16. TransformDirtyItem is an ECS-visible component
 
 Stage 10E adds `TransformDirtyItem<Provider, Dim>` as a Strict POD dirty-index component.

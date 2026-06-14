@@ -379,3 +379,63 @@ Interpretation:
 - The runtime parallelizes only `GlyphInstanceBuild`. The other text stages were
   measured small and were intentionally left single-threaded (no data-backed reason to
   pay ThreadCenter overhead for them); revisit if a future workload makes them hot.
+
+## Stage 21B Parallel Deterministic Draw Sort
+
+Stage 21B parallelizes the sorted-path tail. The tail is two stages —
+`DrawSortSystem` (stable 4-pass LSD radix sort) then `BatchSystem` (adjacent-merge
+scan). The Stage 10F sorted capture above is the data: at 10–12k draws the sort is
+`0.18–0.19 ms` (the single largest stage in the sorted path: transform `0.09`,
+bounds `0.04`, batch `0.02`), and it grows with draw count. So Stage 21B
+parallelizes **only the radix sort**. `BatchSystem` is both tiny (`~0.02 ms`) and
+inherently sequential (a running batch-index merge scan), so there is no
+data-backed reason to pay ThreadCenter overhead for it; it stays the single-thread
+reference.
+
+`ThreadedDrawSortRuntime::runDrawSort` is byte-identical to `DrawSortSystem::run`
+(verified by `render2d.threaded_draw_sort`, a `memcmp` equivalence test, and by a
+per-frame `memcmp` in the bench). Determinism comes from the offset pass computing
+the global scatter position for every (bucket, chunk) in **bucket-major then
+chunk-order**: all of bucket *b*'s items precede bucket *b+1*'s, and within a bucket
+chunk 0's items precede chunk 1's. Because chunks are contiguous in source order,
+this reproduces the serial radix's increasing-source-index order per bucket — the
+same stable permutation. Each chunk then scatters into its own disjoint offset
+cursors. Gated by the shared Stage 21E threshold (`ParallelPolicy.hpp`), so
+sub-threshold workloads run single-threaded. See ADR
+`2026-06-15-stage21-parallel-deterministic-draw-sort.md`.
+
+- Captured UTC: 2026-06-15. Build tree: `build_perf` (Clang 22, RelWithDebInfo).
+- CPU: 22 logical cores (auto worker count = cores − 2 = 20).
+- Correctness gate: `ctest --preset clang-ninja-perf` passed 72/72; the bench
+  verifies reference/threaded byte-equality every frame.
+
+`render2d_threaded_draw_sort_bench --workers 4 --min-items-per-task 4096 --frames 12
+--warmup 4` (4 workers, matching the 21A capture):
+
+| draws | reference ms | threaded ms | speedup |
+|---:|---:|---:|---:|
+| 65536 | 1.086 | 0.785 | 1.38x |
+| 262144 | 6.925 | 3.468 | 2.00x |
+| 524288 | 16.611 | 7.623 | 2.18x |
+| 1048576 | 37.759 | 15.959 | 2.37x |
+| 2097152 | 78.631 | 32.617 | 2.41x |
+
+Auto worker count (20 workers, same flags without `--workers`):
+
+| draws | reference ms | threaded ms | speedup |
+|---:|---:|---:|---:|
+| 1048576 | 37.188 | 11.485 | 3.24x |
+| 2097152 | 75.064 | 23.916 | 3.14x |
+
+Interpretation:
+
+- Scaling rises with draw count (work per worker grows relative to the fixed
+  scheduling cost) and plateaus near `~2.4x` at 4 workers / `~3.2x` at 20. The cap is
+  inherent to a parallel radix: the per-pass offset (prefix-sum) stage is a single
+  serial task, and the seed/gather passes add memory-bandwidth-bound overhead the
+  serial sort does not pay. This is the expected Amdahl ceiling, not a defect.
+- A small workload (the sorted tail at 10–12k draws) stays single-threaded via the
+  threshold gate; the win is for large sorted scenes (tens of thousands to millions
+  of draws), where the radix sort is the dominant CPU cost.
+- `BatchSystem` was left single-threaded by design (measured tiny and sequential);
+  revisit only if a future workload makes the merge scan hot.
