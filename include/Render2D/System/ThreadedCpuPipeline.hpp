@@ -11,11 +11,9 @@
 #include "Render2D/Memory/RenderVector.hpp"
 #include "Render2D/Meta/Domain.hpp"
 #include "Render2D/System/BatchSystem.hpp"
-#include "Render2D/System/BoundsSystem.hpp"
 #include "Render2D/System/CommandBuildSystem.hpp"
-#include "Render2D/System/CullingSystem.hpp"
 #include "Render2D/System/ParallelPolicy.hpp"
-#include "Render2D/System/TransformSystem.hpp"
+#include "Render2D/System/SpatialCullSystem.hpp"
 
 #include <thread_center/thread_center.hpp>
 
@@ -90,6 +88,13 @@ public:
         return shouldParallelizeItemCount(item_count_, config_.parallel_threshold, workerCount());
     }
 
+    // Stage 24 Track 1: the spatial front-end is fused into SpatialCullSystem, so
+    // world_bounds_ is no longer written -- it is retained in the signature (and
+    // its capacity still validated) for API stability and as caller-owned scratch;
+    // the world AABB is computed in registers and never materialized. The dense
+    // world_transforms_ array is still produced (consumed downstream by
+    // SpriteInstanceBuildSystem). Output (world_transforms/visible/draw/batch) is
+    // byte-identical to the former transform -> bounds -> culling chain.
     [[nodiscard]] auto runSpritePipeline(
         const CameraType& camera_,
         std::span<const TransformType> transforms_,
@@ -138,7 +143,6 @@ public:
                     visibility_masks_,
                     sprites_,
                     world_transforms_,
-                    world_bounds_,
                     visible_items_,
                     draw_commands_,
                     batch_commands_,
@@ -152,7 +156,6 @@ public:
                 local_bounds_,
                 visibility_masks_,
                 world_transforms_,
-                world_bounds_,
                 visible_items_,
                 result);
             if (result.code != SystemStatusCode::Ok) {
@@ -193,8 +196,10 @@ private:
     }
 
     // Single-thread reference path used below the parallel threshold. Runs the
-    // same deterministic systems in sequence as the threaded path's per-chunk
-    // work, so its output is byte-identical; it simply avoids the executor.
+    // same deterministic fused front-end (SpatialCullSystem) as the threaded
+    // path's per-chunk work, so its output is byte-identical; it simply avoids
+    // the executor. WorldBounds is not materialized -- the world AABB lives only
+    // in registers inside the fused pass.
     [[nodiscard]] auto runSingleThreadedSpritePipeline(
         const CameraType& camera_,
         std::span<const TransformType> transforms_,
@@ -202,7 +207,6 @@ private:
         std::span<const VisibilityMaskType> visibility_masks_,
         std::span<const SpriteType> sprites_,
         std::span<WorldTransformType> world_transforms_,
-        std::span<WorldBoundsType> world_bounds_,
         std::span<VisibleItemType> visible_items_,
         std::span<DrawCommandType> draw_commands_,
         std::span<BatchCommandType> batch_commands_,
@@ -210,31 +214,18 @@ private:
     {
         const auto item_count = transforms_.size();
 
-        auto system_result = TransformSystem<Provider, Dim>::run(
-            transforms_,
-            world_transforms_.subspan(0U, item_count));
-        if (!isOk(system_result)) {
-            return system_result.code;
-        }
-        result_.transform_count = static_cast<U32>(item_count);
-
-        system_result = BoundsSystem<Provider, Dim>::run(
-            world_transforms_.subspan(0U, item_count),
-            local_bounds_,
-            world_bounds_.subspan(0U, item_count));
-        if (!isOk(system_result)) {
-            return system_result.code;
-        }
-        result_.bounds_count = static_cast<U32>(local_bounds_.size());
-
-        system_result = CullingSystem<Provider, Dim>::run(
+        auto system_result = SpatialCullSystem<Provider, Dim>::run(
             camera_,
-            world_bounds_.subspan(0U, item_count),
+            transforms_,
+            local_bounds_,
             visibility_masks_,
+            world_transforms_.subspan(0U, item_count),
             visible_items_);
         if (!isOk(system_result)) {
             return system_result.code;
         }
+        result_.transform_count = static_cast<U32>(item_count);
+        result_.bounds_count = static_cast<U32>(local_bounds_.size());
         result_.visible_count = system_result.write_count;
 
         if (draw_commands_.size() < result_.visible_count) {
@@ -330,13 +321,19 @@ private:
         return SystemStatusCode::Ok;
     }
 
+    // Fused spatial front-end: a single parallelFor runs SpatialCullSystem per
+    // chunk, writing the dense WorldTransform array (a real downstream output)
+    // and per-chunk visible items, which are then globalized (chunk-local
+    // source_index/sort_key offset by chunk.first) and merged in chunk order --
+    // byte-identical to the single-thread reference. This collapses the former
+    // transform -> bounds -> culling precede chain (three dispatched stages over
+    // the whole array, plus a materialized WorldBounds array) into one pass.
     [[nodiscard]] auto runSpatialAndCulling(
         const CameraType& camera_,
         std::span<const TransformType> transforms_,
         std::span<const LocalBoundsType> local_bounds_,
         std::span<const VisibilityMaskType> visibility_masks_,
         std::span<WorldTransformType> world_transforms_,
-        std::span<WorldBoundsType> world_bounds_,
         std::span<VisibleItemType> visible_items_,
         ThreadedSpritePipelineResult& result_) -> SystemStatusCode
     {
@@ -350,54 +347,25 @@ private:
         auto stage_error = std::atomic<U32>{statusToU32(SystemStatusCode::Ok)};
         auto plan = center_.makePlan();
 
-        const auto transform_task = plan.parallelFor<Usize>(
-            makeTaskDesc("render2d.threaded.transform"),
+        static_cast<void>(plan.parallelFor<Usize>(
+            makeTaskDesc("render2d.threaded.spatial_cull"),
             0U,
             chunks_.size(),
             1U,
-            [this, transforms_, world_transforms_, &stage_error](Usize chunk_index_) {
-                const auto chunk = chunks_[chunk_index_];
-                const auto first = static_cast<Usize>(chunk.first);
-                const auto count = static_cast<Usize>(chunk.count);
-                const auto system_result = TransformSystem<Provider, Dim>::run(
-                    transforms_.subspan(first, count),
-                    world_transforms_.subspan(first, count));
-                recordStageError(stage_error, system_result);
-            });
-
-        const auto bounds_task = plan.parallelFor<Usize>(
-            makeTaskDesc("render2d.threaded.bounds"),
-            0U,
-            chunks_.size(),
-            1U,
-            [this, local_bounds_, world_transforms_, world_bounds_, &stage_error](
+            [this, camera_, transforms_, local_bounds_, visibility_masks_, world_transforms_, &stage_error](
                 Usize chunk_index_) {
-                const auto chunk = chunks_[chunk_index_];
-                const auto first = static_cast<Usize>(chunk.first);
-                const auto count = static_cast<Usize>(chunk.count);
-                const auto system_result = BoundsSystem<Provider, Dim>::run(
-                    world_transforms_.subspan(first, count),
-                    local_bounds_.subspan(first, count),
-                    world_bounds_.subspan(first, count));
-                recordStageError(stage_error, system_result);
-            });
-
-        const auto culling_task = plan.parallelFor<Usize>(
-            makeTaskDesc("render2d.threaded.culling"),
-            0U,
-            chunks_.size(),
-            1U,
-            [this, camera_, visibility_masks_, world_bounds_, &stage_error](Usize chunk_index_) {
                 const auto chunk = chunks_[chunk_index_];
                 const auto first = static_cast<Usize>(chunk.first);
                 const auto count = static_cast<Usize>(chunk.count);
                 const auto visibility_masks = visibility_masks_.empty() ?
                     std::span<const VisibilityMaskType>{} :
                     visibility_masks_.subspan(first, count);
-                const auto system_result = CullingSystem<Provider, Dim>::run(
+                const auto system_result = SpatialCullSystem<Provider, Dim>::run(
                     camera_,
-                    world_bounds_.subspan(first, count),
+                    transforms_.subspan(first, count),
+                    local_bounds_.subspan(first, count),
                     visibility_masks,
+                    world_transforms_.subspan(first, count),
                     std::span<VisibleItemType>{culling_scratch_.data() + first, count});
                 recordStageError(stage_error, system_result);
                 visible_counts_[chunk_index_] = system_result.write_count;
@@ -406,10 +374,7 @@ private:
                     item.source_index += chunk.first;
                     item.sort_key += chunk.first;
                 }
-            });
-
-        plan.precede(transform_task, bounds_task);
-        plan.precede(bounds_task, culling_task);
+            }));
 
         auto run_handle = center_.dispatch(plan);
         run_handle.wait();

@@ -162,9 +162,20 @@ void checkPipelineEqual(
     ReferenceCounts counts_) noexcept
 {
     for (R2D::Usize index = 0U; index < kItemCount; ++index) {
+        // Stage 24 Track 1: the runtime fuses the front-end and no longer
+        // materializes world_bounds, so it is not compared. The dense
+        // world_transforms array remains a real output (downstream
+        // SpriteInstanceBuildSystem reads the affine) and must be byte-identical
+        // to the granular TransformSystem reference -- checked exactly here.
         R2D_TEST_CHECK_EQ(context_, threaded_.world_transforms[index].source_id, reference_.world_transforms[index].source_id);
-        R2D_TEST_CHECK_EQ(context_, threaded_.world_bounds[index].source_id, reference_.world_bounds[index].source_id);
-        R2D_TEST_CHECK(context_, R2D::aabb2NearEqual(threaded_.world_bounds[index].bounds, reference_.world_bounds[index].bounds, 0.0001F));
+        const auto& threaded_affine = threaded_.world_transforms[index].affine;
+        const auto& reference_affine = reference_.world_transforms[index].affine;
+        R2D_TEST_CHECK_EQ(context_, threaded_affine.m00, reference_affine.m00);
+        R2D_TEST_CHECK_EQ(context_, threaded_affine.m01, reference_affine.m01);
+        R2D_TEST_CHECK_EQ(context_, threaded_affine.m02, reference_affine.m02);
+        R2D_TEST_CHECK_EQ(context_, threaded_affine.m10, reference_affine.m10);
+        R2D_TEST_CHECK_EQ(context_, threaded_affine.m11, reference_affine.m11);
+        R2D_TEST_CHECK_EQ(context_, threaded_affine.m12, reference_affine.m12);
     }
 
     for (R2D::Usize index = 0U; index < counts_.visible_count; ++index) {

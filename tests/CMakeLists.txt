@@ -215,6 +215,19 @@ render2d_apply_strict_warnings(render2d_bounds_system_test)
 
 add_test(NAME render2d.bounds_system COMMAND render2d_bounds_system_test)
 
+add_executable(render2d_spatial_cull_system_test
+    spatial_cull_system_test.cpp
+)
+target_link_libraries(render2d_spatial_cull_system_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_spatial_cull_system_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_spatial_cull_system_test)
+
+add_test(NAME render2d.spatial_cull_system COMMAND render2d_spatial_cull_system_test)
+
 add_executable(render2d_command_buffer_descriptor_test
     command_buffer_descriptor_test.cpp
 )

@@ -267,16 +267,18 @@
 
 **目标**:压 Stage 21 at-scale profile 暴露的两类 CPU 瓶颈——**带宽密集**的空间前段(融合免中间数组)与**计算密集**的旋转 transform(SIMD 三角)。两轨独立、与 22/23 正交、可任意穿插;均以单线程/标量系统为确定性参考,新路径**逐字节等价**、阈值门控。数据见 `BENCHMARK_BASELINE.md` 的「Stage 21 At-Scale CPU Bottleneck Map」。
 
-#### Track 1 — 融合空间前段(Render2D 仓内,解带宽)
+#### Track 1 — 融合空间前段(Render2D 仓内,解带宽)✅ 已落地 2026-06-15
 
-transform→bounds→culling 一趟内联,**不落地 `WorldTransform`/`WorldBounds`**(每元素内存流量 ~190B→~65B)。
+transform→bounds→culling 一趟内联,**不落地 `WorldBounds`**(世界 AABB 仅在寄存器)。
 
-- 新增 `include/Render2D/System/SpatialCullSystem.hpp`:`SpatialCullSystem<Provider,Dim>::run(camera, transforms, local_bounds, visibility_masks, out_visible_items)`——世界变换+世界 AABB 仅在寄存器,直接产 `VisibleItem`,与 `Transform→Bounds→Culling` 链**逐字节一致**。
-- 新增 `tests/spatial_cull_system_test.cpp`(`render2d.spatial_cull_system`):memcmp 等价(可见集 + `VisibleItem` 字节;mask / 空 / 非整除计数)。
-- 修改 `ThreadedCpuPipelineRuntime`:把 transform→bounds→culling 的 precede 链换成**单个 `parallelFor` 跑 `SpatialCullSystem`**(顺带去掉每帧 2 次 dispatch + 双 waitIdle 的固定开销);`runSpritePipeline` 对外接口与输出不变。
-- bench:`null_cpu_bench` 加 `--fused-spatial` 开关,量融合 vs 粒度前段 ms。
-- 粒度系统 `TransformSystem`/`BoundsSystem`/`CullingSystem` **不动**(恒为参考)。ADR `docs/adr/<date>-fused-spatial-front-end.md`。
-- **预期**:前段(~12.8ms@1M)~1.5–2.5×(spike 待测);threaded 版有望破当前 1.3× 带宽天花板。**只解静态/带宽,不解旋转三角成本。**
+> **落地修正**:原计划设想"`WorldTransform`/`WorldBounds` 都免",但代码核查发现 `SpriteInstanceBuildSystem::run` 下游要读 `world_transforms_[source_index].affine`——**`WorldTransform` 是真实输出,必须写**;仅 `WorldBounds`(只被剔除用)是真瞬态可免。融合仍写 `WorldTransform`、免 `WorldBounds` 写 + 两处级间重读。
+
+- 新增 `include/Render2D/System/SpatialCullSystem.hpp`:`SpatialCullSystem<Provider,Dim>::run(camera, transforms, local_bounds, visibility_masks, out_world_transforms, out_visible_items)`——写稠密 `WorldTransform`(逐字节同 `TransformSystem`)+ 紧凑 `VisibleItem`(逐字节同 `CullingSystem`),世界 AABB 仅在寄存器。三参考系统的逐元素数学**逐字逐句复刻**,纯系统(进 umbrella)。affine 算进局部变量并复用给 bounds(不回读刚写的内存,消除 store-to-load 依赖)。
+- 新增 `tests/spatial_cull_system_test.cpp`(`render2d.spatial_cull_system`):memcmp 等价(`WorldTransform` 全量 + `VisibleItem`;旋转/mask 显式·空·部分/空输入/容量·计数错误路径)。
+- 改 `ThreadedCpuPipelineRuntime`:transform→bounds→culling 的三段 precede 链 → **单个 `parallelFor` 跑 `SpatialCullSystem`**(单线程参考路径同样改用);去掉每帧 3 段 dispatch 中的两段 + 一次 waitIdle。`runSpritePipeline` 签名不变;`world_bounds_` 仍校验容量但**不再写**(API 稳定 + caller scratch,已文档化)。
+- bench:新增独立 `bench/spatial_cull_bench.cpp`(粒度 vs 融合,单线程,逐帧 memcmp;`--rotate`/`--visibility`)——比改 `null_cpu_bench` 共享框架更干净。
+- 粒度系统 `TransformSystem`/`BoundsSystem`/`CullingSystem` **不动**(恒为参考)。ADR `docs/adr/2026-06-15-fused-spatial-front-end.md`。
+- **实测(单线程,RelWithDebInfo)**:静态/带宽 **1.5–1.6×@1M–2M high、~2.2× low(剔除密集)**;旋转/计算 **~1.0×(中性,sincos 主导,被 Track 2 解)**。门禁:Debug 56/56、Perf 76/76、tidy 净、scan 过。**只解静态/带宽,旋转计算成本留给 Track 2。**
 
 #### Track 2 — 批量 SIMD sincos(fast_math 跨库 + Render2D,解旋转 transform 计算)
 
@@ -287,7 +289,7 @@ transform→bounds→culling 一趟内联,**不落地 `WorldTransform`/`WorldBou
 - bench:复用 `threaded_cpu_pipeline_bench --rotate` 记 before/after。ADR `docs/adr/<date>-simd-transform-sincos.md`。
 - **预期**:旋转 transform 41ms@1M → ~6–10ms 单线程,叠加线程后 <2ms。
 
-**顺序**:Track 1 先 spike → 等价测试 → 落地(含 threaded 融合);Track 2 先在 fast_math 落 bit-identical 批量 sincos(+自测)再接 Render2D transform 路径 + 等价测试。各自独立 ADR;门禁照旧(Debug+Perf+tidy+scan + 逐字节等价)。
+**顺序**:Track 1 ✅ 已落地(融合系统 + 等价测试 + threaded 融合 + bench + ADR,2026-06-15);Track 2 先在 fast_math 落 bit-identical 批量 sincos(+自测)再接 Render2D transform 路径 + 等价测试。各自独立 ADR;门禁照旧(Debug+Perf+tidy+scan + 逐字节等价)。
 **边界**:仅 CPU 性能精炼,功能不变。SIMD 三角必须落在 fast_math(数学红线:Render2D 不写本地向量/矩阵/三角);SoA 组件存储仍属 host ECS(超范围,不在本阶段)。
 
 ---

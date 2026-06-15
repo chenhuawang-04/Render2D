@@ -202,8 +202,8 @@ Stage 10H integration note:
 
 - `ThreadedCpuPipelineRuntime` is runtime orchestration, not ECS storage;
 - host ECS still passes ordinary component streams through `std::span`;
-- Transform/Bounds/CommandBuild write fixed output slots by deterministic chunk;
-- Culling writes per-chunk scratch and merges visible items in chunk order;
+- the fused spatial front-end (`SpatialCullSystem`, Stage 24 Track 1) writes `WorldTransform` by deterministic chunk and per-chunk visible-item scratch, merged in chunk order (`WorldBounds` is no longer materialized — see the Stage 24 note below);
+- CommandBuild writes fixed output slots by deterministic chunk;
 - Batch remains the single-thread reference tail stage until a dedicated parallel batch design lands.
 
 Stage 21B integration note:
@@ -214,6 +214,12 @@ Stage 21B integration note:
 - they own separate ThreadCenter executors; a host that runs the sorted tail (`sort → batch`) may want to share one executor across both — that consolidation is a host orchestration choice, deliberately not made in this repo.
 
 Stage 21 close note: the remaining (optional, data-driven) 21C/21D were decided on at-scale data, not added. SIMD bounds/culling (21C) is declined — those stages are memory-bandwidth-bound (whole-pipeline threading plateaus at ~1.3x; 20 workers ≈ 4), so SIMD has no win. The real bottleneck is the rotating `TransformSystem` (trig), which is compute-bound: its SIMD `sincos` belongs in **fast_math** (the math invariant forbids Render2D-local trig) and a SoA transform layout (21D) is the **host ECS's** storage choice — both out of this repo's scope. The actionable follow-up is a fast_math batched-`sincos` request, not a Render2D change.
+
+Stage 24 Track 1 note (fused spatial front-end): `SpatialCullSystem` fuses `transform → bounds → culling` into one pass and is now the runtime's front-end (and its single-thread reference). Merge implications:
+
+- `WorldTransform` is still produced (downstream `SpriteInstanceBuildSystem` reads the affine); `WorldBounds` is **no longer written** by `runSpritePipeline` — its span is retained in the signature and capacity-validated but ignored. A host that wants a materialized `WorldBounds` stream must call `BoundsSystem` itself; nothing in this repo's pipeline consumes it past culling.
+- The fused output (`WorldTransform`/`VisibleItem`/draws/batches) is byte-identical to the `TransformSystem → BoundsSystem → CullingSystem` chain; the three granular systems remain the deterministic reference.
+- Win is bandwidth-bound-case only (`1.5–2.2x` static); the rotating/compute case is neutral (`~1.0x`) and still waits on the fast_math batched-`sincos` follow-up above (Stage 24 Track 2).
 
 ## 16. TransformDirtyItem is an ECS-visible component
 

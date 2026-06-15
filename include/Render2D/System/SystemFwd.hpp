@@ -12,6 +12,9 @@ template<class Provider, class Dim>
 struct CullingSystem;
 
 template<class Provider, class Dim>
+struct SpatialCullSystem;
+
+template<class Provider, class Dim>
 struct CommandBuildSystem;
 
 template<class Provider, class Dim>

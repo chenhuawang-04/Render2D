@@ -547,3 +547,48 @@ Interpretation:
   bandwidth ceiling the other stream stages hit.
 - Gated by the shared Stage 21E threshold, so the small sorted tail at 10–12k
   draws stays single-threaded; the win is for large sorted scenes.
+
+## Stage 24 Track 1 Fused Spatial Front-End
+
+The at-scale map above classified the sprite front-end (`transform → bounds →
+culling`) as bandwidth-bound in the static case (whole-pipeline threading
+plateaued at `~1.3x`). `SpatialCullSystem`
+(`include/Render2D/System/SpatialCullSystem.hpp`) fuses the three passes into
+one: it writes the dense `WorldTransform` array (a real downstream output —
+`SpriteInstanceBuildSystem` reads the affine) and the compacted `VisibleItem`
+stream, computing the world AABB only in registers and never materializing
+`WorldBounds`. Byte-identical to the three-system chain (verified by
+`render2d.spatial_cull_system` and a per-frame `memcmp` in the bench). See ADR
+`2026-06-15-fused-spatial-front-end.md`.
+
+- Captured UTC: 2026-06-15. Build tree: `build_perf` (Clang 22, RelWithDebInfo).
+- CPU: 22 logical cores. `render2d_spatial_cull_bench`, single-thread (this bench
+  measures the fusion itself, not threading), `--frames 12 --warmup 4`.
+- Correctness gate: `ctest --preset clang-ninja-perf` passed 76/76; the bench
+  verifies granular/fused byte-equality every frame.
+
+`render2d_spatial_cull_bench`, granular `Transform→Bounds→Culling` vs fused
+`SpatialCullSystem`. `rotate` forces the `MMath::sincos` affine path:
+
+| sprites | visibility | rotate | granular ms | fused ms | speedup |
+|---:|---|:---:|---:|---:|---:|
+| 1000000 | high | no  | 11.03 | 6.52 | 1.69x |
+| 1000000 | low  | no  | 11.73 | 5.39 | 2.18x |
+| 2000000 | high | no  | 29.42 | 18.81 | 1.56x |
+| 1000000 | high | yes | 43.6  | 46.2  | ~1.0x (0.94–1.08x run-to-run) |
+| 2000000 | high | yes | 119.1 | 108.3 | 1.10x |
+
+Interpretation:
+
+- **Static / bandwidth-bound: `1.5x`–`1.6x`** (high visibility, 1M–2M), rising to
+  **`~2.2x`** on the cull-heavy low-visibility stream — fusion drops the
+  `WorldBounds` write + both inter-stage re-reads, and skips the bounds math for
+  mask-failed elements. This is the fusion's target and a clear win.
+- **Rotating / compute-bound: `~1.0x` (neutral).** `MMath::sincos` dominates
+  (`~44 ms`/1M) and swamps the bandwidth savings; fusion neither helps nor hurts
+  meaningfully. Stage 24 Track 2 (batched SIMD `sincos` in fast_math) is the lever
+  for this path. Computing the affine into a local and reusing it for the bounds
+  test (instead of re-reading the just-stored `WorldTransform`) removed a
+  store-to-load dependency that had made this path a consistent `~0.94x` loss.
+- `ThreadedCpuPipelineRuntime` adopts the fused system: the front-end is now one
+  `parallelFor` instead of a three-stage `precede` chain, byte-identical output.
