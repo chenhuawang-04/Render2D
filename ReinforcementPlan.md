@@ -50,6 +50,7 @@
 | 21 | 并行尾段与剩余性能项 | 工程/性能 | 17(门禁) | 文本并行、并行 batch/sort、SIMD/SoA(数据驱动) |
 | 22 | 上屏呈现与可见抓帧 | 功能/集成 | 11 | 真窗口呈现一帧、抓帧/RenderDoc 自动化 |
 | 23 | 宿主引擎集成 / Merge | 集成 | 全部 | ECS 适配层、39 条约束落实、端到端帧 |
+| 24 | CPU 性能精炼(数据驱动,可选) | 性能 | 21(数据) | 融合空间前段(免中间数组)、fast_math 批量 SIMD sincos |
 
 **关键路径建议**:`17(安全网) → 18(atlas) → 19(文本)` 是主功能链;`20`、`21`、`22` 可在其后或并行;`23` 是收敛终点。若以功能交付为先,**Stage 18 不依赖 17,可立即启动**,17 作为并行的工程加固。
 
@@ -262,6 +263,35 @@
 
 ---
 
+### Stage 24 — CPU 性能精炼(数据驱动,可选)
+
+**目标**:压 Stage 21 at-scale profile 暴露的两类 CPU 瓶颈——**带宽密集**的空间前段(融合免中间数组)与**计算密集**的旋转 transform(SIMD 三角)。两轨独立、与 22/23 正交、可任意穿插;均以单线程/标量系统为确定性参考,新路径**逐字节等价**、阈值门控。数据见 `BENCHMARK_BASELINE.md` 的「Stage 21 At-Scale CPU Bottleneck Map」。
+
+#### Track 1 — 融合空间前段(Render2D 仓内,解带宽)
+
+transform→bounds→culling 一趟内联,**不落地 `WorldTransform`/`WorldBounds`**(每元素内存流量 ~190B→~65B)。
+
+- 新增 `include/Render2D/System/SpatialCullSystem.hpp`:`SpatialCullSystem<Provider,Dim>::run(camera, transforms, local_bounds, visibility_masks, out_visible_items)`——世界变换+世界 AABB 仅在寄存器,直接产 `VisibleItem`,与 `Transform→Bounds→Culling` 链**逐字节一致**。
+- 新增 `tests/spatial_cull_system_test.cpp`(`render2d.spatial_cull_system`):memcmp 等价(可见集 + `VisibleItem` 字节;mask / 空 / 非整除计数)。
+- 修改 `ThreadedCpuPipelineRuntime`:把 transform→bounds→culling 的 precede 链换成**单个 `parallelFor` 跑 `SpatialCullSystem`**(顺带去掉每帧 2 次 dispatch + 双 waitIdle 的固定开销);`runSpritePipeline` 对外接口与输出不变。
+- bench:`null_cpu_bench` 加 `--fused-spatial` 开关,量融合 vs 粒度前段 ms。
+- 粒度系统 `TransformSystem`/`BoundsSystem`/`CullingSystem` **不动**(恒为参考)。ADR `docs/adr/<date>-fused-spatial-front-end.md`。
+- **预期**:前段(~12.8ms@1M)~1.5–2.5×(spike 待测);threaded 版有望破当前 1.3× 带宽天花板。**只解静态/带宽,不解旋转三角成本。**
+
+#### Track 2 — 批量 SIMD sincos(fast_math 跨库 + Render2D,解旋转 transform 计算)
+
+- **fast_math(MMath)新增**宽/批量 sincos(如 `sincosWide` 8-lane,或 `sincosBatch(const Angle*, SinCos*, count)`,SSE/AVX);标量 `sincos` 保持参考。
+- ⚠️**硬约束(验收标准)**:批量版必须与标量 `sincos` **逐位一致**(同一多项式向量化、FP contraction 对齐),否则破"跨 ISA 逐字节确定性"(有/无 AVX 的机器结果会不同)。fast_math 侧加 per-lane == 标量 自测。
+- **修改** `TransformSystem<Provider,Dim>::run` / `runDirty`:`rotation≠0` 元素走**分块 SIMD 路径**(栈上 N 个一块 → 批量 sincos → 写 affine,**不分配堆**,仍是纯 system);`rotation==0` 快路径保留。
+- 测试:transform 测试加**标量 vs SIMD 路径逐字节等价**断言(守住上面的硬约束)。
+- bench:复用 `threaded_cpu_pipeline_bench --rotate` 记 before/after。ADR `docs/adr/<date>-simd-transform-sincos.md`。
+- **预期**:旋转 transform 41ms@1M → ~6–10ms 单线程,叠加线程后 <2ms。
+
+**顺序**:Track 1 先 spike → 等价测试 → 落地(含 threaded 融合);Track 2 先在 fast_math 落 bit-identical 批量 sincos(+自测)再接 Render2D transform 路径 + 等价测试。各自独立 ADR;门禁照旧(Debug+Perf+tidy+scan + 逐字节等价)。
+**边界**:仅 CPU 性能精炼,功能不变。SIMD 三角必须落在 fast_math(数学红线:Render2D 不写本地向量/矩阵/三角);SoA 组件存储仍属 host ECS(超范围,不在本阶段)。
+
+---
+
 ## 4. 风险与依赖
 
 - **FreeType 许可证(Stage 19A)**:FTL/GPLv2+ 二选一,必须在接入前定策并写入文档,否则阻断发布。
@@ -269,6 +299,7 @@
 - **GPU runner(Stage 17C/22)**:validation smoke、上屏、抓帧都需要带 GPU/显示的 CI 环境;无 GPU 时已有 graceful skip,但可见性回归可能需 manual checklist 兜底。
 - **依赖路径硬编码(Stage 17A 前置)**:是 CI 与他人复现的前置;未解决前 CI 只能在预置环境运行。
 - **并行确定性(Stage 21)**:任何并行尾段都必须保证与单线程逐字节等价,否则不得合入。
+- **SIMD 数值一致性(Stage 24 Track 2)**:fast_math 批量 sincos 必须与标量 sincos 逐位一致,否则旋转 transform 在有/无 AVX 的机器上输出不同,破跨 ISA 确定性——这是该轨的前置验收门,不满足则不接入。
 
 ---
 
