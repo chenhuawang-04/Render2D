@@ -439,3 +439,111 @@ Interpretation:
   of draws), where the radix sort is the dominant CPU cost.
 - `BatchSystem` was left single-threaded by design (measured tiny and sequential);
   revisit only if a future workload makes the merge scan hot.
+
+## Stage 21 At-Scale CPU Bottleneck Map
+
+The earlier captures stop at 10k draws, where every sprite stage is sub-`0.05 ms`
+and no bottleneck is visible. A Stage 21 sweep at 100k–2M draws was run to decide
+the remaining (data-driven, optional) 21C/21D SIMD/SoA work on real numbers rather
+than the 10k reading.
+
+- Captured UTC: 2026-06-15. Build tree: `build_perf` (Clang 22, RelWithDebInfo).
+- CPU: 22 logical cores (auto worker count = 20). `--frames 8 --warmup 2`.
+
+### Per-stage single-thread cost, high visibility (ms)
+
+Static (`rotation = 0`, so `TransformSystem`'s no-trig fast path):
+
+| sprites | transform | bounds | culling | sprite_cmd | batch |
+|---:|---:|---:|---:|---:|---:|
+| 10000 | 0.024 | 0.040 | 0.027 | 0.035 | 0.029 |
+| 100000 | 0.274 | 0.415 | 0.286 | 0.403 | 0.315 |
+| 500000 | 2.116 | 2.465 | 1.648 | 3.159 | 2.470 |
+| 1000000 | 4.291 | 5.188 | 3.324 | 6.579 | 5.349 |
+| 2000000 | 8.170 | 9.452 | 6.109 | 12.995 | 10.784 |
+
+Rotating (`--dirty-transform-stride 1`: every transform dirty + nonzero rotation,
+so the `MMath::sincos` trig path):
+
+| sprites | transform | bounds | culling | sprite_cmd | batch |
+|---:|---:|---:|---:|---:|---:|
+| 10000 | 0.361 | 0.043 | 0.027 | 0.037 | 0.030 |
+| 100000 | 3.768 | 0.461 | 0.285 | 0.496 | 0.349 |
+| 500000 | 21.810 | 3.194 | 1.709 | 3.250 | 2.771 |
+| 1000000 | 41.387 | 5.955 | 3.440 | 6.527 | 5.245 |
+| 2000000 | 102.749 | 16.682 | 9.288 | 15.705 | 14.844 |
+
+Single-thread sort (`--enable-sort`): `3.17 ms` at 100k, `36.9 ms` at 1M,
+`69.9 ms` at 2M — the dominant sorted-path stage (addressed by Stage 21B).
+
+### Whole sprite pipeline threaded (Stage 10H) speedup vs single-thread
+
+`render2d_threaded_cpu_pipeline_bench --visibility high --min-items-per-task 4096`
+(a `--rotate` flag was added to this bench to cover the compute-bound case the
+static fill never exercised):
+
+| case | 4 workers | 20 workers (auto) |
+|---|---:|---:|
+| static (1M) | 1.16x | 1.34x |
+| static (2M) | 1.16x | 1.27x |
+| rotating (1M) | 2.07x | 2.89x |
+| rotating (2M) | 2.04x | 2.88x |
+
+### Reading and the 21C/21D decision
+
+- **Compute-bound: the rotating `TransformSystem` (trig).** It is by far the
+  largest stage at scale (`41 ms` at 1M, `103 ms` at 2M) and the only one that
+  parallelizes well (`~2.9x` at 20 workers). The runtime already parallelizes it
+  (`ThreadedCpuPipelineRuntime::runSpatialAndCulling`); the further lever is SIMD
+  `sincos`, which belongs in **fast_math** (the math invariant forbids
+  Render2D-local trig), not in this repo. SoA transform columns (21D) would feed
+  that SIMD, but component storage is the **host ECS's** to choose (out of scope).
+  → 21D's actionable part is a fast_math batched-`sincos` request; not a
+  Render2D-local change.
+- **Bandwidth-bound: bounds, culling, command-build, batch.** These are linear
+  passes over POD streams; whole-pipeline threading plateaus at `~1.3x` because
+  20 workers ≈ 4 workers — the signature of a memory-bandwidth wall. SIMD targets
+  ALU, not bandwidth, so **21C (SIMD bounds/culling) is declined**: there is no
+  data-backed win.
+- The one bandwidth-bound stage with a worthwhile parallel win is `batch`, because
+  its dominant cost is the key-comparison scan rather than the output writes — see
+  the next section (Stage 21B batch tail).
+
+## Stage 21B Parallel Deterministic Batch
+
+The at-scale map above shows `BatchSystem` is `5–15 ms` at 1–2M draws, not the
+`~0.02 ms` the 10k-era Stage 21B sort ADR assumed when it left batch
+single-threaded. `ThreadedBatchRuntime` (`include/Render2D/System/ThreadedBatchSystem.hpp`)
+parallelizes it with a segmented start-based scan that is byte-identical to
+`BatchSystem::run` / `runBindless` (verified by `render2d.threaded_batch_system`
+and a per-frame `memcmp` in the bench). See ADR
+`2026-06-15-stage21-parallel-deterministic-batch.md`.
+
+- Captured UTC: 2026-06-15. Build tree: `build_perf` (Clang 22, RelWithDebInfo).
+- CPU: 22 logical cores (auto worker count = 20). `--min-items-per-task 4096
+  --frames 12 --warmup 4`.
+- Correctness gate: `ctest --preset clang-ninja-perf` passed 74/74; the bench
+  verifies reference/threaded byte-equality every frame.
+
+`render2d_threaded_batch_bench` at auto (20) workers. `run_length` is draws per
+batch run: `1` is the degenerate no-merge stream (every draw its own batch), large
+values model the sorted/clustered stream where batching is actually used:
+
+| run_length (regime) | draws | reference ms | threaded ms | speedup |
+|---|---:|---:|---:|---:|
+| 1 (degenerate) | 1000000 | 5.789 | 3.561 | 1.63x |
+| 1 (degenerate) | 2000000 | 12.746 | 7.542 | 1.69x |
+| 8 | 1000000 | 4.043 | 1.334 | 3.03x |
+| 8 | 2000000 | 8.210 | 2.745 | 2.99x |
+| 128 (sorted/clustered) | 1000000 | 4.353 | 1.045 | 4.16x |
+| 128 (sorted/clustered) | 2000000 | 8.714 | 2.068 | 4.21x |
+
+Interpretation:
+
+- On the realistic sorted/clustered stream (few long runs) the win is `3–4x`,
+  because the dominant cost is the parallel start-finding scan and few
+  `BatchCommand`s are written. The degenerate no-merge stream is write-bound (one
+  48-byte `BatchCommand` per draw) and reaches only `~1.6x` — the same
+  bandwidth ceiling the other stream stages hit.
+- Gated by the shared Stage 21E threshold, so the small sorted tail at 10–12k
+  draws stays single-threaded; the win is for large sorted scenes.

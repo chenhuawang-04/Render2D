@@ -81,6 +81,19 @@ render2d_apply_strict_warnings(render2d_threaded_draw_sort_test)
 
 add_test(NAME render2d.threaded_draw_sort COMMAND render2d_threaded_draw_sort_test)
 
+add_executable(render2d_threaded_batch_system_test
+    threaded_batch_system_test.cpp
+)
+target_link_libraries(render2d_threaded_batch_system_test PRIVATE
+    render2d_thread_runtime_support
+)
+target_include_directories(render2d_threaded_batch_system_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_threaded_batch_system_test)
+
+add_test(NAME render2d.threaded_batch_system COMMAND render2d_threaded_batch_system_test)
+
 add_executable(render2d_cpu_system_pipeline_test
     cpu_system_pipeline_test.cpp
 )

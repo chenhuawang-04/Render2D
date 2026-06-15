@@ -55,6 +55,7 @@ struct BenchConfig {
     R2D::U32 worker_count;
     R2D::U32 min_items_per_task;
     VisibilityMode visibility;
+    bool rotate;
 };
 
 struct BenchCounts {
@@ -147,6 +148,7 @@ struct BenchState {
         .worker_count = 0U,
         .min_items_per_task = kDefaultMinItemsPerTask,
         .visibility = VisibilityMode::High,
+        .rotate = false,
     };
 
     for (int index = 1; index < argc_; ++index) {
@@ -181,6 +183,8 @@ struct BenchState {
                 return false;
             }
             ++index;
+        } else if (option == "--rotate") {
+            out_config_.rotate = true;
         } else {
             return false;
         }
@@ -201,7 +205,8 @@ void printUsage() noexcept
         "  --warmup <count>              (>=0)\n"
         "  --workers <count>             (0 uses ThreadCenter default)\n"
         "  --min-items-per-task <count>  (>0)\n"
-        "  --visibility high|low\n",
+        "  --visibility high|low\n"
+        "  --rotate                      (force the trig transform path)\n",
         stderr));
 }
 
@@ -215,6 +220,11 @@ void printUsage() noexcept
 
 void fillInputs(const BenchConfig& config_, BenchState& state_) noexcept
 {
+    // A constant nonzero rotation defeats the rotation==0 fast path in
+    // TransformSystem and forces the MMath::sincos (trig) path, so the benchmark
+    // can measure the compute-bound transform case, not just the bandwidth-bound
+    // static one.
+    const float rotation = config_.rotate ? 0.78539816F : 0.0F;
     for (R2D::U32 index = 0U; index < config_.sprite_count; ++index) {
         const bool hidden = isHiddenLowVisibilitySprite(config_, index);
         const auto grid_x = static_cast<float>(index % 64U) - 32.0F;
@@ -223,7 +233,7 @@ void fillInputs(const BenchConfig& config_, BenchState& state_) noexcept
             .source_id = index,
             .position_x = hidden ? 10000.0F + grid_x : grid_x,
             .position_y = hidden ? 10000.0F + grid_y : grid_y,
-            .rotation_radians = 0.0F,
+            .rotation_radians = rotation,
             .scale_x = 1.0F,
             .scale_y = 1.0F,
         };

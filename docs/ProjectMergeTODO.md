@@ -209,8 +209,11 @@ Stage 10H integration note:
 Stage 21B integration note:
 
 - `ThreadedDrawSortRuntime` (the dedicated deterministic parallel sort anticipated above) parallelizes only the radix sort; its output is byte-identical to `DrawSortSystem::run` (bucket-major-then-chunk-order scatter offsets reproduce the serial stable permutation — see ADR `2026-06-15-stage21-parallel-deterministic-draw-sort.md`);
-- `BatchSystem` still has no parallel design and remains the single-thread reference tail (measured tiny and inherently sequential);
-- the runtime consumes/produces `std::span`, owns only `McVector` histogram/offset scratch, and is threshold-gated via `ParallelPolicy.hpp` (#22).
+- `ThreadedBatchRuntime` (added after the at-scale sweep showed batch is `5–15 ms` at 1–2M draws, not the `~0.02 ms` of the 10k reading) parallelizes the batch merge; its output is byte-identical to `BatchSystem::run` / `runBindless` via a segmented start-based scan, threshold-gated, with a full-capacity contract (batch stream ≥ draw count) — see ADR `2026-06-15-stage21-parallel-deterministic-batch.md`. `BatchSystem` stays the single-thread reference and sub-threshold path;
+- both runtimes consume/produce `std::span`, own only `McVector` scratch, and are threshold-gated via `ParallelPolicy.hpp` (#22);
+- they own separate ThreadCenter executors; a host that runs the sorted tail (`sort → batch`) may want to share one executor across both — that consolidation is a host orchestration choice, deliberately not made in this repo.
+
+Stage 21 close note: the remaining (optional, data-driven) 21C/21D were decided on at-scale data, not added. SIMD bounds/culling (21C) is declined — those stages are memory-bandwidth-bound (whole-pipeline threading plateaus at ~1.3x; 20 workers ≈ 4), so SIMD has no win. The real bottleneck is the rotating `TransformSystem` (trig), which is compute-bound: its SIMD `sincos` belongs in **fast_math** (the math invariant forbids Render2D-local trig) and a SoA transform layout (21D) is the **host ECS's** storage choice — both out of this repo's scope. The actionable follow-up is a fast_math batched-`sincos` request, not a Render2D change.
 
 ## 16. TransformDirtyItem is an ECS-visible component
 
