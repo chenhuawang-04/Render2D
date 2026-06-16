@@ -32,11 +32,13 @@ that reshaped the track:
 
    | build | `TransformSystem` (scalar) | `BatchedTransformSystem` |
    |---|---|---|
-   | baseline (no FMA) | ~50 ms | ~40 ms |
-   | AVX2+FMA | **~7 ms** | ~7.8 ms |
+   | baseline (no FMA) | ~28–50 ms | ~24–40 ms |
+   | AVX2+FMA | **~5.7–7 ms** | ~6.6–7.8 ms |
 
-   The ~7x jump comes from `std::fma` becoming a single hardware instruction once
-   `-mfma` is set — it applies to the **existing** `TransformSystem`. The explicit
+   The ~5–7x jump (baseline-dependent; re-measured 2026-06-16 at 27.6→5.7 ms ≈
+   4.9x on a warm run, up to ~7x from a ~50 ms cold baseline — the FMA absolute is
+   the stable ~5.7–6.9 ms end) comes from `std::fma` becoming a single hardware
+   instruction once `-mfma` is set — it applies to the **existing** `TransformSystem`. The explicit
    8-wide `BatchedTransformSystem` is **bandwidth-bound** (AoS→SoA gather + Mat3
    scatter) and is *not* a clear win: ~0.9x on FMA, ~1.26x on non-FMA.
 
@@ -80,7 +82,7 @@ differs. The determinism test compares against the general-formula reference
 
 ## Consequences
 
-- AVX2 builds (the perf preset, and host engines that opt in) get ~7x on the
+- AVX2 builds (the perf preset, and host engines that opt in) get ~5–7x on the
   rotating world-transform build for free on the existing `TransformSystem`, plus
   the ~600x-tighter sincos accuracy. Baseline builds are unchanged in behaviour
   and back to their prior performance (regression fixed).
