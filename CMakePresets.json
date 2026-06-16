@@ -29,7 +29,8 @@
         "CMAKE_CXX_COMPILER": "clang++",
         "RENDER2D_BUILD_TESTS": "ON",
         "RENDER2D_BUILD_BENCHMARKS": "ON",
-        "RENDER2D_REQUIRE_VULKAN": "ON"
+        "RENDER2D_REQUIRE_VULKAN": "ON",
+        "RENDER2D_ENABLE_AVX2": "ON"
       }
     }
   ],

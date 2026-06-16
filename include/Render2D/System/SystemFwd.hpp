@@ -15,6 +15,9 @@ template<class Provider, class Dim>
 struct SpatialCullSystem;
 
 template<class Provider, class Dim>
+struct BatchedTransformSystem;
+
+template<class Provider, class Dim>
 struct CommandBuildSystem;
 
 template<class Provider, class Dim>

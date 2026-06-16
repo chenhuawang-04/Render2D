@@ -67,6 +67,18 @@ target_link_libraries(render2d_spatial_cull_bench PRIVATE
 )
 render2d_apply_strict_warnings(render2d_spatial_cull_bench)
 
+# Stage 24 Track 2: this bench is compiled with AVX2+FMA so MMath::mat3FromTrsArray
+# takes its 8-wide SIMD path; it measures the speedup that becomes available if
+# Render2D enables AVX2+FMA. The rest of Render2D builds at the baseline ISA.
+add_executable(render2d_batched_transform_bench
+    batched_transform_bench.cpp
+)
+target_link_libraries(render2d_batched_transform_bench PRIVATE
+    Render2D::Render2D
+)
+target_compile_options(render2d_batched_transform_bench PRIVATE -mavx2 -mfma)
+render2d_apply_strict_warnings(render2d_batched_transform_bench)
+
 if(RENDER2D_BUILD_TESTS)
     add_test(NAME render2d.null_cpu_bench_smoke
         COMMAND render2d_null_cpu_bench --scenario mixed --sprites 1024 --texts 128 --frames 2 --warmup 1
@@ -103,6 +115,9 @@ if(RENDER2D_BUILD_TESTS)
     )
     add_test(NAME render2d.spatial_cull_bench_smoke
         COMMAND render2d_spatial_cull_bench --sprites 4096 --frames 2 --warmup 1 --visibility low --rotate
+    )
+    add_test(NAME render2d.batched_transform_bench_smoke
+        COMMAND render2d_batched_transform_bench --sprites 4096 --frames 2 --warmup 1
     )
     add_test(NAME render2d.null_cpu_bench_invalid_frames
         COMMAND render2d_null_cpu_bench --scenario mixed --frames nope

@@ -54,6 +54,7 @@
 #include "Render2D/Native/VulkanUploadRingRuntime.hpp"
 #include "Render2D/Storage/StorageFwd.hpp"
 #include "Render2D/System/BatchSystem.hpp"
+#include "Render2D/System/BatchedTransformSystem.hpp"
 #include "Render2D/System/BoundsSystem.hpp"
 #include "Render2D/System/CommandBufferSystem.hpp"
 #include "Render2D/System/CommandBuildSystem.hpp"

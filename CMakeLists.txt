@@ -14,6 +14,7 @@ option(RENDER2D_BUILD_TESTS "Build Render2D tests" ON)
 option(RENDER2D_BUILD_BENCHMARKS "Build Render2D benchmark smoke targets" OFF)
 option(RENDER2D_REQUIRE_VULKAN "Require the Vulkan SDK at configure time" ON)
 option(RENDER2D_BUILD_FONT_RUNTIME "Build the FreeType+HarfBuzz+SheenBidi font/text runtime support target (Stage 19)" ON)
+option(RENDER2D_ENABLE_AVX2 "Compile consumers with AVX2+FMA (raises the minimum CPU to x86-64-v3 / Haswell 2013+); enables hardware FMA in the fast_math kernels. See docs/adr/2026-06-16-render2d-avx2-fma-build-option.md" OFF)
 
 # ----------------------------------------------------------------------------
 # Engine dependencies (host-engine source trees, NOT vendored in this repo).
@@ -186,6 +187,21 @@ add_library(Render2D::Render2D ALIAS Render2D)
 add_library(render2d_thread_runtime_support INTERFACE)
 
 target_compile_features(Render2D INTERFACE cxx_std_23)
+
+# Stage 24 Track 2: optional AVX2+FMA. With hardware FMA the fast_math sincos
+# kernel becomes a single instruction (rotating-transform world build ~7x faster)
+# and mat3FromTrsArray takes its 8-wide SIMD path. Raises the minimum CPU to
+# x86-64-v3 (Haswell, 2013+), so it is OFF by default to preserve the baseline-ISA
+# contract; the clang-ninja-perf preset turns it ON. The math kernels stay correct
+# and bit-consistent either way (the scalar path is FMA-conditional). See
+# docs/adr/2026-06-16-render2d-avx2-fma-build-option.md.
+if(RENDER2D_ENABLE_AVX2)
+    if(MSVC)
+        target_compile_options(Render2D INTERFACE /arch:AVX2)
+    else()
+        target_compile_options(Render2D INTERFACE -mavx2 -mfma)
+    endif()
+endif()
 target_include_directories(Render2D INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${RENDER2D_VECTOR_NEW_INCLUDE_DIR}>

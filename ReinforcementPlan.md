@@ -280,17 +280,18 @@ transform→bounds→culling 一趟内联,**不落地 `WorldBounds`**(世界 AAB
 - 粒度系统 `TransformSystem`/`BoundsSystem`/`CullingSystem` **不动**(恒为参考)。ADR `docs/adr/2026-06-15-fused-spatial-front-end.md`。
 - **实测(单线程,RelWithDebInfo)**:静态/带宽 **1.5–1.6×@1M–2M high、~2.2× low(剔除密集)**;旋转/计算 **~1.0×(中性,sincos 主导,被 Track 2 解)**。门禁:Debug 56/56、Perf 76/76、tidy 净、scan 过。**只解静态/带宽,旋转计算成本留给 Track 2。**
 
-#### Track 2 — 批量 SIMD sincos(fast_math 跨库 + Render2D,解旋转 transform 计算)
+#### Track 2 — 批量/精确 SIMD sincos(fast_math 跨库 + Render2D)✅ 已落地 2026-06-16
 
-- **fast_math(MMath)新增**宽/批量 sincos(如 `sincosWide` 8-lane,或 `sincosBatch(const Angle*, SinCos*, count)`,SSE/AVX);标量 `sincos` 保持参考。
-- ⚠️**硬约束(验收标准)**:批量版必须与标量 `sincos` **逐位一致**(同一多项式向量化、FP contraction 对齐),否则破"跨 ISA 逐字节确定性"(有/无 AVX 的机器结果会不同)。fast_math 侧加 per-lane == 标量 自测。
-- **修改** `TransformSystem<Provider,Dim>::run` / `runDirty`:`rotation≠0` 元素走**分块 SIMD 路径**(栈上 N 个一块 → 批量 sincos → 写 affine,**不分配堆**,仍是纯 system);`rotation==0` 快路径保留。
-- 测试:transform 测试加**标量 vs SIMD 路径逐字节等价**断言(守住上面的硬约束)。
-- bench:复用 `threaded_cpu_pipeline_bench --rotate` 记 before/after。ADR `docs/adr/<date>-simd-transform-sincos.md`。
-- **预期**:旋转 transform 41ms@1M → ~6–10ms 单线程,叠加线程后 <2ms。
+落地结果与原设想不同——**实测把结论改了**:
 
-**顺序**:Track 1 ✅ 已落地(融合系统 + 等价测试 + threaded 融合 + bench + ADR,2026-06-15);Track 2 先在 fast_math 落 bit-identical 批量 sincos(+自测)再接 Render2D transform 路径 + 等价测试。各自独立 ADR;门禁照旧(Debug+Perf+tidy+scan + 逐字节等价)。
-**边界**:仅 CPU 性能精炼,功能不变。SIMD 三角必须落在 fast_math(数学红线:Render2D 不写本地向量/矩阵/三角);SoA 组件存储仍属 host ECS(超范围,不在本阶段)。
+- **fast_math(`Melosyne-Math` `83b1977`,已推送)**:不是"新增宽 sincos",而是**统一** scalar/SIMD 到一个寄存器级核(`detail::sincosScalarKernel`/`sincosAvx2Reg`/`sincosSseReg`),`mat3FromTrs*` 全复用。二段 Cody–Waite 归约把精度从 3e-4 收紧到 **~4.8e-7(~600×)**;`fmaOrMulAdd` 使其 **FMA 条件化**——FMA 目标上 scalar 与 SIMD lane **逐位一致**(满足跨 ISA 确定性硬约束,`test_trig_simd_parity.cpp` 钉死),无 FMA 目标用 mul/add(避免 `std::fma` 退化成 libm 调用的回退)。
+- **硬约束达成**:位一致只在 FMA 层保证(也只有该层编译 SIMD lane),正是会用到 SIMD/threaded 批量的层;非 FMA 层各自内部一致。
+- **Render2D**:`BatchedTransformSystem`(瓦片 gather→`mat3FromTrsArray`→scatter,无堆分配,纯 system),与通用公式逐元素参考**逐字节一致**(`render2d.batched_transform_system`)。
+- ⚠️**关键实测结论**:**真正的杠杆是 FMA 硬件,不是显式批量**。1M 旋转 transform:非 FMA ~50ms → AVX2+FMA **~7ms(~7×)**,作用在**现有 `TransformSystem`** 上(`std::fma` 成单条指令)。显式批量受 gather/scatter **带宽**限制,不是赢家(FMA 下 0.90×,非 FMA 下 1.26×)——故 `BatchedTransformSystem` 保留为非 FMA 选项/契约测试,但 `TransformSystem` 仍是默认路径。
+- **构建契约**:新增 `RENDER2D_ENABLE_AVX2`(默认 OFF,perf 预设 ON)→ `-mavx2 -mfma`,把 AVX2 构建抬到 x86-64-v3(Haswell 2013+),debug 保持 baseline。ADR `docs/adr/2026-06-16-render2d-avx2-fma-build-option.md`。
+- **门禁**:fast_math 83/83+模块绿并推送;Render2D Debug 57/57、Perf 78/78(开 AVX2+FMA)。
+
+**边界**:仅 CPU 性能精炼,功能不变。SIMD 三角落在 fast_math(数学红线:Render2D 不写本地向量/矩阵/三角);SoA 组件存储仍属 host ECS(超范围)。
 
 ---
 

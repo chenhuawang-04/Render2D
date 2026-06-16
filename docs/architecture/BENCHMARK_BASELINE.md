@@ -592,3 +592,41 @@ Interpretation:
   store-to-load dependency that had made this path a consistent `~0.94x` loss.
 - `ThreadedCpuPipelineRuntime` adopts the fused system: the front-end is now one
   `parallelFor` instead of a three-stage `precede` chain, byte-identical output.
+
+## Stage 24 Track 2 — rotating transform: FMA is the lever, not explicit batching
+
+Track 2 targeted the **rotating / compute-bound** transform path (the `~1.0x`
+neutral case above). The plan was an explicit SIMD batch (`MMath::mat3FromTrsArray`,
+8-wide AVX2 `sincos`), exposed as `BatchedTransformSystem`. Measurement reshaped
+the conclusion.
+
+- Build: `build_perf` (Clang 22, RelWithDebInfo), 22 logical cores.
+  `render2d_batched_transform_bench` (compiled `-mavx2 -mfma` regardless of preset),
+  per-element `TransformSystem` vs tiled `BatchedTransformSystem`, `--frames 10
+  --warmup 3`, all items rotated, per-frame `memcmp` asserting byte-equality.
+- The `fast_math` sincos kernel was unified (scalar==SIMD bit-exact on FMA, two-step
+  Cody-Waite, ~600x tighter accuracy) and made FMA-conditional; `Melosyne-Math`
+  `83b1977`.
+
+1M rotating world-transform build:
+
+| build | `TransformSystem` (scalar) ms | `BatchedTransformSystem` ms | batch speedup |
+|---|---:|---:|---:|
+| baseline (no `-mfma`) | ~50 | ~40 | 1.26x |
+| AVX2+FMA | **~7** | ~7.8 | 0.90x |
+
+Interpretation:
+
+- **The lever is hardware FMA, not explicit batching.** `-mfma` turns the kernel's
+  `std::fma` into a single instruction, taking the *existing* `TransformSystem`
+  from ~50 ms to **~7 ms (~7x)** on rotating input. (Early on, forcing `std::fma`
+  with no FMA hardware *regressed* the baseline to 113 ms — a libm call per op —
+  hence the FMA-conditional kernel.)
+- **The explicit batch is bandwidth-bound** (AoS→SoA gather + Mat3 scatter) and is
+  not a clear win: ~0.90x on FMA, ~1.26x on non-FMA. `BatchedTransformSystem` is
+  kept (byte-identical, useful on non-FMA and as the `mat3FromTrsArray` contract
+  test) but `TransformSystem` stays the default path.
+- Decision: `RENDER2D_ENABLE_AVX2` (the `clang-ninja-perf` preset turns it on)
+  raises AVX2 builds to x86-64-v3 and unlocks the ~7x. See ADR
+  `2026-06-16-render2d-avx2-fma-build-option.md`.
+

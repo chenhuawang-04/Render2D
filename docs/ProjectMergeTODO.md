@@ -221,6 +221,12 @@ Stage 24 Track 1 note (fused spatial front-end): `SpatialCullSystem` fuses `tran
 - The fused output (`WorldTransform`/`VisibleItem`/draws/batches) is byte-identical to the `TransformSystem → BoundsSystem → CullingSystem` chain; the three granular systems remain the deterministic reference.
 - Win is bandwidth-bound-case only (`1.5–2.2x` static); the rotating/compute case is neutral (`~1.0x`) and still waits on the fast_math batched-`sincos` follow-up above (Stage 24 Track 2).
 
+Stage 24 Track 2 note (rotating transform / AVX2+FMA): the fast_math `sincos` was unified so scalar and SIMD agree bit-for-bit on FMA targets and the kernel is FMA-conditional (`Melosyne-Math` `83b1977`). Merge implications:
+
+- The rotating-transform lever is **hardware FMA**, not explicit batching: with `-mfma` the existing `TransformSystem` goes ~50 ms → ~7 ms (~7x) at 1M because `std::fma` becomes one instruction. The explicit `BatchedTransformSystem` is bandwidth-bound and not a clear win (~0.9x FMA / ~1.26x non-FMA); it is kept as a non-FMA option and as the `mat3FromTrsArray` contract test, but `TransformSystem` stays the default path.
+- **Build-contract knob:** `RENDER2D_ENABLE_AVX2` (OFF by default; the `clang-ninja-perf` preset sets it ON) adds `-mavx2 -mfma` to the `Render2D` INTERFACE target, raising the minimum CPU for AVX2 builds to **x86-64-v3 (Haswell, 2013+)**. A host engine merging Render2D decides its own target ISA: leave it OFF for baseline portability (math still correct, just no FMA speedup) or set it ON to unlock the ~7x and the 8-wide `mat3FromTrsArray`. See ADR `2026-06-16-render2d-avx2-fma-build-option.md`.
+- `BatchedTransformSystem` is byte-identical to a per-element `MMath::sincos` build (deterministic, chunk-invariant) and differs from `TransformSystem::run` only by the sign of zero in `m01` for `rotation==0` (numerically equal). A host wiring it into a threaded driver gets bit-for-bit chunk merging on FMA targets.
+
 ## 16. TransformDirtyItem is an ECS-visible component
 
 Stage 10E adds `TransformDirtyItem<Provider, Dim>` as a Strict POD dirty-index component.
