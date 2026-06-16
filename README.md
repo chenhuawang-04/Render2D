@@ -60,17 +60,21 @@ an existing build directory, reconfigure a fresh build or set the individual var
 the non-Vulkan paths without an SDK (the Vulkan smoke tests then skip — see
 [No GPU required](#no-gpu-required)).
 
-### Font/text submodules
+### Third-party submodules
 
 The Stage 19 font/text runtime uses three git submodules (`third_party/freetype`,
-`third_party/harfbuzz`, `third_party/sheenbidi`). After cloning:
+`third_party/harfbuzz`, `third_party/sheenbidi`), and the Stage 22 present-host
+uses a fourth (`third_party/sdl`, SDL3). After cloning:
 
 ```bash
 git submodule update --init --recursive
 ```
 
-They build as static libraries behind `RENDER2D_BUILD_FONT_RUNTIME` (default `ON`); set it `OFF` to
-skip the font runtime entirely.
+The font submodules build as static libraries behind `RENDER2D_BUILD_FONT_RUNTIME` (default `ON`);
+set it `OFF` to skip the font runtime entirely. SDL3 builds as a static library (video + Vulkan only)
+behind `RENDER2D_BUILD_PRESENT_HOST` (default `ON`) for on-screen presentation; a host engine sets it
+`OFF` and supplies its own window/surface. Both are exposed only through internal support targets and
+are never included from the umbrella `Render2D.hpp`.
 
 ## Build & test
 

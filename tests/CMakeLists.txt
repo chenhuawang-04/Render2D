@@ -321,6 +321,24 @@ if(RENDER2D_BUILD_FONT_RUNTIME AND TARGET render2d_font_runtime_support)
     add_test(NAME render2d.vulkan_glyph_text_render COMMAND render2d_vulkan_glyph_text_render_test)
 endif()
 
+# Stage 22A: SDL3 present-host build/link smoke. Gated on the present-host option
+# + target so a RENDER2D_BUILD_PRESENT_HOST=OFF build (e.g. host-engine merge)
+# simply omits it. Links the internal render2d_present_host_support target.
+if(RENDER2D_BUILD_PRESENT_HOST AND TARGET render2d_present_host_support)
+    add_executable(render2d_present_host_smoke
+        present_host_smoke.cpp
+    )
+    target_link_libraries(render2d_present_host_smoke PRIVATE
+        render2d_present_host_support
+    )
+    target_include_directories(render2d_present_host_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    render2d_apply_strict_warnings(render2d_present_host_smoke)
+
+    add_test(NAME render2d.present_host_smoke COMMAND render2d_present_host_smoke)
+endif()
+
 add_executable(render2d_text_glyph_system_test
     text_glyph_system_test.cpp
 )

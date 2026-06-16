@@ -10,3 +10,7 @@
 	path = third_party/sheenbidi
 	url = https://github.com/Tehreer/SheenBidi.git
 	shallow = true
+[submodule "third_party/sdl"]
+	path = third_party/sdl
+	url = https://github.com/libsdl-org/SDL.git
+	shallow = true

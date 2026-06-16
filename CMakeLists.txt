@@ -14,6 +14,7 @@ option(RENDER2D_BUILD_TESTS "Build Render2D tests" ON)
 option(RENDER2D_BUILD_BENCHMARKS "Build Render2D benchmark smoke targets" OFF)
 option(RENDER2D_REQUIRE_VULKAN "Require the Vulkan SDK at configure time" ON)
 option(RENDER2D_BUILD_FONT_RUNTIME "Build the FreeType+HarfBuzz+SheenBidi font/text runtime support target (Stage 19)" ON)
+option(RENDER2D_BUILD_PRESENT_HOST "Build the SDL3 present-host support target (Stage 22): an optional, isolated window+VkSurfaceKHR provider for on-screen presentation. Render2D core stays windowless; a host engine sets this OFF and provides its own surface. See docs/adr/2026-06-16-stage22-sdl3-present-host.md" ON)
 option(RENDER2D_ENABLE_AVX2 "Compile consumers with AVX2+FMA (raises the minimum CPU to x86-64-v3 / Haswell 2013+); enables hardware FMA in the fast_math kernels. See docs/adr/2026-06-16-render2d-avx2-fma-build-option.md" OFF)
 
 # ----------------------------------------------------------------------------
@@ -281,6 +282,81 @@ if(RENDER2D_BUILD_FONT_RUNTIME)
             if(render2d_font_lib_includes)
                 set_property(TARGET ${render2d_font_lib} PROPERTY
                     INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${render2d_font_lib_includes}"
+                )
+            endif()
+        endif()
+    endforeach()
+endif()
+
+# Stage 22 SDL3 present-host support. SDL3 builds as a static library behind the
+# internal render2d_present_host_support target and is NEVER included from the
+# public umbrella Render2D.hpp -- the same isolation pattern as
+# render2d_font_runtime_support and render2d_thread_runtime_support. Render2D's
+# core stays windowless; this optional target lets a test/dev harness obtain a
+# real window + VkSurfaceKHR (via SDL) to feed the existing VulkanSwapchainRuntime,
+# which already takes a host-provided surface. A host engine sets
+# RENDER2D_BUILD_PRESENT_HOST=OFF at merge and supplies its own surface instead.
+# Code that needs it (include/Render2D/Present/*) links this target.
+# See docs/adr/2026-06-16-stage22-sdl3-present-host.md.
+if(RENDER2D_BUILD_PRESENT_HOST)
+    # Static, video-only (window + events + Vulkan surface). Keep SDL_VIDEO and
+    # SDL_VULKAN; disable the audio, input-device, camera, power, sensor, dialog,
+    # tray, notification subsystems and SDL's own GL/2D/GPU renderers -- Render2D
+    # draws through Vulkan directly and the present-host only needs a window and a
+    # VkSurfaceKHR. set(... FORCE) before add_subdirectory wins over SDL's option()
+    # defaults (same mechanism as the font block above).
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+    set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+    set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+    set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+    set(SDL_UNINSTALL OFF CACHE BOOL "" FORCE)
+
+    set(SDL_VIDEO ON CACHE BOOL "" FORCE)
+    set(SDL_VULKAN ON CACHE BOOL "" FORCE)
+
+    set(SDL_AUDIO OFF CACHE BOOL "" FORCE)
+    set(SDL_RENDER OFF CACHE BOOL "" FORCE)
+    set(SDL_GPU OFF CACHE BOOL "" FORCE)
+    set(SDL_CAMERA OFF CACHE BOOL "" FORCE)
+    set(SDL_JOYSTICK OFF CACHE BOOL "" FORCE)
+    set(SDL_HAPTIC OFF CACHE BOOL "" FORCE)
+    set(SDL_HIDAPI OFF CACHE BOOL "" FORCE)
+    set(SDL_POWER OFF CACHE BOOL "" FORCE)
+    set(SDL_SENSOR OFF CACHE BOOL "" FORCE)
+    set(SDL_DIALOG OFF CACHE BOOL "" FORCE)
+    set(SDL_TRAY OFF CACHE BOOL "" FORCE)
+    set(SDL_NOTIFICATION OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
+    set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/sdl" "${CMAKE_CURRENT_BINARY_DIR}/_deps/sdl")
+
+    add_library(render2d_present_host_support INTERFACE)
+    target_link_libraries(render2d_present_host_support INTERFACE
+        Render2D::Render2D
+        SDL3::SDL3-static
+    )
+    if(TARGET Vulkan::Vulkan)
+        target_link_libraries(render2d_present_host_support INTERFACE Vulkan::Vulkan)
+    endif()
+
+    # Treat SDL's headers as system includes so their warnings do not trip
+    # Render2D's -Werror when Present/* includes <SDL3/SDL.h> (same treatment as
+    # the font + ThreadCenter headers above). SDL exposes its include dirs via the
+    # SDL3::Headers interface target; SDL3-static links it. set_property cannot be
+    # used on an ALIAS (SDL3::Headers), so resolve to the real target first.
+    foreach(render2d_sdl_target IN ITEMS SDL3-static SDL3::Headers)
+        if(TARGET ${render2d_sdl_target})
+            get_target_property(render2d_sdl_real ${render2d_sdl_target} ALIASED_TARGET)
+            if(NOT render2d_sdl_real)
+                set(render2d_sdl_real ${render2d_sdl_target})
+            endif()
+            get_target_property(render2d_sdl_includes ${render2d_sdl_real} INTERFACE_INCLUDE_DIRECTORIES)
+            if(render2d_sdl_includes)
+                set_property(TARGET ${render2d_sdl_real} PROPERTY
+                    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${render2d_sdl_includes}"
                 )
             endif()
         endif()
