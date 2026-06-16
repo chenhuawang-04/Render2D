@@ -233,17 +233,30 @@
 
 ---
 
-### Stage 22 — 上屏呈现与可见抓帧(功能/集成补强)
+### Stage 22 — 上屏呈现与可见抓帧(功能/集成补强)—— 计划已锁定 2026-06-16
 
-**目标**:swapchain/acquire/present runtime 已具备但只做了 headless 状态测试。补上真实呈现一帧与抓帧自动化。窗口/surface 所有权按设计在宿主,故用 **test-only host harness** 扮演宿主角色来证明,不把窗口所有权放进 Render2D。
+**目标**:swapchain/acquire/present runtime(Stage 11)已具备但只做了 headless 状态测试(surface = `VK_NULL_HANDLE`、device = `VK_NULL_HANDLE`)。补上"真实 surface → 呈现一帧 → 抓帧对照"这一缺失的**可见验证层**。GPU 侧 runtime 已完工并契约验证(`VulkanSwapchainRuntime::createSwapchain`/`adoptSwapchain` + `SwapchainOutOfDate` 重建;`VulkanPresentRuntime::acquireNextImage`/`present`),本阶段不动它们——只补真实 surface 与对照验证。
 
-- **22A test-only 窗口/surface harness**:在测试侧创建窗口与 `VkSurfaceKHR`(host 角色),交给 `VulkanSwapchainRuntime` 创建/adopt swapchain。
-- **22B 真实呈现一帧**:复用 Stage 11 `VulkanPresentRuntime` 完成 acquire→render→present,屏上出现已验证的 sprite/atlas/文本内容。
-- **22C 可见抓帧自动化**:窗口帧截屏并与离屏 readback 基线对照,作为可见性回归。
-- **22D RenderDoc 自动化 capture**:把 capture 目标从离屏 smoke exe 切到真实呈现帧,形成可重复的抓帧产物。
+**窗口后端决策(2026-06-16,用户拍板)**:统一采用 **SDL3,作为 git submodule 引入**(`third_party/sdl`,SDL `release-3.x` 线;精确 tag 在 22A 落地时钉死,与 freetype/harfbuzz/sheenbidi 同等 pin 方式)。**关键约束:这不是一次性 test-only harness——用户后续要完整的窗口渲染**,故 SDL3 落为一个**可选、隔离的"呈现宿主(present-host)"子系统**,而非临时测试夹具。
 
-**边界**:Render2D 仍不拥有窗口/surface;本阶段是"宿主集成证明",harness 属于 test-only,不进生产 API。
-**验收**:屏上呈现内容与离屏基线一致;present 路径 validation clean;out-of-date/resize 走 `SwapchainOutOfDate` 重建;无 GPU/无显示环境时该套件 graceful skip。
+**与 windowless 红线的调和(必须守住)**:Render2D **核心仍 100% 不拥有窗口**——umbrella `Render2D.hpp`、ECS 组件、纯系统、native runtime 一律不变、不见 SDL。SDL3 完全比照 `render2d_font_runtime_support` / `render2d_thread_runtime_support` 的隔离范式(`CMakeLists.txt` font 块为模板):
+- 新构建开关 `RENDER2D_BUILD_PRESENT_HOST`(本仓默认 **ON**,作开发/验证;**宿主 merge 时置 OFF**——宿主自带窗口+surface)。
+- 新内部 INTERFACE target `render2d_present_host_support`(链 `Render2D::Render2D` + SDL3 静态库 + Vulkan;SDL 头作 **system include** 以免触 `-Werror`);**绝不**从 umbrella 暴露。
+- 新头目录 `include/Render2D/Present/`(类比 `include/Render2D/Font/`),需链上述 target 才可用。
+- swapchain/present runtime **零改动**:它们本就以宿主提供的 `VkSurfaceKHR` 为入参(`VulkanSwapchainCreateConfig::surface`,`VulkanSwapchainRuntime.hpp:177`),SDL3 只是该 surface 的一个**具体提供者**(`SDL_Vulkan_CreateSurface`)。故本阶段**不违反** `ProjectMergeTODO` #11(宿主拥有窗口/surface)——present-host 是"可被宿主替换的默认呈现宿主":独立形态下自给,merge 时 `OFF` 让位宿主。
+
+**"完整窗口渲染"范围护栏**:present-host 是一层**薄的 SDL3↔Vulkan 呈现壳**(窗口 + surface + 实例 surface 扩展 + swapchain 生命周期 + present 循环驱动)。**严禁**借此长出 input/audio/场景/资源/gameplay 子系统——那些恒为宿主职责、超出本库范围(见 `ARCHITECTURE.md` 非目标清单)。
+
+子阶段:
+- **22A — SDL3 submodule + 隔离 present-host target(构建管线 + ADR)**:加 `third_party/sdl` submodule;加 `RENDER2D_BUILD_PRESENT_HOST` 开关;按 font 块范式配置 SDL **静态库、仅 video/events**(关 audio/joystick/haptic/hidapi/sensor/camera/power、关 SDL 自带 render——用 Vulkan 直绘)、`SDL_VULKAN ON`(确切 CMake 选项拼写在 22A 核对);`add_subdirectory` + 建 `render2d_present_host_support`;SDL 头作 system include;新建 `include/Render2D/Present/`。**新 ADR** 记录依赖 + 隔离契约(新依赖须立 ADR——这是仓规)。**验收**:ON/OFF 两态均能 configure+build;umbrella 纯度扫描(SDL 不泄漏进 `Render2D.hpp`/组件)通过;既有约束扫描仍 3/3 净。
+- **22B — present-host 窗口/surface/实例 API → 真实 swapchain**:在 `include/Render2D/Present/` 落一个**可复用**的 `PresentHost`——建 SDL 窗口、用 `SDL_Vulkan_GetInstanceExtensions` 取 surface 实例扩展建 instance、`SDL_Vulkan_CreateSurface` 取 `VkSurfaceKHR`、挑 present-capable 队列,喂给 `VulkanSwapchainRuntime::createSwapchain`(以**真实 surface** 取代 headless `VK_NULL_HANDLE`)。**验收**:窗口打开、swapchain 建成、validation clean;无 GPU/无显示时 graceful skip。
+- **22C — 真实呈现一帧**:驱动 `VulkanPresentRuntime::acquireNextImage → 录制现有 sprite/atlas/文本 draw 到 swapchain image → present`;复用现有离屏录制,仅切换目标 image;resize/out-of-date → `SwapchainOutOfDate` 重建(runtime 已支持)。**验收**:屏上出现已验证内容;present 路径 validation clean;resize 走重建。
+- **22D — 可见抓帧回归(对照离屏基线)**:读回已呈现的 swapchain image,与现有离屏 readback 基线 memcmp/比对——**同场景必须同像素**(离屏仍是正确性参考,上屏对其验证)。**验收**:on-screen == offscreen baseline(沿用既有 readback 容差)。
+- **22E — RenderDoc 程序化 capture + 收口**:present 帧外包 `StartFrameCapture/EndFrameCapture` → 可重复 `.rdc` 产物,把 capture 目标从离屏 smoke exe 切到真实呈现帧;ADR/living docs(`PROJECT_INDEX`/`ARCHITECTURE`/`ProjectMergeTODO` #11 注记)同步;统一质量门复跑(`BENCHMARK_BASELINE` 不受影响)。**验收**:可重复 capture 产物;GPU/显示门控。
+
+**边界**:Render2D 核心仍不拥有窗口/surface;SDL3 present-host 是**可选、隔离、可被宿主替换**的呈现宿主,绝不进 umbrella/组件,merge 时 `RENDER2D_BUILD_PRESENT_HOST=OFF` 让位宿主;不长出 input/audio/场景/资源子系统。
+**验收(总)**:① ON/OFF 两态构建均绿、umbrella 纯度保持;② 屏上呈现 == 离屏基线;③ present 路径 validation clean;④ out-of-date/resize 走 `SwapchainOutOfDate` 重建;⑤ 无 GPU/显示 graceful skip;⑥ SDL3 隔离不变量(扫描无 SDL 泄漏)成立。
+**风险**:22C/22D/22E 需 GPU+显示,headless CI 看不到像素 → graceful skip + 本地/manual 可见性 checklist 兜底(同既有 no-GPU 跳过范式);SDL3 submodule 增量与平台 surface 扩展见 §4 风险表。
 
 ---
 
@@ -300,6 +313,7 @@ transform→bounds→culling 一趟内联,**不落地 `WorldBounds`**(世界 AAB
 - **FreeType 许可证(Stage 19A)**:FTL/GPLv2+ 二选一,必须在接入前定策并写入文档,否则阻断发布。
 - **bindless 设备能力(Stage 20)**:依赖 descriptor indexing 扩展;必须保留 fallback,CI 需覆盖两条路径。
 - **GPU runner(Stage 17C/22)**:validation smoke、上屏、抓帧都需要带 GPU/显示的 CI 环境;无 GPU 时已有 graceful skip,但可见性回归可能需 manual checklist 兜底。
+- **SDL3 submodule(Stage 22)**:新增第 4 个 `third_party/` submodule(`third_party/sdl`,`release-3.x`);构建增量、平台 surface 扩展(Win32/X11/Wayland)、静态链接配置须比照 font 块隔离,且必须 `RENDER2D_BUILD_PRESENT_HOST=OFF` 可干净关闭(宿主形态);SDL3 zlib 许可证宽松,无 FreeType 式发布阻断,但仍在 22A ADR 记一笔。
 - **依赖路径硬编码(Stage 17A 前置)**:是 CI 与他人复现的前置;未解决前 CI 只能在预置环境运行。
 - **并行确定性(Stage 21)**:任何并行尾段都必须保证与单线程逐字节等价,否则不得合入。
 - **SIMD 数值一致性(Stage 24 Track 2)**:fast_math 批量 sincos 必须与标量 sincos 逐位一致,否则旋转 transform 在有/无 AVX 的机器上输出不同,破跨 ISA 确定性——这是该轨的前置验收门,不满足则不接入。
