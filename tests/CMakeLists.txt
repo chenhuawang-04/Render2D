@@ -337,6 +337,22 @@ if(RENDER2D_BUILD_PRESENT_HOST AND TARGET render2d_present_host_support)
     render2d_apply_strict_warnings(render2d_present_host_smoke)
 
     add_test(NAME render2d.present_host_smoke COMMAND render2d_present_host_smoke)
+
+    # Stage 22B: drive the real surface->swapchain path through a live
+    # SDL3-provided VkSurfaceKHR. GPU+display-gated -- it skips (returns 0) at
+    # every bring-up failure, so it stays green on headless CI.
+    add_executable(render2d_present_host_window_smoke
+        present_host_window_smoke.cpp
+    )
+    target_link_libraries(render2d_present_host_window_smoke PRIVATE
+        render2d_present_host_support
+    )
+    target_include_directories(render2d_present_host_window_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    render2d_apply_strict_warnings(render2d_present_host_window_smoke)
+
+    add_test(NAME render2d.present_host_window_smoke COMMAND render2d_present_host_window_smoke)
 endif()
 
 add_executable(render2d_text_glyph_system_test

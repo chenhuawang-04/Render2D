@@ -115,3 +115,43 @@ directive is respected.
   SDL nor `Present/`.
 - Constraint scan 3/3 (`third_party/` is excluded by design),
   `clang-tidy --verify-config` clean, the new TU clang-tidy clean.
+
+## Update — Stage 22B (2026-06-16)
+
+22B realizes the reusable present-host the 22A plumbing anticipated, within the
+same decision (no contract change). The `PresentHost` RAII class — in the same
+`include/Render2D/Present/PresentHost.hpp`, still the only SDL `#include` in the
+tree — owns the SDL video subsystem + window lifetime and turns a host-provided
+`VkInstance` into a real `VkSurfaceKHR`: `initialize` (`SDL_Init` video + a
+Vulkan window), `requiredInstanceExtensions` (`SDL_Vulkan_GetInstanceExtensions`),
+`createSurface` (`SDL_Vulkan_CreateSurface`), `presentationSupport`
+(`SDL_Vulkan_GetPresentationSupport`), `pixelSize`, `destroySurface`, `shutdown`.
+
+It still does **not** create the `VkInstance`/`VkDevice` — those remain the
+host's, preserving red line #11 — and `VulkanSwapchainRuntime` /
+`VulkanPresentRuntime` are unchanged: SDL's surface is fed straight into the
+existing `createSwapchain`. So SDL3 is confirmed as one replaceable surface
+provider, not an ownership grab.
+
+The window is opened **hidden** so the smoke test does not flash a window during
+`ctest`; a hidden Vulkan window still yields a valid surface/swapchain on desktop
+drivers. The surface-capabilities output struct is left uninitialized and filled
+by the driver (rather than `{}`-initialized) to avoid a clang-tidy
+`bugprone-invalid-enum-default-initialization` false positive on
+`VkSurfaceTransformFlagBitsKHR` — no `NOLINT`, matching the repo's
+suppression-free convention.
+
+### Verification (22B)
+
+- Debug `ctest` 59/59, Perf `ctest` 80/80 (each +1: the new
+  `render2d.present_host_window_smoke`). On a GPU+display machine the test runs
+  the real path end to end (window → instance with SDL's extensions → surface →
+  present-capable device + `VK_KHR_swapchain` → `createSwapchain` → resolve
+  native handles → release): observed "surface+swapchain OK, 2 images, 640x480,
+  format 44" (`VK_FORMAT_B8G8R8A8_UNORM`). Every bring-up failure is a graceful
+  skip (returns 0), so it stays green on headless CI.
+- `RENDER2D_BUILD_PRESENT_HOST=OFF` still configures and builds the whole tree
+  (291/291) with SDL absent (0 `SDL3-static` / `third_party/sdl` / `present_host`
+  references) and both present-host tests unregistered.
+- Umbrella purity unchanged (SDL only in `PresentHost.hpp`); constraint scan 3/3;
+  `clang-tidy --verify-config` clean and the new TU clang-tidy clean.
