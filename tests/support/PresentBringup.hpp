@@ -178,6 +178,109 @@ namespace Render2DTest {
     return vkCreateDevice(physical_device_, &device_info, nullptr, &out_device_);
 }
 
+// --- Stage 22D: render-capable bring-up -------------------------------------
+// 22B/22C only clear/copy the swapchain image, so createPresentInstance /
+// createPresentDevice above stay at Vulkan 1.0 + VK_KHR_swapchain. 22D
+// additionally renders a real scene with VulkanDynamicRenderEncoder
+// (vkCmdBeginRendering), which needs a 1.3 instance/device with the
+// dynamicRendering feature -- mirroring VulkanSmokeContext. These helpers are
+// additive so the 22B/22C paths are byte-for-byte unchanged.
+
+// Like createPresentInstance, but requests Vulkan 1.3 when the loader supports
+// it (required for core dynamic rendering). Falls back to 1.0 otherwise; the
+// caller then finds dynamic rendering unsupported and skips.
+[[nodiscard]] inline VkResult createPresentRenderInstance(
+    std::span<const char* const> extensions_,
+    VkInstance& out_instance_,
+    Render2D::U32& out_api_version_) noexcept
+{
+    out_api_version_ = VK_API_VERSION_1_0;
+    if (vkEnumerateInstanceVersion(&out_api_version_) != VK_SUCCESS) {
+        out_api_version_ = VK_API_VERSION_1_0;
+    }
+    const Render2D::U32 requested_api =
+        out_api_version_ >= VK_API_VERSION_1_3 ? VK_API_VERSION_1_3 : VK_API_VERSION_1_0;
+
+    constexpr char kApplicationName[] = "Render2D Present Render Host";
+    const VkApplicationInfo application_info{
+        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        .pNext = nullptr,
+        .pApplicationName = kApplicationName,
+        .applicationVersion = VK_MAKE_VERSION(0U, 1U, 0U),
+        .pEngineName = kApplicationName,
+        .engineVersion = VK_MAKE_VERSION(0U, 1U, 0U),
+        .apiVersion = requested_api,
+    };
+    const VkInstanceCreateInfo instance_info{
+        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0U,
+        .pApplicationInfo = &application_info,
+        .enabledLayerCount = 0U,
+        .ppEnabledLayerNames = nullptr,
+        .enabledExtensionCount = static_cast<Render2D::U32>(extensions_.size()),
+        .ppEnabledExtensionNames = extensions_.data(),
+    };
+    return vkCreateInstance(&instance_info, nullptr, &out_instance_);
+}
+
+// True if the device exposes Vulkan 1.3 core dynamic rendering. 22D's offscreen
+// baseline render goes through VulkanDynamicRenderEncoder, which requires it.
+[[nodiscard]] inline bool presentDeviceSupportsDynamicRendering(VkPhysicalDevice physical_device_) noexcept
+{
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(physical_device_, &properties);
+    if (properties.apiVersion < VK_API_VERSION_1_3) {
+        return false;
+    }
+
+    VkPhysicalDeviceDynamicRenderingFeatures dynamic_rendering{};
+    dynamic_rendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+    VkPhysicalDeviceFeatures2 features{};
+    features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+    features.pNext = &dynamic_rendering;
+    vkGetPhysicalDeviceFeatures2(physical_device_, &features);
+    return dynamic_rendering.dynamicRendering == VK_TRUE;
+}
+
+// Like createPresentDevice, but also enables the dynamicRendering feature so the
+// encoder's vkCmdBeginRendering is legal. Caller must have confirmed support via
+// presentDeviceSupportsDynamicRendering.
+[[nodiscard]] inline VkResult createPresentRenderDevice(
+    VkPhysicalDevice physical_device_,
+    Render2D::U32 queue_family_index_,
+    VkDevice& out_device_) noexcept
+{
+    const float queue_priority = 1.0F;
+    const VkDeviceQueueCreateInfo queue_info{
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0U,
+        .queueFamilyIndex = queue_family_index_,
+        .queueCount = 1U,
+        .pQueuePriorities = &queue_priority,
+    };
+
+    VkPhysicalDeviceDynamicRenderingFeatures dynamic_rendering{};
+    dynamic_rendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES;
+    dynamic_rendering.dynamicRendering = VK_TRUE;
+
+    const char* const device_extensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    const VkDeviceCreateInfo device_info{
+        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        .pNext = &dynamic_rendering,
+        .flags = 0U,
+        .queueCreateInfoCount = 1U,
+        .pQueueCreateInfos = &queue_info,
+        .enabledLayerCount = 0U,
+        .ppEnabledLayerNames = nullptr,
+        .enabledExtensionCount = 1U,
+        .ppEnabledExtensionNames = device_extensions,
+        .pEnabledFeatures = nullptr,
+    };
+    return vkCreateDevice(physical_device_, &device_info, nullptr, &out_device_);
+}
+
 // Pick a surface format, preferring B8G8R8A8_UNORM / sRGB-nonlinear. Returns
 // false if the surface advertises no formats.
 [[nodiscard]] inline bool selectSurfaceFormat(

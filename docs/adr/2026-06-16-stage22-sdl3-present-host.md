@@ -196,3 +196,58 @@ loop path is proven everywhere.
   it) and all three present tests unregistered (57 tests).
 - Umbrella purity unchanged (SDL only in `PresentHost.hpp`); constraint scan 3/3;
   the new + refactored present TUs clang-tidy clean.
+
+## Update — Stage 22D (2026-06-17)
+
+22D closes the loop opened by 22C: it proves that what reaches the on-screen
+(swapchain) image is byte-identical to the trusted offscreen render baseline —
+a visible-capture regression guard — again with no contract change. The new
+`render2d.present_visible_capture` does it all in one command buffer / one
+submission on the live SDL surface:
+
+1. render a deterministic gradient full-screen triangle into an offscreen image
+   (`VulkanDynamicRenderEncoder`), created in the swapchain's exact format;
+2. copy that offscreen image to a readback buffer → the **offscreen baseline**
+   (the very path every other `vulkan_*` render test trusts);
+3. copy the offscreen image onto the acquired swapchain image;
+4. copy the swapchain image back to a second readback buffer → the **capture**;
+5. transition the swapchain image to `PRESENT_SRC` and present it.
+
+After the fence, it asserts capture == baseline byte-for-byte. Matching the
+offscreen target's format to the swapchain's makes the image→image copy a
+byte-exact transfer (no conversion), so a mismatch can only come from a real
+copy/layout/region defect. A `gl_FragCoord`-keyed, channel-asymmetric gradient
+frag (new `kGradientFragSpv`) is used precisely so that compare also catches a
+wrong copy region/extent/orientation that a uniform fill would hide.
+
+Why copy rather than render straight to the swapchain: the encoders resolve an
+`ImageRef` owned by `VulkanResourceRuntime`, and a swapchain image is not one —
+rendering directly would mean changing a runtime contract, which Stage 22 has
+deliberately never done. So the rendered content reaches the swapchain via a raw
+`vkCmdCopyImage` on resolved handles, the same windowless-core-preserving idiom
+22C uses for its raw barriers/clears. All five runtimes and `PresentHost` are
+unchanged (red line #11 intact).
+
+The one new wrinkle is that 22D's baseline render needs **dynamic rendering**,
+which 22B/22C did not. The shared `tests/support/PresentBringup.hpp` therefore
+gained *additive* render-capable helpers — `createPresentRenderInstance`
+(requests Vulkan 1.3 when available), `presentDeviceSupportsDynamicRendering`,
+and `createPresentRenderDevice` (enables the `dynamicRendering` feature) —
+mirroring `VulkanSmokeContext`. The 22B/22C `createPresentInstance` /
+`createPresentDevice` (Vulkan 1.0 + `VK_KHR_swapchain`) are byte-for-byte
+unchanged. The swapchain images additionally request `TRANSFER_DST | TRANSFER_SRC`
+usage (copy target + readback source); if the device lacks dynamic rendering or
+the surface does not advertise that usage, the test skips gracefully.
+
+### Verification (22D)
+
+- Debug `ctest` 61/61, Perf `ctest` 82/82 (each +1: `render2d.present_visible_capture`).
+  On a GPU+display machine the real path ran end to end and reported
+  "640x480 visible capture == offscreen baseline (1228800 bytes)". Every
+  bring-up failure is a graceful skip (returns 0), so it stays green on headless CI.
+- `RENDER2D_BUILD_PRESENT_HOST=OFF` still builds the whole tree (291/291) with SDL
+  absent (no `SDL3` artifacts, no present-host executables) and all four present
+  tests unregistered (57 tests; verified a list diff drops exactly the four SDL
+  present-host tests and nothing else).
+- Umbrella purity unchanged (SDL only in `PresentHost.hpp`); constraint scan 3/3;
+  the new + dependent present TUs clang-tidy clean.

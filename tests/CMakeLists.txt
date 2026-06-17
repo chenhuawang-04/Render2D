@@ -370,6 +370,25 @@ if(RENDER2D_BUILD_PRESENT_HOST AND TARGET render2d_present_host_support)
     render2d_apply_strict_warnings(render2d_present_loop_smoke)
 
     add_test(NAME render2d.present_loop_smoke COMMAND render2d_present_loop_smoke)
+
+    # Stage 22D: render a real scene offscreen, copy it onto the acquired
+    # swapchain image, present, and assert the swapchain readback is byte-
+    # identical to the offscreen baseline -- a visible-capture regression guard.
+    # GPU+display-gated (also needs dynamic rendering + TRANSFER swapchain
+    # usage) -- skips (returns 0) at every bring-up failure, so it stays green
+    # on headless CI.
+    add_executable(render2d_present_visible_capture_smoke
+        present_visible_capture_smoke.cpp
+    )
+    target_link_libraries(render2d_present_visible_capture_smoke PRIVATE
+        render2d_present_host_support
+    )
+    target_include_directories(render2d_present_visible_capture_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    render2d_apply_strict_warnings(render2d_present_visible_capture_smoke)
+
+    add_test(NAME render2d.present_visible_capture COMMAND render2d_present_visible_capture_smoke)
 endif()
 
 add_executable(render2d_text_glyph_system_test
