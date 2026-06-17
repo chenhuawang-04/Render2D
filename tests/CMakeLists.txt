@@ -104,6 +104,19 @@ render2d_apply_strict_warnings(render2d_cpu_system_pipeline_test)
 
 add_test(NAME render2d.cpu_system_pipeline COMMAND render2d_cpu_system_pipeline_test)
 
+add_executable(render2d_host_like_ecs_adapter_test
+    host_like_ecs_adapter_test.cpp
+)
+target_link_libraries(render2d_host_like_ecs_adapter_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_host_like_ecs_adapter_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_host_like_ecs_adapter_test)
+
+add_test(NAME render2d.host_like_ecs_adapter COMMAND render2d_host_like_ecs_adapter_test)
+
 add_executable(render2d_draw_sort_system_test
     draw_sort_system_test.cpp
 )

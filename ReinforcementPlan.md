@@ -264,19 +264,23 @@
 
 ---
 
-### Stage 23 — 宿主引擎集成 / Merge(终极收敛)
+### Stage 23 — 宿主引擎集成 / Merge(终极收敛)—— full-capstone 范围锁定 2026-06-17
 
-**目标**:落实 `docs/ProjectMergeTODO.md` 的 39 条约束,把 Render2D 作为后端 runtime 嵌入宿主 ECS。这是所有补强的收敛点。
+**目标**:把 Render2D 作为后端 runtime 嵌入宿主 ECS,落实 `docs/ProjectMergeTODO.md` 的 39 条约束。**诚实边界**:真正的合并在宿主仓库执行(本仓无宿主引擎),故本仓 Stage 23 = **合并就绪收敛(merge-readiness convergence)**——证明「可合并」+ 产出宿主工程师所需工件 + 复用 Stage 22 上屏作收尾证明;不是合并本身。
 
-- **23A 宿主 ECS 适配层设计**:定义宿主组件流 ↔ Render2D 系统的边界(全部经 `std::span`),给出替换 `tests/support/` 临时 ECS 的迁移指引。
-- **23B native runtime 对接**:宿主提供 device/queue/surface;Render2D runtime 负责把 `id + generation` 解析为 Vulkan 对象并执行后端操作;生命周期/退役归属明确。
-- **23C 逐条核对 39 项 merge 约束**:形成 checklist,确认每条在集成形态下成立(POD 流归属、窗口归属、显存归属、ThreadCenter 边界、upload ring 帧安全、deferred destroy 时机等)。
-- **23D 端到端集成 smoke**:宿主 ECS 数据 → 真实帧(沿用 Stage 22 呈现或宿主自有呈现)。
-- **23E 质量门复跑**:在宿主环境复跑测试与性能回归。
-- **23F 收口**:隔离/移除 test-only ECS,`PROJECT_INDEX`/`ARCHITECTURE` 更新为集成形态,关闭 `ProjectMergeTODO` 中已落实条目。
+- **23A 宿主 ECS 适配层(本仓可做)**:`tests/support/HostLikeEcs.hpp`——刻意区别于「按类型」`ComponentStreamStorage` 的**宿主形 SoA archetype 列存 + 帧 arena**,全部经 `std::span` 喂给未改动的系统。`render2d.host_like_ecs_adapter` 用同一条生产链(`SpatialCull → CommandBuild → SpriteInstanceBuild → Batch`)分别从 `ComponentStreamStorage`(ProjectMergeTODO #1 的临时 ECS)与 `HostLikeEcs` 各跑一遍,逐字节比对每条派生流——证明系统存储无关、宿主可零改动替换。编译期保证最强:全新存储类型对系统的 span 编译通过即证边界仅 span。
+- **23B native runtime 对接(主要属宿主)**:契约已在 Stage 8/11/12 完成。本仓交付 = 在 MERGE_GUIDE 列出宿主调用哪些 runtime 把 `id + generation` 解析为 Vulkan + 谁拥有 device/queue/surface/window(宿主)vs Render2D 拥有 slot 表/显存/deferred destroy。标注「契约完成,接线在宿主仓执行」。
+- **23C 39 条逐条复核(本仓可做)**:对 `ProjectMergeTODO.md` 每条标注 已实现/合并时宿主拥有/不适用,交叉引用满足它的阶段——一处不含糊的合并清单。
+- **23D 端到端 capstone smoke(本仓可做,收尾证明)**:从 `HostLikeEcs` 起跑完整 CPU 管线 → GPU 上传/编码/提交,在有 GPU+显示时经 Stage 22 `PresentHost` 上屏(沿用 22D 的离屏渲染→`vkCmdCopyImage`→present 写法),headless 优雅跳过。首个「宿主形数据 → 真帧」证明;不改任何 runtime 契约(红线 #11)。
+- **23E 质量门复跑(本仓可做)**:Debug+Perf + `RENDER2D_BUILD_PRESENT_HOST=OFF` 全树 + umbrella 纯度 + scan + tidy + diff。
+- **23F 收口 + `docs/MERGE_GUIDE.md`(本仓可做,含修正)**:单一有序集成走查(关 present-host + 供宿主 surface → 经 `std::span` 替换测试 ECS,以 23A 适配器为模板 → 接 runtime 解析 API(23B)→ 39 条复核(23C)→ 宿主侧质量门);为宿主 ECS 边界写 ADR;同步 PROJECT_INDEX/ARCHITECTURE,关 ProjectMergeTODO 条目。
+
+**对原计划的两处诚实修正**:① 23F **无法「移除」测试 ECS**——本仓靠它自测且无宿主 ECS;本仓 23F = 把它**记为合并时移除目标** + 用 23A 适配器证可替换,而非删除。② 23B / 真实合并接线(宿主 device/queue/surface、宿主侧门、真正替换 ECS)属宿主仓工作,明确超出本仓范围;本仓只证「可行且已文档化」,不「已执行」。
 
 **边界**:这是 Render2D 的最终形态——它是宿主的渲染后端,不是独立应用;窗口、场景 ECS、资源装载归宿主。
-**验收**:宿主 ECS 驱动出真实帧;39 条约束逐条标注落实/不适用;test-only ECS 不再参与生产路径。
+**验收**:宿主形 ECS 跑出逐字节一致的管线输出(23A)与真帧(23D);39 条逐条标注;MERGE_GUIDE 发布;门绿;红线不破。所有 Stage 23 提交本地保留,与暂存的 22A–22E 一并择机推送。
+
+**Stage 23A 落地(2026-06-17,本地未推)—— 宿主形 ECS 适配器 + 逐字节可替换性证明** —— 新增 `tests/support/HostLikeEcs.hpp`:`HostEntityTable`(输入组件 Transform/LocalBounds/VisibilityMask/Sprite 的并行 SoA 列,`pushEntity` 保持行对齐)+ `HostFrameArena`(派生流 WorldTransform/VisibleItem/DrawCommand/SpriteInstance/BatchCommand,`resizeForEntities` 每帧定容),每条流仅以 `std::span` 暴露;McVector-only、组件不变、纯 test-only 脚手架(与 TemporaryEcsStorage 同档)。新 `render2d.host_like_ecs_adapter`:同一条 `SpatialCull → CommandBuild → SpriteInstanceBuild → Batch` 链分别从 `ComponentStreamStorage`(#1 临时 ECS)与 `HostLikeEcs` 各跑入各自 arena,先比对**输入列逐字节相等**(隔离「容器不同」与「数据不同」),再比对五条**派生流逐字节相等**;确定性场景 129 实体 → 82 可见 → 33 批次(batch 严格 < 可见,证明合批真发生)。最强保证在编译期:`HostLikeEcs` 是系统从未见过的全新存储类型,其 span 能编译即证边界仅 `std::span`(ProjectMergeTODO #1)。**门禁**:Debug 63/63、Perf 84/84(各 +1);clang-tidy TU+header clean;约束扫描 3/3(注:HostLikeEcs.hpp 注释里出现字面 `std::vector` 会被 grep 误报,已改写措辞规避——全仓零 NOLINT 惯例);`git diff --check` 干净(仅 LF→CRLF 善性提示)。无 option-gated 代码、未碰 present-host,故 OFF 全树隔离不变(留待 23D/23E 复核)。PROJECT_INDEX 同步两条新条目。**Next: 23C(39 条复核)或 23D(capstone smoke)。**
 
 ---
 
