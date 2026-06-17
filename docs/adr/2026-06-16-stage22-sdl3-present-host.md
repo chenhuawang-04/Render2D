@@ -155,3 +155,44 @@ suppression-free convention.
   references) and both present-host tests unregistered.
 - Umbrella purity unchanged (SDL only in `PresentHost.hpp`); constraint scan 3/3;
   `clang-tidy --verify-config` clean and the new TU clang-tidy clean.
+
+## Update — Stage 22C (2026-06-17)
+
+22C puts the 22B surface/swapchain to work: it presents *real frames* through the
+unchanged Vulkan runtimes and exercises the resize/recreate path — again with no
+contract change. The new `render2d.present_loop_smoke` runs the full per-frame
+loop on the live SDL window:
+
+    waitFence → acquireNextImage (signals image_available) → record (clear the
+    swapchain image to a solid colour) → submit (waits image_available, signals
+    render_finished + the in-flight fence) → present (waits render_finished).
+
+The resize path is a swapchain recreate that threads the retiring swapchain in as
+`old_swapchain`, then releases the old state — the exact sequence a real window
+resize triggers via `VK_ERROR_OUT_OF_DATE_KHR` → `SwapchainOutOfDate`. The loop
+handles that status from acquire/present and additionally *forces* one recreate
+mid-run, so the recreate→release machinery is covered deterministically (a hidden
+window never spontaneously resizes).
+
+Still no new ownership: `VulkanSwapchainRuntime` / `VulkanSyncRuntime` /
+`VulkanCommandRuntime` / `VulkanSubmitRuntime` / `VulkanPresentRuntime` are all
+unchanged and merely consume the SDL surface, and `PresentHost` is unchanged from
+22B. The instance/device/format bring-up that 22B's test wrote inline is extracted
+to `tests/support/PresentBringup.hpp` and shared by both present tests (test-only
+scaffolding, like `VulkanSmokeContext`) — the only refactor 22C makes to existing
+code. Swapchain image usage adds `TRANSFER_DST` only when the surface advertises
+it (`supportedUsageFlags`); otherwise the frame is a valid blank present, so the
+loop path is proven everywhere.
+
+### Verification (22C)
+
+- Debug `ctest` 60/60, Perf `ctest` 81/81 (each +1: `render2d.present_loop_smoke`).
+  On a GPU+display machine the real path ran end to end: "presented 6 frame(s)
+  across 2 swapchain generation(s), 640x480, cleared" (initial swapchain + one
+  forced recreate). Every bring-up failure is a graceful skip (returns 0), so it
+  stays green on headless CI.
+- `RENDER2D_BUILD_PRESENT_HOST=OFF` still builds the whole tree (291/291) with SDL
+  absent (no `SDL3` artifacts; only the option's own cache description mentions
+  it) and all three present tests unregistered (57 tests).
+- Umbrella purity unchanged (SDL only in `PresentHost.hpp`); constraint scan 3/3;
+  the new + refactored present TUs clang-tidy clean.
