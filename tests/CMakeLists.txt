@@ -819,3 +819,26 @@ add_test(NAME render2d.packaging_consumer
         -P ${CMAKE_CURRENT_SOURCE_DIR}/packaging/run_consumer.cmake
 )
 set_tests_properties(render2d.packaging_consumer PROPERTIES TIMEOUT 900)
+
+# Stage 25B: prove the INSTALLED Render2D package is consumable via
+# find_package(Render2D). Gated on RENDER2D_INSTALL (the install/export rules).
+# The test installs Render2D (component Render2D) to a temp prefix, then drives a
+# find_package(Render2D) consumer against it -- exercising the config's
+# re-resolution of the engine dependencies and re-attachment to the imported
+# target. A regression in the exported package fails the suite.
+if(RENDER2D_INSTALL)
+    add_test(NAME render2d.packaging_installed
+        COMMAND ${CMAKE_COMMAND}
+            -D CONSUMER_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/packaging/installed_consumer
+            -D RENDER2D_BUILD_DIR=${CMAKE_BINARY_DIR}
+            -D INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/packaging_install_prefix
+            -D WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/packaging_installed_build
+            -D CXX_COMPILER=${CMAKE_CXX_COMPILER}
+            -D C_COMPILER=${CMAKE_C_COMPILER}
+            -D GENERATOR=${CMAKE_GENERATOR}
+            -D ENGINE_DEPS_ROOT=${RENDER2D_ENGINE_DEPS_ROOT}
+            -D BUILD_TYPE=${CMAKE_BUILD_TYPE}
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/packaging/run_installed_consumer.cmake
+    )
+    set_tests_properties(render2d.packaging_installed PROPERTIES TIMEOUT 900)
+endif()

@@ -1,0 +1,50 @@
+@PACKAGE_INIT@
+
+# Render2DConfig.cmake -- the find_package(Render2D) entry point.
+#
+# Render2D is a header-only INTERFACE library whose engine source-tree
+# dependencies (MemoryCenterNew, fast_math, Vector_New/McVector, ThreadCenter)
+# are NOT vendored into the install tree. This config re-resolves them with the
+# same three-tier resolver the build used (reuse an existing target -> local
+# source -> git fetch), so the imported Render2D::Render2D target's transitive
+# header dependencies exist at the consumer. Tier-1 reuse means a host engine
+# that already defines these targets is reused untouched -- no duplication, no
+# vendored private headers. See
+# docs/adr/2026-06-18-stage25-consumability-packaging.md.
+
+include(CMakeFindDependencyMacro)
+
+# Re-resolve the engine dependencies (defines Center.Memory.Headers, fast_math,
+# Center.Thread.Headers; sets RENDER2D_VECTOR_NEW_INCLUDE_DIR for McVector).
+# Point a consumer at a local checkout with -DRENDER2D_ENGINE_DEPS_ROOT=<root>.
+include("${CMAKE_CURRENT_LIST_DIR}/Render2DDependencies.cmake")
+
+set(Render2D_BUILT_WITH_VULKAN @RENDER2D_CONFIG_WITH_VULKAN@)
+if(Render2D_BUILT_WITH_VULKAN)
+    find_dependency(Vulkan)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/Render2DTargets.cmake")
+
+# Re-attach the dependencies stripped from the install interface (the build's
+# CMakeLists.txt wraps them in $<BUILD_INTERFACE:> so install(EXPORT) need not
+# export targets Render2D does not own). The targets / include dir now exist
+# from the resolver + find_dependency above.
+set_property(TARGET Render2D::Render2D APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES Center.Memory.Headers fast_math)
+set_property(TARGET Render2D::Render2D APPEND PROPERTY
+    INTERFACE_INCLUDE_DIRECTORIES "${RENDER2D_VECTOR_NEW_INCLUDE_DIR}")
+if(TARGET Vulkan::Vulkan)
+    set_property(TARGET Render2D::Render2D APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES Vulkan::Vulkan)
+endif()
+if(TARGET Render2D::render2d_thread_runtime_support)
+    set_property(TARGET Render2D::render2d_thread_runtime_support APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES Center.Thread.Headers)
+    if(TARGET Vulkan::Vulkan)
+        set_property(TARGET Render2D::render2d_thread_runtime_support APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES Vulkan::Vulkan)
+    endif()
+endif()
+
+check_required_components(Render2D)
