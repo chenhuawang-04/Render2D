@@ -422,6 +422,26 @@ if(RENDER2D_BUILD_PRESENT_HOST AND TARGET render2d_present_host_support)
     render2d_apply_strict_warnings(render2d_present_renderdoc_capture_smoke)
 
     add_test(NAME render2d.present_renderdoc_capture COMMAND render2d_present_renderdoc_capture_smoke)
+
+    # Stage 23D (host-engine merge capstone): drive a full frame from host-shaped
+    # ECS data (HostLikeEcs) through the span-only CPU systems and the real sprite
+    # GPU draw, onto the acquired swapchain image, and present it -- then assert the
+    # swapchain readback is byte-identical to the offscreen baseline. The one
+    # end-to-end host-data -> on-screen sprite frame proof (closes ProjectMergeTODO
+    # #9 for the sprite path). GPU+display+dynamic-rendering+TRANSFER-gated -- skips
+    # (returns 0) at every bring-up failure, so it stays green on headless CI.
+    add_executable(render2d_host_present_frame_smoke
+        host_present_frame_smoke.cpp
+    )
+    target_link_libraries(render2d_host_present_frame_smoke PRIVATE
+        render2d_present_host_support
+    )
+    target_include_directories(render2d_host_present_frame_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    render2d_apply_strict_warnings(render2d_host_present_frame_smoke)
+
+    add_test(NAME render2d.host_present_frame COMMAND render2d_host_present_frame_smoke)
 endif()
 
 add_executable(render2d_text_glyph_system_test

@@ -325,3 +325,40 @@ check below (the established GPU/display-gated + manual-visible pattern).
 - Umbrella purity unchanged (SDL only in `PresentHost.hpp`, `renderdoc_app.h` only
   in `RenderDocCapture.hpp`, neither in `Render2D.hpp`); constraint scan 3/3; the
   new TU + `RenderDocCapture.hpp` clang-tidy clean; `git diff --check` clean.
+
+### Update — 23D (Stage 23 reuse: host-data → on-screen sprite frame)
+
+Stage 23D (the host-engine merge capstone) is the first consumer of the present-host
+outside Stage 22. `tests/host_present_frame_smoke.cpp` (`render2d.host_present_frame`)
+drives a frame from host-shaped ECS data (`tests/support/HostLikeEcs.hpp`, Stage 23A)
+through the span-only CPU chain (`SpatialCull → CommandBuild → SpriteInstanceBuild →
+Batch`) to a **real** `VulkanSpriteRenderEncoder` draw, then onto the acquired swapchain
+image via the **same** offscreen-render → `vkCmdCopyImage` → present idiom 22D
+established, and asserts the swapchain readback is byte-identical to the offscreen
+baseline. This makes the present-host carry the real sprite path (not just a gradient):
+the first real sprite draw in the repo to reach a swapchain, closing ProjectMergeTODO
+#9 for the sprite path and exercising #1/#24–#28/#29/#32 from host-shaped data to a
+presented frame.
+
+No contract changes. Every Vulkan runtime and `PresentHost` is unchanged; the scene is
+authored directly in the sprite shader's NDC clip space (no camera→clip projection is
+invented — that stays the host's vertex-shader concern), and the swapchain receives
+content only through a raw `vkCmdCopyImage` on resolved handles (the encoder resolves a
+`VulkanResourceRuntime` `ImageRef`; a swapchain image is not one). The scope-guard
+amended in 22E (frame-capture/diagnostics admitted; input/audio/scene/asset/gameplay
+still excluded) is unchanged and unstrained — 23D adds no subsystem, only a test.
+
+### Verification (23D)
+
+- Debug `ctest` 64/64, Perf 85/85 (each +1: the new `render2d.host_present_frame`). On
+  the GPU+display machine the real path ran end to end and reported "640x480 host scene
+  -> 4 sprite instances presented; swapchain == offscreen baseline (1228800 bytes)".
+  Every bring-up failure is a graceful skip (returns 0), so it stays green on headless CI.
+- The test lives inside the `RENDER2D_BUILD_PRESENT_HOST` block, so an OFF build excludes
+  it by construction (the full `RENDER2D_BUILD_PRESENT_HOST=OFF` whole-tree recheck is
+  deferred to Stage 23E).
+- clang-tidy clean on the new TU; constraint scan 3/3; `git diff --check` clean (only a
+  benign LF→CRLF notice on `tests/CMakeLists.txt`). The swapchain-capture helpers
+  (`recordSwapchainBarrier`, `ActiveSwapchain`, `createCaptureSwapchain`) are kept local
+  to the test, following 22D's precedent; the generic 1.3 device/format bring-up is
+  reused from `support/PresentBringup.hpp`.
