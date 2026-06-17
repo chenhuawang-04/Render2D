@@ -797,3 +797,25 @@ add_test(NAME render2d.negative_non_pod_component
         -D FAST_MATH_INCLUDE_DIR=${RENDER2D_FAST_MATH_SOURCE_DIR}/include
         -P ${CMAKE_CURRENT_SOURCE_DIR}/expect_compile_failure.cmake
 )
+
+# Stage 25A: prove the public Render2D::Render2D target is consumable by a
+# downstream project via source reuse. The render2d.packaging_consumer test
+# drives a fresh configure + build + run of tests/packaging/consumer (a
+# standalone CMake project that add_subdirectory()'s Render2D and links
+# Render2D::Render2D) through run_consumer.cmake -- exactly how a host engine
+# reuses Render2D, so a regression in the public target/include interface fails
+# the suite. Reconfigures the engine deps from local source (tier 2), so it
+# carries a real build cost; the generous timeout covers a cold dependency build.
+add_test(NAME render2d.packaging_consumer
+    COMMAND ${CMAKE_COMMAND}
+        -D CONSUMER_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/packaging/consumer
+        -D RENDER2D_SOURCE_DIR=${PROJECT_SOURCE_DIR}
+        -D WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/packaging_consumer_build
+        -D CXX_COMPILER=${CMAKE_CXX_COMPILER}
+        -D C_COMPILER=${CMAKE_C_COMPILER}
+        -D GENERATOR=${CMAKE_GENERATOR}
+        -D ENGINE_DEPS_ROOT=${RENDER2D_ENGINE_DEPS_ROOT}
+        -D BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/packaging/run_consumer.cmake
+)
+set_tests_properties(render2d.packaging_consumer PROPERTIES TIMEOUT 900)
