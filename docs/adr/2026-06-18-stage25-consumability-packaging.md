@@ -97,3 +97,24 @@ component, or system contract.
   since Stage 17E.
 - This reopens the reinforcement roadmap past Stage 24 as an optional engineering
   stage; it adds no rendering features and changes no runtime behavior.
+
+## Verification
+
+- 25A `render2d.packaging_consumer`: a standalone project consumes
+  `Render2D::Render2D` by source reuse (configure + build + run). 25B
+  `render2d.packaging_installed`: install the package to a temp prefix, then
+  `find_package(Render2D)` from a consumer (the config re-resolves the engine
+  deps and re-attaches them). Both run in the default suite.
+- Component install verified: `cmake --install --component Render2D` yields a
+  clean tree (Render2D's headers + the four CMake package files), no dependency
+  pollution, no vendored private headers; `install(EXPORT)` configures cleanly
+  because the engine-dep / Vulkan links are `$<BUILD_INTERFACE:>`-only and the
+  config re-attaches them.
+- 25C `scripts/verify_fetch_tier.sh`: the offline-mechanism mode (tier-3
+  FetchContent clone of fast_math + McVector via local git remotes) is verified
+  green; the `--online` full mode (all four from github, the private repos via
+  `ENGINE_DEPS_TOKEN`) is what CI's hosted full-build runs (Stage 17E). The
+  script fails loudly when the network is unavailable rather than false-passing.
+- Gate at closeout: Debug 66/66, Perf 87/87, `RENDER2D_BUILD_PRESENT_HOST=OFF`
+  whole-tree 60/60 with 0 SDL/present-host/RenderDoc references, constraint scan
+  3/3, clang-tidy clean, `git diff --check` clean.

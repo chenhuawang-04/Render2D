@@ -348,6 +348,16 @@ transform→bounds→culling 一趟内联,**不落地 `WorldBounds`**(世界 AAB
 
 **推送**:Stage 25 各子阶段沿用既定**本地逐提交**模式;与此前 hold 的 9 个提交(`9ab1df6..a4f7d2b`)一并**继续 HOLD**,待用户明确确认再整批推(推送触发 hosted portable-checks)。
 
+**Stage 25 计划锁定(2026-06-18,commit `0b5186f`)** —— 本节(总览表 + 详述)+ ADR `2026-06-18-stage25-consumability-packaging.md`(Accepted)+ PROJECT_INDEX 同步,作 plan-lock 提交(比照 Stage 22 `2edb348`)。
+
+**Stage 25A 落地(2026-06-18,本地未推,commit `b4ff7bc`)—— 下游 consumer 冒烟(源码复用)** —— 新增独立外部 CMake 工程 `tests/packaging/consumer/`(`add_subdirectory` 拉入 Render2D、链 `Render2D::Render2D`)+ 驱动 `tests/packaging/run_consumer.cmake`(比照 `expect_compile_failure.cmake` 的 `-D/-P` 范式);`render2d.packaging_consumer` 驱动一次全新嵌套 configure→build→run,TU 仅用公共 umbrella(纯 `TransformSystem` + `BufferRef` POD static_assert + 版本常量)。证明公共 target/include 面正是宿主复用的样子、可独立消费,该面回归即挂测试。真路径实跑:Render2D 0.1.0、m00=2.0 m11=4.0。门禁:Debug 65/65、Perf 86/86、scan 3/3、clang-tidy 净(consumer TU)、diff 净。
+
+**Stage 25B 落地(2026-06-18,本地未推,commit `4d75599`)—— install/export + `find_package(Render2D)`** —— 把三层解析器抽到 `cmake/Render2DDependencies.cmake`(`include()` 回原构建,行为不变),供安装态 config 原样复用。`RENDER2D_INSTALL`(默认 ON)下 install 公共头 + 导出 `Render2D::Render2D`(+ thread-runtime support)+ `CMakePackageConfigHelpers` 生成 `Render2DConfig.cmake`(+版本)。引擎依赖/Vulkan/AVX2 链从**安装接口**剥离(`$<BUILD_INTERFACE:>`),故 `install(EXPORT)` 不需导出本库不拥有的 target;config 重跑解析器 + `find_dependency(Vulkan)` 再把它们贴回 imported target(tier-1 复用宿主自有依赖)。全部 `COMPONENT Render2D`,`cmake --install --component Render2D` 得干净仅-Render2D 树(82 头 + 4 包文件),零依赖污染、不 vendor 私有头。新 `render2d.packaging_installed`:装到临时 prefix 再 `find_package` 消费(复用 25A 的 TU)。门禁:Debug 66/66、Perf 87/87、scan 3/3、clang-tidy --verify-config 净、diff 净。
+
+**Stage 25C 落地(2026-06-18,本地未推,commit `7943ef0`)—— fetch 层验证脚本** —— `scripts/verify_fetch_tier.sh` 强制走 tier-3(FetchContent clone + add_subdirectory)并校验其真能 clone+configure:默认**离线机制**模式用本地依赖 git 仓作 clone 源、对两个无子模块依赖(fast_math、Vector_New/McVector)跑真 fetch 路径(无网络;MemoryCenter/ThreadCenter 因 github 子模块留 tier-2);`--online` 对四者跑真 github(需网络 + 私有仓 `ENGINE_DEPS_TOKEN`,即 CI hosted full-build 所跑)。本会话实证:离线机制 PASS(经本地 remote clone fast_math @83b1977 + McVector @21afc61 并 configure);`--online` 因本机出口代理 down 无法跑,脚本如实**报错而非假绿**。独立脚本,不动构建/测试/套件。
+
+**Stage 25D 落地 + Stage 25 关闭(2026-06-18,本地未推,本 closeout 提交)—— 文档 + ADR 收尾 + 全门** —— 刷新过时叙述(CLAUDE.md「硬编码绝对路径/缺失即 FATAL_ERROR」→ 三层解析器 + 打包;README 新增「Consuming Render2D」install/find_package 一节);PROJECT_INDEX 收 `cmake/Render2DDependencies.cmake`/`Render2DConfig.cmake.in`/`scripts/verify_fetch_tier.sh`/`tests/packaging/`;MERGE_GUIDE §2 加「消费模型」注(源码复用为主、install/find_package 为辅);ADR 加「Verification」节。**全门实跑**:Debug `ctest` 66/66、Perf `ctest` 87/87、`RENDER2D_BUILD_PRESENT_HOST=OFF` 全树 **60/60**(= ON 66 − 6 present-host gated;build.ninja 中 SDL/present_host_support/RenderDoc 引用 **0**、present-host 测试全缺席、两 packaging 测试在册且过)、约束扫描 3/3、`clang-tidy --verify-config` 净、`git diff --check` 净。(过程纪要:OFF 全树首跑因 C: 盘 temp 满致 build 失败 —— 把构建 temp 指到 E: 后复跑全绿,非 Render2D 问题。)**Stage 25 = 25A consumer + 25B install/export + 25C fetch 验证 + 25D 文档/门 全部完成并关闭**;Render2D 现可经源码复用或 `find_package(Render2D)` 安装包两种模型消费,依赖解析两路一致、红线不破、无运行时/组件/系统契约变更。**推送**:Stage 25 五提交(`0b5186f` plan、`b4ff7bc` 25A、`4d75599` 25B、`7943ef0` 25C、本 closeout)叠加此前 hold 的 9 提交,**继续 HOLD**,待用户明确确认再整批推。
+
 ---
 
 ## 4. 风险与依赖

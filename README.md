@@ -76,6 +76,30 @@ behind `RENDER2D_BUILD_PRESENT_HOST` (default `ON`) for on-screen presentation; 
 `OFF` and supplies its own window/surface. Both are exposed only through internal support targets and
 are never included from the umbrella `Render2D.hpp`.
 
+### Consuming Render2D
+
+Render2D can be consumed two ways:
+
+- **Source reuse (the merge path):** add Render2D to your build (`add_subdirectory`, or
+  define the engine-dependency targets first and the resolver reuses them) and link
+  `Render2D::Render2D`. The `render2d.packaging_consumer` test exercises this.
+- **Installed package:** install it, then `find_package(Render2D)`:
+
+  ```bash
+  cmake --install build --component Render2D --prefix /path/to/prefix
+  # then, in the consumer's CMakeLists.txt:
+  #   find_package(Render2D REQUIRED)
+  #   target_link_libraries(app PRIVATE Render2D::Render2D)
+  ```
+
+  `--component Render2D` keeps the install to Render2D's own headers + CMake package files
+  (no dependency pollution). The engine dependencies are **not** vendored into the install
+  tree — the installed `Render2DConfig.cmake` re-runs the same three-tier resolver to provide
+  them (point it at local checkouts with `-DRENDER2D_ENGINE_DEPS_ROOT=<root>`). The
+  `render2d.packaging_installed` test exercises this end-to-end, and `scripts/verify_fetch_tier.sh`
+  verifies the resolver's git-fetch tier. Set `-DRENDER2D_INSTALL=OFF` to skip the
+  install/export rules. See [`docs/MERGE_GUIDE.md`](docs/MERGE_GUIDE.md).
+
 ## Build & test
 
 The project uses CMake presets (Ninja + Clang):

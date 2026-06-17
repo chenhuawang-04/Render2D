@@ -32,9 +32,9 @@ cmake --preset clang-ninja-perf && cmake --build --preset clang-ninja-perf
 # Or the standard suites: scripts/run_null_cpu_benchmarks.ps1, scripts/run_threaded_cpu_benchmarks.ps1
 ```
 
-### External dependencies (build will not configure without them)
+### External dependencies (resolved in three tiers)
 
-`CMakeLists.txt` hardcodes absolute paths to four source trees that are **not in this repo** and fails fast (FATAL_ERROR) if missing. Defaults assume a sibling `E:/Project/MelosyneTest/` checkout:
+`CMakeLists.txt` (via `cmake/Render2DDependencies.cmake`) resolves four engine source trees — **not in this repo** — in three tiers, downloading only as a last resort: (1) reuse the dependency's target if the enclosing project already defines it (host merge); (2) `add_subdirectory` a local checkout; (3) `FetchContent` it from git. Point at local checkouts with one umbrella path `-DRENDER2D_ENGINE_DEPS_ROOT=<root>` (defaults to a sibling `E:/Project/MelosyneTest/`), or override any tree individually:
 
 - `RENDER2D_MEMORY_CENTER_SOURCE_DIR` → MemoryCenterNew
 - `RENDER2D_FAST_MATH_SOURCE_DIR` → fast_math (provides `MMath`)
@@ -42,7 +42,7 @@ cmake --preset clang-ninja-perf && cmake --build --preset clang-ninja-perf
 - `RENDER2D_THREAD_CENTER_SOURCE_DIR` → ThreadCenter
 - Plus the Vulkan SDK (`find_package(Vulkan REQUIRED)`)
 
-Override these cache variables if your layout differs. Set `-DRENDER2D_REQUIRE_VULKAN=OFF` to configure without a Vulkan SDK.
+The fetch tier needs git credentials for the two private repos (MemoryCenter, Vector); `scripts/verify_fetch_tier.sh` exercises it. Set `-DRENDER2D_REQUIRE_VULKAN=OFF` to configure without a Vulkan SDK. Render2D also installs/exports for `find_package(Render2D)` (Stage 25, option `RENDER2D_INSTALL`, default ON); the installed config re-runs the same three-tier resolver. See `docs/MERGE_GUIDE.md` and `docs/adr/2026-06-18-stage25-consumability-packaging.md`.
 
 ### Vulkan tests pass without a GPU
 
