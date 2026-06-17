@@ -6,7 +6,7 @@ Render2D is a C++23, component-first, Vulkan-native rendering module. The curren
 
 **Render2D is a 2D *rendering module*, not a game engine.** It is deliberately scoped to turn render data (transforms, sprites, text, cameras) into batched, submitted GPU work, and nothing else. It is designed to be merged into a host engine, which owns everything around the renderer.
 
-The following subsystems are **intentionally NOT part of Render2D** and will never be added here — they are the **host engine's responsibility** and are filled in at merge time (see `docs/ProjectMergeTODO.md`):
+The following subsystems are **intentionally NOT part of Render2D** and will never be added here — they are the **host engine's responsibility** and are filled in at merge time (see `docs/ProjectMergeTODO.md` for the 39 numbered constraints and `docs/MERGE_GUIDE.md` for the ordered integration walkthrough):
 
 - **Application & windowing** — the OS window, surface creation, and the main/event loop. Render2D renders into a surface/target the host provides; it does not own a window or run a loop.
 - **Input** — keyboard, mouse, gamepad, and touch.

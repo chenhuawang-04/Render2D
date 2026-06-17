@@ -532,3 +532,13 @@ Merge rule:
 - host ECS still owns `TextureAtlasRegion[]`, `Sprite[]`, `DrawCommand[]`, and `SpriteInstance[]`;
 - Render2D systems can now be trusted to propagate region UVs into the sampled sprite path;
 - this proof does not replace a production atlas runtime, image packing policy, font raster ingestion, material graph, or bindless/descriptor-indexing design.
+
+## 40. Merge-readiness status (Stage 23)
+
+Stage 23 reconciles all of the above into a single, ordered merge reference: `docs/MERGE_GUIDE.md`. Every item #1–#39 has been classified there as one of:
+
+- **Done** — contract implemented and proven in-repo;
+- **Host** — the host engine owns this at merge (the contract is in place; the responsibility is the host's);
+- **Marker** — a stage-closed/historical note, not an active constraint.
+
+No item is unaddressed. The boundary that makes the merge safe — Render2D systems consume only `std::span`, never a concrete storage type — is proven byte-identical across storages by `render2d.host_like_ecs_adapter` (23A) and driven end-to-end to a real presented sprite frame by `render2d.host_present_frame` (23D). The canonical merge configuration is `RENDER2D_BUILD_PRESENT_HOST=OFF` (windowless; the host supplies its own surface). See `docs/MERGE_GUIDE.md` for the ownership split, the integration walkthrough, the runtime resolve-API surface, the full #1–#39 reconciliation matrix, and the re-runnable mergeability gate; and `docs/adr/2026-06-17-stage23-host-merge-readiness.md` for the host-ECS-boundary decision.
