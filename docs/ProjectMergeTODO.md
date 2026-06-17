@@ -120,6 +120,8 @@ The Stage 8 smoke test renders a magenta sprite-like full-screen triangle into a
 
 Host-engine merge still needs swapchain/window integration for on-screen presentation and RenderDoc capture of a real window frame.
 
+Stage 22 now provides both in-repo behind the optional SDL3 present-host (`RENDER2D_BUILD_PRESENT_HOST`, default ON in this repo): 22C presents real frames through the unchanged swapchain/present runtimes, 22D proves the presented swapchain image is byte-identical to the offscreen baseline, and 22E wraps a real present frame in a programmatic RenderDoc capture (`.rdc`). This does not move ownership — the present-host consumes a host-providable `VkSurfaceKHR` and creates no `VkInstance`/`VkDevice`; window + surface ownership stays the host's, and a host engine sets `RENDER2D_BUILD_PRESENT_HOST=OFF` to supply its own surface and capture automation at merge (see §24/§25/§27/§28 and docs/adr/2026-06-16-stage22-sdl3-present-host.md).
+
 
 ## 10. MemoryCenter and McVector are mandatory for Render2D-owned storage
 

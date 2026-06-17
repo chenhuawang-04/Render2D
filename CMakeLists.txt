@@ -342,6 +342,17 @@ if(RENDER2D_BUILD_PRESENT_HOST)
         target_link_libraries(render2d_present_host_support INTERFACE Vulkan::Vulkan)
     endif()
 
+    # Stage 22E: the vendored RenderDoc in-application API header (a single MIT
+    # header -- no build, no library, not a submodule; see third_party/renderdoc/
+    # README.md). Promoted to a SYSTEM include so it does not trip Render2D's
+    # -Werror, and reachable as <renderdoc_app.h> by anything linking this target
+    # (e.g. include/Render2D/Present/RenderDocCapture.hpp). When the present-host
+    # option is OFF this target does not exist, so the header is never on any
+    # include path -- the OFF build is RenderDoc-free as well as SDL-free.
+    target_include_directories(render2d_present_host_support SYSTEM INTERFACE
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/renderdoc"
+    )
+
     # Treat SDL's headers as system includes so their warnings do not trip
     # Render2D's -Werror when Present/* includes <SDL3/SDL.h> (same treatment as
     # the font + ThreadCenter headers above). SDL exposes its include dirs via the

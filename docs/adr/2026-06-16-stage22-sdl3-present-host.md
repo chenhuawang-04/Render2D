@@ -251,3 +251,77 @@ the surface does not advertise that usage, the test skips gracefully.
   present-host tests and nothing else).
 - Umbrella purity unchanged (SDL only in `PresentHost.hpp`); constraint scan 3/3;
   the new + dependent present TUs clang-tidy clean.
+
+## Update — Stage 22E (2026-06-17)
+
+22E closes Stage 22: it makes the on-screen present path programmatically
+RenderDoc-capturable and wires the closeout. A real gradient frame is rendered to
+the live swapchain and its submit+present is wrapped in RenderDoc
+`StartFrameCapture`/`EndFrameCapture`, producing a repeatable `.rdc` a developer
+can open to inspect the draw call, pipeline, shaders, the copy onto the swapchain
+image, and the present. As with 22B–22D there is no runtime contract change: all
+five Vulkan runtimes and `PresentHost` are unchanged, and the rendered content
+reaches the swapchain by the 22D idiom (render offscreen via
+`VulkanDynamicRenderEncoder` → raw `vkCmdCopyImage` onto the acquired swapchain
+image → present), since the encoders resolve a resource `ImageRef` and a swapchain
+image is not one. Red line #11 (the host owns the window + surface; the
+present-host creates no `VkInstance`/`VkDevice`) stays intact.
+
+New dependency — a *vendored single header*, not a submodule:
+`third_party/renderdoc/renderdoc_app.h` is the official RenderDoc in-application
+API header (MIT; the license banner is in the file). It carries no build and no
+library — RenderDoc is never linked. It is promoted to a SYSTEM include on
+`render2d_present_host_support`, reachable as `<renderdoc_app.h>` only when the
+present-host option is ON; a `RENDER2D_BUILD_PRESENT_HOST=OFF` build never puts it
+on any include path, so that build is RenderDoc-free as well as SDL-free. See
+`third_party/renderdoc/README.md` for provenance.
+
+New capability — `include/Render2D/Present/RenderDocCapture.hpp`: a thin,
+non-owning wrapper over the RenderDoc API, isolated exactly like `PresentHost.hpp`
+(behind the internal target, never in the umbrella). It only *attaches* to an
+ALREADY-INJECTED RenderDoc — `GetModuleHandleA("renderdoc.dll")` on Windows,
+`dlopen(..., RTLD_NOLOAD)` on Unix — and never loads the module itself (loading it
+fresh would not hook the already-created instance/device and is unsupported by
+RenderDoc). When RenderDoc is absent — a normal run or headless CI — `attach()`
+returns false and every capture call is a no-op, so wrapping a present frame is
+always safe.
+
+Scope-guard amendment: per the decision to make capture a *reusable* present-host
+capability (not throwaway test scaffolding), the present-host's admissible scope
+now explicitly includes **frame-capture / diagnostics integration (RenderDoc)** —
+a presentation-debugging concern, the only tooling category admitted beyond
+window/surface/swapchain/present. The original exclusions stand unchanged: input,
+audio, scene/asset, gameplay/scripting subsystems remain the host engine's job and
+out of scope for this module.
+
+Verification honesty: `ctest` runs the test WITHOUT RenderDoc, so it proves the
+present frame succeeds and the capture wrap is a clean no-op; the actual `.rdc`
+artifact is produced only when the exe is launched under RenderDoc — the manual
+check below (the established GPU/display-gated + manual-visible pattern).
+
+### RenderDoc manual-capture checklist
+
+1. Build the present-host target (`RENDER2D_BUILD_PRESENT_HOST=ON`, default).
+2. Launch `render2d_present_renderdoc_capture_smoke.exe` from the RenderDoc UI (or
+   `renderdoccmd capture`), so `renderdoc.dll` is injected.
+3. Expect stdout `RenderDoc API <maj.min.patch> attached`, then
+   `... gradient frame presented + captured`.
+4. Confirm one `.rdc` was written (path template `render2d_present_22e`) and
+   `GetNumCaptures` incremented; open it and verify the gradient draw call, the
+   graphics pipeline + shaders, the copy onto the swapchain image, and the present.
+
+### Verification (22E)
+
+- Debug `ctest` 62/62, Perf `ctest` 83/83 (each +1: the new
+  `render2d.present_renderdoc_capture`). On a GPU+display machine the real path
+  ran end to end and reported "640x480 gradient frame presented (no RenderDoc)"
+  (RenderDoc is not injected under `ctest`, so capture is a no-op by design).
+  Every bring-up failure is a graceful skip (returns 0), so it stays green on
+  headless CI.
+- `RENDER2D_BUILD_PRESENT_HOST=OFF` still builds the whole tree (291/291) with both
+  SDL and RenderDoc absent (0 `SDL3-static` / `renderdoc_app` references in the
+  build graph) and all five present tests unregistered (57 tests; a list diff
+  drops exactly the five SDL present-host tests and nothing else).
+- Umbrella purity unchanged (SDL only in `PresentHost.hpp`, `renderdoc_app.h` only
+  in `RenderDocCapture.hpp`, neither in `Render2D.hpp`); constraint scan 3/3; the
+  new TU + `RenderDocCapture.hpp` clang-tidy clean; `git diff --check` clean.

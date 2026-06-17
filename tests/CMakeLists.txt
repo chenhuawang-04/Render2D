@@ -389,6 +389,26 @@ if(RENDER2D_BUILD_PRESENT_HOST AND TARGET render2d_present_host_support)
     render2d_apply_strict_warnings(render2d_present_visible_capture_smoke)
 
     add_test(NAME render2d.present_visible_capture COMMAND render2d_present_visible_capture_smoke)
+
+    # Stage 22E: render a real gradient frame to the live swapchain and wrap the
+    # submit+present in a programmatic RenderDoc capture (a repeatable .rdc
+    # artifact). RenderDocCapture only attaches to an already-injected RenderDoc,
+    # so a normal ctest run is a no-op and just proves the present frame; the
+    # actual capture is the manual under-RenderDoc check. GPU+display+dynamic-
+    # rendering-gated -- skips (returns 0) at every bring-up failure, staying
+    # green on headless CI.
+    add_executable(render2d_present_renderdoc_capture_smoke
+        present_renderdoc_capture_smoke.cpp
+    )
+    target_link_libraries(render2d_present_renderdoc_capture_smoke PRIVATE
+        render2d_present_host_support
+    )
+    target_include_directories(render2d_present_renderdoc_capture_smoke PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    render2d_apply_strict_warnings(render2d_present_renderdoc_capture_smoke)
+
+    add_test(NAME render2d.present_renderdoc_capture COMMAND render2d_present_renderdoc_capture_smoke)
 endif()
 
 add_executable(render2d_text_glyph_system_test

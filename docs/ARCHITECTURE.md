@@ -273,8 +273,8 @@ Implemented:
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
-- host-engine window-visible capture automation
+- host-engine window-visible capture automation (the in-repo, optional Stage 22 SDL3 present-host demonstrates it — 22C present-loop, 22D visible-capture == offscreen baseline; the host still owns window/surface and its own automation at merge, `RENDER2D_BUILD_PRESENT_HOST=OFF`)
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
 - production atlas runtime ownership, raster-data ingestion, advanced bin packing, complex material graph, and bindless/descriptor-indexing policy
 - Vulkan text draw integration
-- RenderDoc automation; current capture target is the offscreen Vulkan smoke executable
+- RenderDoc automation (Stage 22E adds programmatic `.rdc` capture of a real present frame via the optional present-host's `RenderDocCapture`; the offscreen Vulkan smoke executable is still a capture target, and a host supplies its own automation at merge)
