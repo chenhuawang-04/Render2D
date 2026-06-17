@@ -51,6 +51,7 @@
 | 22 | 上屏呈现与可见抓帧 | 功能/集成 | 11 | 真窗口呈现一帧、抓帧/RenderDoc 自动化 |
 | 23 | 宿主引擎集成 / Merge | 集成 | 全部 | ECS 适配层、39 条约束落实、端到端帧 |
 | 24 | CPU 性能精炼(数据驱动,可选) | 性能 | 21(数据) | 融合空间前段(免中间数组)、fast_math 批量 SIMD sincos |
+| 25 | 可消费性 / 打包(roadmap 重开) | 工程 | 17E | install/export + `find_package(Render2D)`、下游 consumer 验证、fetch 层验证 |
 
 **关键路径建议**:`17(安全网) → 18(atlas) → 19(文本)` 是主功能链;`20`、`21`、`22` 可在其后或并行;`23` 是收敛终点。若以功能交付为先,**Stage 18 不依赖 17,可立即启动**,17 作为并行的工程加固。
 
@@ -319,6 +320,33 @@ transform→bounds→culling 一趟内联,**不落地 `WorldBounds`**(世界 AAB
 - **门禁**:fast_math 83/83+模块绿并推送;Render2D Debug 57/57、Perf 78/78(开 AVX2+FMA)。
 
 **边界**:仅 CPU 性能精炼,功能不变。SIMD 三角落在 fast_math(数学红线:Render2D 不写本地向量/矩阵/三角);SoA 组件存储仍属 host ECS(超范围)。
+
+---
+
+### Stage 25 — 可消费性 / 打包(工程补强 · 可选,roadmap 重开)—— 计划已锁定 2026-06-18
+
+**现状校正(先于计划,代码核查得出)**:CLAUDE.md/旧叙述里"CMakeLists 硬编码绝对路径、缺失即 FATAL_ERROR"**已过时**——依赖路径放宽**早在 Stage 17E 落地**:`CMakeLists.txt:81-168` 的 `render2d_provide_engine_dependency` 宏对四个引擎依赖做**三层解析**(复用已存在 target → `add_subdirectory` 本地树 → `FetchContent` 拉 git),带逐依赖 `*_GIT_REPOSITORY/_TAG` 覆盖与 umbrella `RENDER2D_ENGINE_DEPS_ROOT`;README §Dependencies 已记。ADR `2026-06-14-stage17e-engine-dep-fetch.md` 是其依据(并诚实记录 fetch 层"已写未跑",私有仓需 `ENGINE_DEPS_TOKEN`)。**故 Stage 25 ≠ 依赖放宽**,而是**缺失的 install/export/`find_package` 那一半 + 可消费性验证**。
+
+**目标**:让 `Render2D::Render2D` 被下游/宿主以两种受支持模型干净消费——(1)**源码复用**(已可用 → *证明*它);(2)**安装/导出包**(`find_package(Render2D)` → *建造*它)——且依赖故事显式、可测。
+
+**确认的缺口(grep/读码核实)**:
+- ❌ Render2D 自身构建里**无任何 `install()`/`export()`/`Render2DConfig.cmake`**(全仓 grep 干净,仅 third_party 自带)——下游无 `find_package(Render2D)` 路径。
+- ❌ McVector include 仅 `$<BUILD_INTERFACE>`(`CMakeLists.txt:208`),无 `$<INSTALL_INTERFACE>` 对偶——已安装的 target 找不到 McVector 头(Render2D 自己的 `include/` 已半 install-aware:line 209 有 `$<INSTALL_INTERFACE:include>`)。
+- ⚠️ **传递依赖岔口**:Render2D 链 `Center.Memory.Headers` + `fast_math`(+ thread/font/SDL),而这些依赖自身的 install 被强制 OFF(`:119,134,313`)。导出的 `Render2DConfig.cmake` 必须**重新解析**它们,不能假装已安装。
+
+**设计决策(已与用户确认)**:installed config 在定义 imported target 前**重跑同一三层解析**(reuse→local→fetch)——把该解析 helper 随包发出——而非 vendor 私有头或假装依赖已装。这让安装包与源码复用模型一致,且不泄露私有头。
+
+**子阶段**:
+- **25A — 下游 consumer 冒烟(最高性价比,零新 install 机制)**:新增外部迷你 CMake 工程 `tests/packaging/consumer/`,以**源码复用**(`add_subdirectory` 指回 Render2D 源)拉入 Render2D,编译并运行一个包含 umbrella + 一个 system + 一个 native ref 的 TU;以 `render2d.packaging_consumer` CTest 驱动嵌套 cmake configure→build→run。证明**公共 target 面**正是宿主复用的样子、可独立消费。
+- **25B — install/export/`find_package`(打包主体)**:`install(TARGETS Render2D + 支持 target EXPORT Render2DTargets)`、`install(DIRECTORY include/Render2D)`、用 `CMakePackageConfigHelpers` 生成 `Render2DConfig.cmake` + 版本文件(新 `cmake/Render2DConfig.cmake.in`,`Render2D::` 命名空间);修 McVector install-interface 缺口;config 重解析引擎依赖 + `find_dependency(Vulkan)`。第二个测试消费**已安装包**(对临时 prefix `find_package(Render2D)`)。
+- **25C — fetch 层验证(凭据门控)**:证明三层中的 fetch 层在**干净缓存**上真能 clone+build 四个依赖(2 个私有仓需 git 凭据 / `ENGINE_DEPS_TOKEN`)。多半 CI/手动;无凭据时清楚 `log` 跳过原因并记入文档。交叉引用 Stage 17E ADR(fetch 层"已写未跑")。
+- **25D — 文档 + ADR 定稿 + 收口**:打包模型 ADR(源码复用为主、install 为辅、传递依赖如何解析);README "作为安装包消费" 一节;**刷新过时的 CLAUDE.md/PROJECT_INDEX 依赖叙述**(三层已存在);同步 ARCHITECTURE/MERGE_GUIDE;跑全门。
+
+**边界 / 红线(不变)**:header-only INTERFACE 库;`McVector`、禁 `std::vector`;umbrella 仍 SDL/RenderDoc/font/thread-free;禁直接 Vulkan 显存 API;Strict POD;零 NOLINT。打包只新增"如何被消费/安装",**不改**任何 runtime/component/system 契约。
+
+**验收(每子阶段过统一门 + 打包专项)**:Debug `ctest`、Perf `ctest`、`RENDER2D_BUILD_PRESENT_HOST=OFF` 全树、约束扫描 3/3、`clang-tidy`、`git diff --check` —— **外加**:consumer 工程 configure+build+run 绿;已安装树 `find_package(Render2D)` 绿;(25C)fetch 层在干净缓存上绿或如实记跳过。
+
+**推送**:Stage 25 各子阶段沿用既定**本地逐提交**模式;与此前 hold 的 9 个提交(`9ab1df6..a4f7d2b`)一并**继续 HOLD**,待用户明确确认再整批推(推送触发 hosted portable-checks)。
 
 ---
 
