@@ -147,6 +147,8 @@ Stage 16 proves the atlas UV path through the real Vulkan sampled sprite shader.
 
 The repository includes test-only storage under `tests/support/`. This storage exists only to validate components and systems. It is not production architecture and must be replaced by the host engine ECS during integration. Its backing arrays use `Render2D::McVector`, but the storage itself remains test-only.
 
+Test-only scaffolding extends this with a lightweight, usable face: `tests/support/MiniEcs.hpp` is a small generational-handle ECS (create/destroy entities, per-type sparse-set components, and `gatherRenderInputs()` packing row-aligned columns for the span-only systems), and `tests/support/AssetRegistry.hpp` + `tests/support/ImageFile.{hpp,cpp}` are a test-only asset framework that loads real image files (the vendored stb headers, compiled behind the `render2d_test_image_io` target — never in the core or umbrella). They exist only to prove the renderer is usable end-to-end from an author-it-yourself scene; like the storage above, they are merge-time removal targets, not production architecture, and an ECS / asset pipeline stay out of the core's scope. See `docs/adr/2026-06-19-test-ecs-asset-framework.md`.
+
 ## Native runtime
 
 Native references exposed to ECS use compact IDs plus generation counters:

@@ -6,6 +6,25 @@ if(CMAKE_BUILD_TYPE MATCHES "Release|RelWithDebInfo|MinSizeRel")
     endif()
 endif()
 
+# Test-only image I/O: an isolated static lib that compiles the vendored stb
+# single-headers (third_party/stb) in ONE TU and exposes a clean, stb-free,
+# McVector-based API (support/ImageFile.hpp). stb is a SYSTEM include so its
+# warning-dirty internals never trip -Werror; this is the only place stb is
+# compiled, and it is never linked into the rendering core or the umbrella. The
+# asset/scene render test consumes it through support/AssetRegistry.hpp.
+add_library(render2d_test_image_io STATIC
+    support/ImageFile.cpp
+)
+target_link_libraries(render2d_test_image_io PUBLIC
+    Render2D::Render2D
+)
+target_include_directories(render2d_test_image_io
+    SYSTEM PRIVATE ${PROJECT_SOURCE_DIR}/third_party/stb
+)
+# Deliberately NOT render2d_apply_strict_warnings: this TU compiles stb's
+# implementation. stb is SYSTEM-included so its warnings are suppressed already; the
+# wrapper code itself is small and clean.
+
 add_executable(render2d_compile_smoke
     compile_smoke.cpp
 )
@@ -116,6 +135,42 @@ target_include_directories(render2d_host_like_ecs_adapter_test PRIVATE
 render2d_apply_strict_warnings(render2d_host_like_ecs_adapter_test)
 
 add_test(NAME render2d.host_like_ecs_adapter COMMAND render2d_host_like_ecs_adapter_test)
+
+# Lightweight test-only ECS usability proof: author a scene into MiniEcs and prove
+# the gathered span input drives the CPU chain byte-identically to the plain-array
+# path, plus entity lifecycle (generational handles + slot reuse). Span-only, so it
+# links the public Render2D::Render2D target like the other CPU tests.
+add_executable(render2d_mini_ecs_pipeline_test
+    mini_ecs_pipeline_test.cpp
+)
+target_link_libraries(render2d_mini_ecs_pipeline_test PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_mini_ecs_pipeline_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_mini_ecs_pipeline_test)
+
+add_test(NAME render2d.mini_ecs_pipeline COMMAND render2d_mini_ecs_pipeline_test)
+
+# Test-only asset framework end-to-end: load real PNGs through the asset registry,
+# author a MiniEcs scene that references them, run the CPU chain (always), and -- on
+# a GPU -- upload + sample + render the loaded texture and read it back (skips
+# gracefully without a device). Links render2d_test_image_io for the stb-backed
+# loader.
+add_executable(render2d_asset_scene_render_test
+    asset_scene_render_test.cpp
+)
+target_link_libraries(render2d_asset_scene_render_test PRIVATE
+    Render2D::Render2D
+    render2d_test_image_io
+)
+target_include_directories(render2d_asset_scene_render_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+render2d_apply_strict_warnings(render2d_asset_scene_render_test)
+
+add_test(NAME render2d.asset_scene_render COMMAND render2d_asset_scene_render_test)
 
 add_executable(render2d_draw_sort_system_test
     draw_sort_system_test.cpp
