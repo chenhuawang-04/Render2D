@@ -17,6 +17,7 @@ option(RENDER2D_BUILD_FONT_RUNTIME "Build the FreeType+HarfBuzz+SheenBidi font/t
 option(RENDER2D_BUILD_PRESENT_HOST "Build the SDL3 present-host support target (Stage 22): an optional, isolated window+VkSurfaceKHR provider for on-screen presentation. Render2D core stays windowless; a host engine sets this OFF and provides its own surface. See docs/adr/2026-06-16-stage22-sdl3-present-host.md" ON)
 option(RENDER2D_ENABLE_AVX2 "Compile consumers with AVX2+FMA (raises the minimum CPU to x86-64-v3 / Haswell 2013+); enables hardware FMA in the fast_math kernels. See docs/adr/2026-06-16-render2d-avx2-fma-build-option.md" OFF)
 option(RENDER2D_INSTALL "Generate install/export rules so a downstream project can find_package(Render2D). Default ON in-repo; a host engine that consumes Render2D by source reuse can set it OFF. See docs/adr/2026-06-18-stage25-consumability-packaging.md" ON)
+option(RENDER2D_ENABLE_COVERAGE "Instrument the Render2D-owned test targets with Clang source-based coverage (-fprofile-instr-generate -fcoverage-mapping) so scripts/run_coverage.sh can report how much of include/Render2D/ the CTest suite exercises. Clang-only, OFF by default (it changes codegen and is a measurement build, not a shipping one). See docs/adr/2026-06-20-stage26-reproducibility-ci-release-closeout.md" OFF)
 
 # ----------------------------------------------------------------------------
 # Engine dependencies (host-engine source trees, NOT vendored in this repo).
@@ -317,6 +318,16 @@ function(render2d_apply_strict_warnings target_name)
             -Wpedantic
             -Werror
         )
+    endif()
+
+    # Stage 26 follow-up: optional Clang source-based coverage. This function is
+    # called on every Render2D-owned test target and on nothing under third_party/,
+    # so it is the right chokepoint to keep instrumentation scoped to our code (and
+    # the headers the tests include) -- not the vendored libraries. Both the compile
+    # and link sides need the flag. scripts/run_coverage.sh consumes the result.
+    if(RENDER2D_ENABLE_COVERAGE AND NOT MSVC)
+        target_compile_options(${target_name} PRIVATE -fprofile-instr-generate -fcoverage-mapping)
+        target_link_options(${target_name} PRIVATE -fprofile-instr-generate)
     endif()
 endfunction()
 

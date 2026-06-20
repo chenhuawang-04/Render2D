@@ -2,6 +2,7 @@ build/
 build_perf/
 build_off/
 build_host_min/
+build_coverage/
 out/
 CMakeFiles/
 CMakeCache.txt

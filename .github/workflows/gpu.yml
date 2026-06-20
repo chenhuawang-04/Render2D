@@ -1,0 +1,50 @@
+name: GPU verification (self-hosted)
+
+# Real-device pass for the GPU + present paths. The hosted `full-build` job (in
+# ci.yml) has no GPU, so every render2d.vulkan_* / present_* test graceful-skips
+# there -- green, but the GPU paths are never exercised. This workflow runs the
+# SAME suite on a SELF-HOSTED runner that has a Vulkan GPU, with the capability
+# gates ARMED (RENDER2D_REQUIRE_GPU / RENDER2D_REQUIRE_PRESENT), so a green run
+# PROVES the GPU (and, with a display, the on-screen present) paths actually ran.
+#
+# It is workflow_dispatch-only ON PURPOSE: a push/PR-triggered job that targets a
+# self-hosted label would queue forever when no such runner is connected. So this
+# file is INERT until you register a runner with the `gpu` label -- it never blocks
+# the hosted CI. See docs/CI_SELF_HOSTED_GPU.md for runner setup + prerequisites
+# (clang, ninja, the Vulkan SDK/driver, and the engine deps reachable locally or
+# fetched). Render2D is a private repo, so only collaborators can trigger this --
+# the usual self-hosted-runner risk on public repos does not apply here.
+
+on:
+  workflow_dispatch:
+    inputs:
+      require_present:
+        description: "Arm the on-screen present gate too (needs a display on the runner). Set 0 for a headless GPU server."
+        required: false
+        default: "1"
+
+permissions:
+  contents: read
+
+jobs:
+  gpu-verify:
+    # Requires a self-hosted runner advertising BOTH the default self-hosted label
+    # and a `gpu` label. No matching runner => the job stays queued (never fails
+    # the hosted suite), which is why this workflow is manual-only.
+    runs-on: [self-hosted, gpu]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # Drives configure -> build -> ctest for Debug + Perf with the gates armed.
+      # The runner is expected to already have the toolchain + Vulkan + engine deps
+      # (see the runbook); this does not install them.
+      - name: Build + test with capability gates armed
+        env:
+          R2D_REQUIRE_GPU: "1"
+          R2D_REQUIRE_PRESENT: ${{ github.event.inputs.require_present || '1' }}
+        run: bash scripts/run_gpu_verification.sh

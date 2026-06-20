@@ -1,0 +1,88 @@
+name: Coverage
+
+# On-demand code-coverage report for Render2D. Render2D is header-only, so this
+# measures how much of include/Render2D/ the CTest suite exercises (Clang
+# source-based coverage via RENDER2D_ENABLE_COVERAGE + scripts/run_coverage.sh).
+#
+# workflow_dispatch-only: coverage is a measurement build (instrumented, slower)
+# that does not need to run on every push -- trigger it when you want a number.
+# No external service / token: the HTML + text report is uploaded as a build
+# artifact and the summary is written to the run's job summary.
+#
+# This runs on a HOSTED runner with no GPU, so the vulkan_*/present_* tests
+# graceful-skip and their GPU-only lines show as uncovered -- the number reflects
+# the CPU / systems / components / contract surface. For coverage that also counts
+# the GPU paths, run scripts/run_coverage.sh on a machine with a Vulkan GPU.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      FETCHCONTENT_BASE_DIR: ${{ github.workspace }}/.deps-cache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install toolchain (clang 22, ninja)
+        run: |
+          wget -q https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22 all
+          sudo apt-get install -y ninja-build
+
+      - name: Install Vulkan loader/headers + SDL3 present-host build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvulkan-dev vulkan-validationlayers \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxtst-dev libxinerama-dev libxkbcommon-dev
+
+      - name: Cache fetched engine dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.deps-cache
+          key: engine-deps-${{ hashFiles('CMakeLists.txt', 'cmake/Render2DDependencies.cmake', '.gitmodules') }}
+          restore-keys: engine-deps-
+
+      - name: Build instrumented + report coverage
+        env:
+          LLVM_PROFDATA: llvm-profdata-22
+          LLVM_COV: llvm-cov-22
+          # The preset pins "clang++"; point it at clang-22 and let CMake fetch the
+          # four public engine deps (no local root).
+          R2D_CMAKE_EXTRA: >-
+            -DCMAKE_C_COMPILER=clang-22 -DCMAKE_CXX_COMPILER=clang++-22
+            -DRENDER2D_ENGINE_DEPS_ROOT=${{ github.workspace }}/.no-local-engine-deps
+            -DFETCHCONTENT_BASE_DIR=${{ github.workspace }}/.deps-cache
+        run: bash scripts/run_coverage.sh
+
+      - name: Write job summary
+        if: always()
+        run: |
+          {
+            echo "## Render2D coverage (include/Render2D)"
+            echo ""
+            echo "Hosted runner has no GPU, so vulkan_*/present_* GPU lines are uncovered here."
+            echo ""
+            echo '```'
+            tail -n 40 build_coverage/coverage/summary.txt 2>/dev/null || echo "no summary produced"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: render2d-coverage
+          path: build_coverage/coverage
+          if-no-files-found: warn

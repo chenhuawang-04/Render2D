@@ -35,6 +35,26 @@ render2d_apply_strict_warnings(render2d_compile_smoke)
 
 add_test(NAME render2d.compile_smoke COMMAND render2d_compile_smoke)
 
+# Stage 26 follow-up: GPU capability gate. Always built (links Render2D::Render2D,
+# like the vulkan_* tests). It graceful-skips with no device -- but under
+# RENDER2D_REQUIRE_GPU it HARD-FAILS, so a green run with that flag set proves a
+# device was present and therefore every createVulkanSmokeContext-based test ran
+# its real GPU path. _CRT_SECURE_NO_WARNINGS: the env-flag reader uses std::getenv,
+# which the MSVC CRT marks deprecated (same treatment as the font tests' fopen).
+add_executable(render2d_gpu_presence_gate
+    gpu_presence_gate.cpp
+)
+target_link_libraries(render2d_gpu_presence_gate PRIVATE
+    Render2D::Render2D
+)
+target_include_directories(render2d_gpu_presence_gate PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+target_compile_definitions(render2d_gpu_presence_gate PRIVATE _CRT_SECURE_NO_WARNINGS)
+render2d_apply_strict_warnings(render2d_gpu_presence_gate)
+
+add_test(NAME render2d.gpu_presence_gate COMMAND render2d_gpu_presence_gate)
+
 add_executable(render2d_test_harness_test
     test_harness_test.cpp
 )
@@ -545,6 +565,26 @@ if(RENDER2D_BUILD_PRESENT_HOST AND TARGET render2d_present_host_support)
     add_test(NAME render2d.window_scene_bench
         COMMAND render2d_window_scene_bench_test --sprites 256 --frames 4 --warmup 1
     )
+
+    # Stage 26 follow-up: present capability gate (the on-screen counterpart of
+    # render2d.gpu_presence_gate). Graceful-skips at every bring-up gate, but under
+    # RENDER2D_REQUIRE_PRESENT it HARD-FAILS, so a green run with that flag set
+    # proves the present path (window -> surface -> 1.3 device -> dynamic rendering
+    # -> TRANSFER swapchain) came up and therefore the present_* tests ran for real.
+    # _CRT_SECURE_NO_WARNINGS: the env-flag reader uses std::getenv (see above).
+    add_executable(render2d_present_capability_gate
+        present_capability_gate.cpp
+    )
+    target_link_libraries(render2d_present_capability_gate PRIVATE
+        render2d_present_host_support
+    )
+    target_include_directories(render2d_present_capability_gate PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    target_compile_definitions(render2d_present_capability_gate PRIVATE _CRT_SECURE_NO_WARNINGS)
+    render2d_apply_strict_warnings(render2d_present_capability_gate)
+
+    add_test(NAME render2d.present_capability_gate COMMAND render2d_present_capability_gate)
 endif()
 
 add_executable(render2d_text_glyph_system_test

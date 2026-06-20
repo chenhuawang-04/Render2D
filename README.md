@@ -172,8 +172,11 @@ The full tier needs **no secret** — all four engine deps are public and fetche
 SDL submodules are public too and are checked out by the workflow). The pinned fetch refs (see
 *Dependencies*) keep a clean build reproducible. To run it on demand, start the **CI** workflow via *Run
 workflow*; leave `engine_deps_root` empty to fetch, or set it to a pre-staged local root to skip fetching.
-A real-GPU pass (forcing the `vulkan_*` / present tests to actually execute) is a local or
-self-hosted-runner follow-up — see [No GPU required](#no-gpu-required).
+
+Two **on-demand** (`workflow_dispatch`) workflows complement it: **GPU verification** (`gpu.yml`, runs on
+a self-hosted `gpu` runner with the capability gates armed — see [Proving the GPU paths actually
+ran](#proving-the-gpu-paths-actually-ran)) and **Coverage** (`coverage.yml`, uploads a coverage report
+artifact). Both are inert/manual so they never gate ordinary pushes.
 
 ## No GPU required
 
@@ -185,3 +188,35 @@ GPU paths did not crash where a device was present; it does not by itself prove 
 The `render2d.vulkan_validation_layer_smoke` test additionally runs an offscreen workload under the
 Vulkan validation layer and fails on any validation error; it skips (still passing) when the validation
 layer is not installed.
+
+### Proving the GPU paths actually ran
+
+Because every GPU/present test skips when no device is present, a green run does not by itself prove a
+GPU path executed. Two **capability-gate** tests close that gap without touching the others:
+`render2d.gpu_presence_gate` and `render2d.present_capability_gate` skip by default, but **hard-fail**
+when `RENDER2D_REQUIRE_GPU` / `RENDER2D_REQUIRE_PRESENT` is set and the device/display is absent. Since a
+present device makes every other test run its real path, a green run with the flags armed is positive
+proof the GPU (and, with a display, the present) paths ran. Arm them with:
+
+```bash
+bash scripts/run_gpu_verification.sh           # builds Debug+Perf, runs ctest with the gates armed
+# R2D_REQUIRE_PRESENT=0 bash scripts/run_gpu_verification.sh   # GPU server with no display
+```
+
+`.github/workflows/gpu.yml` runs the same on a self-hosted GPU runner (manual-dispatch, inert until a
+`gpu`-labelled runner exists) — see [`docs/CI_SELF_HOSTED_GPU.md`](docs/CI_SELF_HOSTED_GPU.md).
+
+## Code coverage
+
+`scripts/run_coverage.sh` reports how much of `include/Render2D/` the CTest suite exercises (Render2D is
+header-only, so coverage is measured on the test TUs that include the headers, via Clang source-based
+coverage behind `-DRENDER2D_ENABLE_COVERAGE=ON`). It needs no external service or token — it writes a
+text summary and an HTML report under `build_coverage/coverage/`:
+
+```bash
+bash scripts/run_coverage.sh
+```
+
+On a GPU box the `vulkan_*`/present tests run their real paths so those lines count too; on a headless
+box they skip and show as uncovered. The `workflow_dispatch`-only `.github/workflows/coverage.yml`
+produces the same report as a downloadable artifact + job summary.

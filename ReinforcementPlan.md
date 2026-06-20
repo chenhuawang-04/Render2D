@@ -3,6 +3,8 @@
 本文件是 `Plan.md` 的延续。`Plan.md` 覆盖到 Stage 16(已完成),本规划从 **Stage 17** 起,定义把 Render2D 从"离屏验证的库"推进到"可嵌入宿主引擎的生产渲染后端"所需的补强路线。
 
 > **当前状态(2026-06-20 收尾更新)**:补强路线 **Stage 17–25 全部 CLOSED 并已推送至 `origin/master`**;随后的 **Stage 26 收尾**(可复现性 + CI 门禁 + 发布治理)亦已落地。下文各阶段记述里的"本地未推 / HOLD / ahead N / 待用户确认推送"等字样均为**当时的时点笔记**,现已被本横幅取代,不代表当前仓库状态。四个引擎依赖仓库现均为**公有**,fetch 层默认引用已**钉到精确 commit**(见 `cmake/Render2DDependencies.cmake`);`v0.1.0` 已打 tag 并发布。详见 `CHANGELOG.md` 与 `docs/adr/2026-06-20-stage26-reproducibility-ci-release-closeout.md`。
+>
+> **Stage 26 后续(2026-06-20,同日)**:报告里曾"延后"的三项中,**真机 GPU 验证**与**覆盖率报告**已落地——新增两个能力门禁金丝雀(`render2d.gpu_presence_gate` / `render2d.present_capability_gate`,默认优雅跳过,`RENDER2D_REQUIRE_GPU`/`RENDER2D_REQUIRE_PRESENT` 置位则硬失败,故"绿 = GPU 路径真的跑了")+ `scripts/run_gpu_verification.{sh,ps1}` + 自托管 `.github/workflows/gpu.yml`(`workflow_dispatch`、`gpu` 标签、注册 runner 前 inert,见 `docs/CI_SELF_HOSTED_GPU.md`);`RENDER2D_ENABLE_COVERAGE` + `scripts/run_coverage.sh` + `.github/workflows/coverage.yml`(`include/Render2D/` 文本+HTML 报告,不接外部服务)。**分支保护/required-checks 经用户决定不做**(维持单人直推 master;私有仓该功能亦需付费套餐),作为有意选择记录在 ADR 与 CHANGELOG。本地验证:金丝雀三分支(armed→失败 / 未置→跳过 / `=0`→跳过)已对真实 `EnvRequire.hpp` 验证,门禁全开下 `run_gpu_verification.sh` Debug 72/72 绿,`run_coverage.sh` 产出 `include/Render2D/` ≈85% region 覆盖率。
 
 阅读前置:`Plan.md`(总规划)、`docs/ARCHITECTURE.md`(管线与 runtime 清单)、`docs/ProjectMergeTODO.md`(39 条宿主合并约束)、`docs/architecture/BENCHMARK_BASELINE.md`(性能基线)。
 

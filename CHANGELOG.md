@@ -12,7 +12,26 @@ not a binary artifact. A consumer pins a tag and builds against it by source reu
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+- **Real-GPU verification (closes the "green ≠ GPU ran" gap).** Two capability-gate
+  canaries — `render2d.gpu_presence_gate` and `render2d.present_capability_gate` —
+  graceful-skip by default (so hosted CI stays green) but **hard-fail** under
+  `RENDER2D_REQUIRE_GPU` / `RENDER2D_REQUIRE_PRESENT` when no device/display is
+  present. Because a present device makes every other `vulkan_*`/present test run its
+  real path, a green run with the flags armed proves the GPU paths executed this pass.
+  Driven by `scripts/run_gpu_verification.{sh,ps1}` (run it on any GPU box today) and
+  the `workflow_dispatch`-only, self-hosted `.github/workflows/gpu.yml` — inert until a
+  `gpu`-labelled runner is registered (`docs/CI_SELF_HOSTED_GPU.md`).
+- **Coverage reporting.** `RENDER2D_ENABLE_COVERAGE` instruments the Render2D-owned
+  test targets with Clang source-based coverage; `scripts/run_coverage.sh` produces a
+  text + HTML report scoped to `include/Render2D/` with no external service or token,
+  and the `workflow_dispatch`-only `.github/workflows/coverage.yml` uploads it as an
+  artifact + job summary.
+
+### Notes
+- **Branch protection / required checks: intentionally not configured.** The
+  solo-maintainer direct-to-`master` flow is kept as-is (and the GitHub feature would
+  need a paid plan on a private repo); revisit if the contributor model changes.
 
 ## [0.1.0] - 2026-06-20
 

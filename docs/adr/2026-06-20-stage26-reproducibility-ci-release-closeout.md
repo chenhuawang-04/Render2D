@@ -109,3 +109,67 @@ build into an auto-gate; reconcile the docs; and ship a tracked `v0.1.0`.**
   (no compiled code changed); the hosted `full-build` run triggered by the closeout
   push validates the public, pinned, creditless fetch on a clean machine.
 - `v0.1.0` tag + GitHub release published; `CHANGELOG.md` maps it to this Git state.
+
+## Update — Stage 26 follow-ups: real-GPU verification + coverage (2026-06-20)
+
+Two of the three deliberately-deferred items above are now addressed; the third is
+recorded as a deliberate choice. No core/runtime/component/system contract changes
+(test scaffolding + a build option + scripts + CI workflows only); every red line
+intact.
+
+1. **Real-GPU verification — without a false-green.** Every `render2d.vulkan_*` test
+   funnels through `createVulkanSmokeContext()` and every present test through
+   `WindowTestHarness`, both of which return 0 (skip) when no device/display exists —
+   so a green `ctest` cannot, by itself, prove a GPU path ran. Rather than edit all
+   ~27 tests, we add **two capability-gate canaries**:
+   - `render2d.gpu_presence_gate` (always built) and
+   - `render2d.present_capability_gate` (present-host-gated).
+
+   They skip by default (a no-op on headless CI), but when `RENDER2D_REQUIRE_GPU` /
+   `RENDER2D_REQUIRE_PRESENT` is set they **hard-fail** if the device/present path is
+   absent. The key insight: *a present device makes every other GPU/present test run
+   its real path*, so a single canary asserting "a device exists" upgrades the whole
+   suite's green into a GPU-ran guarantee — zero changes to the existing tests. The
+   flag reader is `tests/support/EnvRequire.hpp`. Feature-specific paths
+   (bindless/descriptor-indexing, validation layer) stay capability-gated, not
+   device-gated — the canary reports them but does not require them.
+
+   Delivery: `scripts/run_gpu_verification.{sh,ps1}` arm the gates and run Debug+Perf
+   (usable on any GPU box now, no runner needed); `.github/workflows/gpu.yml` is a
+   `workflow_dispatch`-only, `runs-on: [self-hosted, gpu]` job that is **inert** until
+   a `gpu`-labelled runner is registered (so it never blocks the hosted CI), with the
+   setup runbook in `docs/CI_SELF_HOSTED_GPU.md`. This is the cross-platform shape of
+   the deferred "automated real-GPU CI" item: the repo side + local verification are
+   done; standing up the runner is a one-time maintainer/hardware step.
+
+2. **Coverage reporting.** `RENDER2D_ENABLE_COVERAGE` (Clang-only, OFF by default)
+   adds `-fprofile-instr-generate -fcoverage-mapping` to the Render2D-owned test
+   targets via `render2d_apply_strict_warnings` (the chokepoint that already skips
+   `third_party/`), so instrumentation stays scoped to our code + the headers the
+   tests include. `scripts/run_coverage.sh` runs the suite, merges the profiles, and
+   emits a text + HTML report **scoped to `include/Render2D/`** with no external
+   service or token (private repo → no Codecov). `.github/workflows/coverage.yml` is
+   `workflow_dispatch`-only and uploads the report as an artifact + job summary. On a
+   header-only library instrumented across ~70 binaries, llvm-cov prints a benign
+   "functions have mismatched data" warning (differing per-TU instantiations cannot be
+   merged); the aggregate is still representative.
+
+3. **Branch protection / required checks — intentionally NOT configured.** The
+   maintainer keeps the solo, direct-to-`master` workflow; required checks interact
+   poorly with it, and the GitHub feature would need a paid plan on this private repo.
+   Recorded here as a deliberate choice, to be revisited if the contributor model
+   changes.
+
+### Verification (follow-ups)
+
+- Both canaries build/link clean and run green under `ctest`. The armed→fail /
+  unset→skip / `=0`→skip decision was exercised against the real `EnvRequire.hpp`
+  (no-device stub → exit 1 when armed, exit 0 otherwise); the satisfied/skip paths
+  ran on a real device (Intel Iris Xe, Vulkan 1.4) and a real present path
+  (640×480 B8G8R8A8 swapchain, 2 images).
+- `scripts/run_gpu_verification.sh` (Debug) drove **72/72** tests green with both
+  gates armed on a GPU+display box.
+- `scripts/run_coverage.sh` produced a report end-to-end (Windows/Git-bash):
+  `include/Render2D/` TOTAL ≈ 85% region / 96% function / 83% line coverage.
+- `scripts/scan_constraints.sh` clean; the new test TUs are clang-tidy clean;
+  `git diff --check` clean.
