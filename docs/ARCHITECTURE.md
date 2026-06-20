@@ -275,7 +275,7 @@ Implemented:
 Not implemented yet:
 
 - ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
-- host-engine window-visible capture automation (the in-repo, optional Stage 22 SDL3 present-host demonstrates it — 22C present-loop, 22D visible-capture == offscreen baseline; the host still owns window/surface and its own automation at merge, `RENDER2D_BUILD_PRESENT_HOST=OFF`)
+- host-engine window-visible capture automation (the in-repo, optional Stage 22 SDL3 present-host demonstrates it — 22C present-loop, 22D visible-capture == offscreen baseline; the host still owns window/surface and its own automation at merge, `RENDER2D_BUILD_PRESENT_HOST=OFF`; the present tests + a `MiniEcs`/`AssetRegistry` scene→window demo share the test-only `tests/support/WindowTestHarness.hpp`)
 - real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
 - production atlas runtime ownership, raster-data ingestion, advanced bin packing, complex material graph, and bindless/descriptor-indexing policy
 - Vulkan text draw integration

@@ -497,6 +497,54 @@ if(RENDER2D_BUILD_PRESENT_HOST AND TARGET render2d_present_host_support)
     render2d_apply_strict_warnings(render2d_host_present_frame_smoke)
 
     add_test(NAME render2d.host_present_frame COMMAND render2d_host_present_frame_smoke)
+
+    # Window test framework demo: author a MiniEcs + AssetRegistry scene, run it
+    # through the span-only chain, and present the resulting sprites to a real SDL
+    # window via the WindowTestHarness, asserting the on-screen swapchain capture
+    # matches the offscreen baseline. Exercises the new harness (window/instance/
+    # device bring-up + swapchain/acquire/capture/present helpers) end to end. Links
+    # render2d_test_image_io for the AssetRegistry PNG load (stb). GPU+display+
+    # dynamic-rendering+TRANSFER-gated -- skips (returns 0) at every bring-up
+    # failure, so it stays green on headless CI.
+    add_executable(render2d_window_scene_present_test
+        window_scene_present_test.cpp
+    )
+    target_link_libraries(render2d_window_scene_present_test PRIVATE
+        render2d_present_host_support
+        render2d_test_image_io
+    )
+    target_include_directories(render2d_window_scene_present_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    render2d_apply_strict_warnings(render2d_window_scene_present_test)
+
+    add_test(NAME render2d.window_scene_present COMMAND render2d_window_scene_present_test)
+
+    # Present-path frame-timing benchmark: author a scalable grid scene, run it
+    # through the span-only chain, and present it in a timed loop via the
+    # WindowTestHarness, reporting per-frame latency percentiles + throughput. A
+    # measurement tool, not a regression gate (GPU timing is machine-dependent, so
+    # it asserts no wall-clock budget -- unlike the deterministic CPU perf gate in
+    # bench/). The ctest case runs a handful of frames just to keep the timed path
+    # compiled + exercised; real numbers come from a manual run with larger
+    # --frames/--sprites. GPU+display+dynamic-rendering+TRANSFER-gated -- skips
+    # (returns 0) at every bring-up failure, so it stays green on headless CI. No
+    # asset/PNG dependency (it constructs Sprite directly), so unlike the demo it
+    # does not link render2d_test_image_io.
+    add_executable(render2d_window_scene_bench_test
+        window_scene_bench_test.cpp
+    )
+    target_link_libraries(render2d_window_scene_bench_test PRIVATE
+        render2d_present_host_support
+    )
+    target_include_directories(render2d_window_scene_bench_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    render2d_apply_strict_warnings(render2d_window_scene_bench_test)
+
+    add_test(NAME render2d.window_scene_bench
+        COMMAND render2d_window_scene_bench_test --sprites 256 --frames 4 --warmup 1
+    )
 endif()
 
 add_executable(render2d_text_glyph_system_test

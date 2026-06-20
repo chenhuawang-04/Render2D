@@ -1,58 +1,43 @@
-// Stage 23D (host-engine merge readiness -- capstone): drive a full frame from
-// HOST-SHAPED ECS data all the way to an on-screen swapchain present, using the
-// REAL sprite GPU path -- the one end-to-end proof that ties the whole library
-// together for merge.
+// Window test framework usability proof: author a scene with the test-only
+// MiniEcs + AssetRegistry, run it through the unchanged span-only CPU chain, and
+// present the resulting sprites to a REAL SDL window via the WindowTestHarness,
+// verifying the on-screen swapchain image matches the offscreen render baseline.
 //
-// The thread is: HostLikeEcs (Stage 23A, a host-shaped SoA archetype + frame
-// arena) -> the span-only CPU systems (SpatialCull -> CommandBuild ->
-// SpriteInstanceBuild -> Batch) -> real SpriteInstance[] -> the real sprite
-// instanced draw (VulkanSpriteRenderEncoder) into an offscreen image -> the
-// Stage 22 present tail (copy onto the acquired swapchain image, present) ->
-// readback. The sprite colors on screen are literally the host scene's
-// Sprite.color_rgba8 carried the whole way down through the span boundary.
+//   CPU (always runs): write a PNG, load it through the AssetRegistry (a real stb
+//   decode), register a material, and author a MiniEcs scene whose sprites
+//   reference those asset handles. The scene runs through the chain (SpatialCull
+//   -> CommandBuild -> SpriteInstanceBuild -> Batch) into a frame arena, yielding
+//   the SpriteInstance[] the GPU will draw. We assert it culls and batches.
 //
-// What is novel here (nothing else in the repo does it): the real sprite draw
-// reaches a SWAPCHAIN. Stage 12/13/16 sprite draws are offscreen-readback only;
-// Stage 22's present draws are gradients, not the sprite pipeline. 23D closes
-// ProjectMergeTODO #9 ("current visible proof is offscreen, not swapchain-
-// presented") for the sprite path, and exercises #1 (span boundary, fed from a
-// host-shaped store), #24-#28 (frame/present/swapchain/acquire), and #29/#32
-// (host SpriteInstance[] -> color-only encoder -> presented) from host data to
-// frame.
+//   GPU (skipped without a window/device): bring up a window + present-capable
+//   Vulkan via WindowTestHarness, render the host-built sprite instances into an
+//   offscreen image (the swapchain's exact format), copy that onto the acquired
+//   swapchain image, read both back, present, and assert the swapchain capture ==
+//   the offscreen baseline byte-for-byte (and that the frame actually varies --
+//   the authored sprites drew).
 //
-// The window/instance/device bring-up and the swapchain/acquire/capture/present
-// plumbing live in WindowTestHarness (shared with 22D/22E and the window-scene
-// demo); this file expresses only what is unique to 23D -- the host scene and the
-// sprite render. Within ONE command buffer / ONE submission (the 22D idiom, render
-// swapped from gradient to sprites):
-//   1. render the host-built sprite instances into an offscreen image
-//      (VulkanSpriteRenderEncoder), in the swapchain's exact format;
-//   2. copy that offscreen image to a readback buffer -> the OFFSCREEN BASELINE;
-//   3. copy the offscreen image onto the acquired swapchain image;
-//   4. copy the swapchain image back to a second readback buffer -> the CAPTURE;
-//   5. transition the swapchain image to PRESENT_SRC and present it.
-// After the fence, assert CAPTURE == BASELINE byte-for-byte (present integrity)
-// and that the baseline actually varies (the sprites drew -- not a blank frame).
+// This is the new harness exercising the full window/present path with almost no
+// per-test plumbing: the WindowTestHarness owns the window/instance/device
+// bring-up and the swapchain/acquire/capture/present helpers (the same ones the
+// Stage 22D/22E/23D capture tests share). The render here uses the color-only
+// sprite path (each instance's own affine + colour, no descriptor binding) -- the
+// proven Stage 23D present path; textured-sampled-on-GPU is already covered by
+// render2d.asset_scene_render. Authored directly in the sprite shader's NDC clip
+// space (camera = NDC box, sprites in NDC quadrants), since clip projection is
+// the host's vertex-shader concern (ProjectMergeTODO #32), exactly as 23D does.
 //
-// Scope boundary (deliberate): the repo's CPU pipeline stops at a WORLD-SPACE
-// affine; clip-space projection is the host's vertex-shader concern. The
-// color-only sprite shader applies the instance affine straight to the NDC quad
-// verts with NO projection uniform (see SpriteShaders.hpp / ProjectMergeTODO
-// #32), so this scene is authored directly in that clip space (camera = NDC box,
-// visible sprites placed in NDC quadrants). The content reaches the swapchain by a
-// raw vkCmdCopyImage on resolved handles (encoders resolve a VulkanResourceRuntime
-// ImageRef; a swapchain image is not one) -- the windowless-core-preserving idiom.
-// Every runtime + PresentHost stays byte-for-byte unchanged.
-//
-// Like the other Stage 22 present tests, every bring-up step is a graceful SKIP on
-// a headless/limited box: the harness returns Skipped (logged) and we only assert
-// on the real path.
+// Test-only scaffolding: MiniEcs/AssetRegistry and the present-host (SDL3) are out
+// of Render2D's core scope (the host engine owns them at merge). Every bring-up
+// step is a graceful skip on a headless/limited box. McVector only.
 
 #include <Render2D/Render2D.hpp>
 
 #include <Render2D/Present/PresentHost.hpp>
 
+#include "Render2D/Memory/RenderVector.hpp"
+#include "support/AssetRegistry.hpp"
 #include "support/HostLikeEcs.hpp"
+#include "support/MiniEcs.hpp"
 #include "support/SpriteShaders.hpp"
 #include "support/TestHarness.hpp"
 #include "support/WindowTestHarness.hpp"
@@ -60,9 +45,11 @@
 #include <vulkan/vulkan.h>
 
 #include <array>
+#include <cstdio>
 #include <exception>
 #include <iostream>
 #include <span>
+#include <string_view>
 
 namespace {
 
@@ -88,8 +75,12 @@ using CommandBuild = R2D::CommandBuildSystem<Provider, Dim>;
 using SpriteInstanceBuild = R2D::SpriteInstanceBuildSystem<Provider, Dim>;
 using Batch = R2D::BatchSystem<Provider, Dim>;
 
-using HostEntityTable = R2DT::HostEntityTable<Provider, Dim>;
-using HostFrameArena = R2DT::HostFrameArena<Provider, Dim>;
+using SceneEcs = R2DT::SceneEcs<Provider, Dim>;
+using MiniEntity = R2DT::MiniEntity;
+using Columns = R2DT::RenderInputColumns<Provider, Dim>;
+using Arena = R2DT::HostFrameArena<Provider, Dim>;
+using Registry = R2DT::AssetRegistry<Provider, Dim>;
+using DecodedImage = R2DT::DecodedImage;
 
 using SwapchainRuntime = R2D::VulkanSwapchainRuntime<Provider, Dim>;
 using PresentRuntime = R2D::VulkanPresentRuntime<Provider, Dim>;
@@ -111,26 +102,29 @@ using BufferRef = R2D::BufferRef<Provider, Dim>;
 using PipelineRef = R2D::PipelineRef<Provider, Dim>;
 using ActiveSwapchain = Render2DTest::ActiveSwapchain<Provider, Dim>;
 
-constexpr const char* kLogPrefix = "host-present 23D";
-constexpr R2D::U32 kBytesPerPixel = 4U; // B8G8R8A8 / R8G8B8A8 are 4 bytes/pixel
+constexpr const char* kLogPrefix = "window-scene";
+constexpr const char* kTexturePath = "render2d_window_scene.png";
+
+constexpr R2D::U32 kBytesPerPixel = 4U;
 constexpr R2D::U64 kFenceTimeoutNs = 1'000'000'000ULL;
 constexpr R2D::U64 kAcquireTimeoutNs = 1'000'000'000ULL;
 constexpr R2D::U32 kClearColorRgba8 = 0x000000FFU; // opaque black; sprites draw over it
 
-// --- The host scene, authored directly in the sprite shader's clip space ------
-// Camera viewport 2x2 at the origin => an NDC [-1,1] cull box. Visible sprites
-// sit in the four NDC quadrants at scale 0.30 (the full-screen quad mesh maps to
-// a [pos +/- 0.30] rect), each a distinct opaque colour, so the frame is four
-// colored rectangles on black -- deterministic, spatially varied, non-vacuous.
-// The rest are culled: some pushed far off-screen (bounds cull), some masked off
-// (layer cull). So visible_count (4) is strictly between 0 and the entity count.
+// Visible-mode safety cap. At FIFO vsync (~60 Hz) this is many minutes of
+// on-screen time; the real exit is the user closing the window (the X, or Esc).
+// The cap only guarantees the loop terminates if no close event ever arrives.
+constexpr R2D::U32 kMaxVisibleFrames = 100'000U;
+
+// The scene, authored directly in the sprite shader's clip space. Camera viewport
+// 2x2 at the origin => an NDC [-1,1] cull box; visible sprites sit in the four NDC
+// quadrants at scale 0.30 (the full-screen quad mesh maps to a [pos +/- 0.30]
+// rect), each a distinct opaque colour. The rest are culled (bounds or layer
+// mask), so visible_count (4) is strictly between 0 and the entity count.
 constexpr R2D::U32 kVisibleSpriteCount = 4U;
 constexpr R2D::U32 kEntityCount = 12U;
 constexpr float kVisibleScale = 0.30F;
 constexpr R2D::U32 kVisibleMask = 0xFFFF'FFFFU;
 constexpr R2D::U32 kHiddenMask = 0U;
-constexpr R2D::U32 kSharedTextureId = 1U;
-constexpr R2D::U32 kSharedMaterialId = 1U;
 
 constexpr Camera kCamera{
     .source_id = 0U,
@@ -145,8 +139,7 @@ constexpr Camera kCamera{
     .flags = 0U,
 };
 
-// rgba8 is consumed by an R8G8B8A8_UNORM vertex attribute (low byte = R), i.e.
-// R | (G<<8) | (B<<16) | (A<<24). Four distinct opaque colours.
+// rgba8 is consumed by an R8G8B8A8_UNORM vertex attribute (low byte = R).
 constexpr std::array<R2D::U32, kVisibleSpriteCount> kVisibleColors{{
     0xFF0000FFU, // red
     0xFF00FF00U, // green
@@ -157,8 +150,7 @@ constexpr std::array<float, kVisibleSpriteCount> kVisibleX{{-0.45F, 0.45F, -0.45
 constexpr std::array<float, kVisibleSpriteCount> kVisibleY{{-0.45F, -0.45F, 0.45F, 0.45F}};
 
 // One full-screen quad (two triangles) in NDC; the per-instance affine shrinks +
-// translates it into the sprite's clip-space rect. Same mesh the offscreen
-// sprite smoke uses.
+// translates it into the sprite's clip-space rect. Same mesh the sprite tests use.
 constexpr SpriteVertex makeVertex(float position_x_, float position_y_, float uv_x_, float uv_y_) noexcept
 {
     return {.position_x = position_x_, .position_y = position_y_, .uv_x = uv_x_, .uv_y = uv_y_};
@@ -173,25 +165,59 @@ constexpr std::array<SpriteVertex, 6U> kQuadVertices{{
     makeVertex(-1.0F, 1.0F, 0.0F, 1.0F),
 }};
 
-// Fill the host-shaped entity table with the NDC scene above.
-void buildHostScene(HostEntityTable& table_)
+void fillSolidRgba(R2D::McVector<R2D::U8>& out_, R2D::U32 width_, R2D::U32 height_)
 {
-    table_.reserve(kEntityCount);
+    const auto pixel_count = static_cast<R2D::Usize>(width_) * static_cast<R2D::Usize>(height_);
+    out_.resize(pixel_count * 4U);
+    for (R2D::Usize pixel = 0U; pixel < pixel_count; ++pixel) {
+        out_[pixel * 4U + 0U] = 0x40U;
+        out_[pixel * 4U + 1U] = 0x80U;
+        out_[pixel * 4U + 2U] = 0xC0U;
+        out_[pixel * 4U + 3U] = 0xFFU;
+    }
+}
+
+// Write a PNG, load it through the registry (a real decode), and register a
+// material. Returns invalid handles (after recording the failure) on I/O failure.
+struct SceneAssets {
+    Registry::TextureHandle texture{};
+    Registry::MaterialHandle material{};
+};
+
+[[nodiscard]] SceneAssets authorAssets(R2DT::TestContext& context_, Registry& registry_)
+{
+    constexpr R2D::U32 kTexW = 4U;
+    constexpr R2D::U32 kTexH = 4U;
+    R2D::McVector<R2D::U8> pixels{};
+    fillSolidRgba(pixels, kTexW, kTexH);
+
+    const bool wrote = R2DT::writeImageRgba8Png(kTexturePath, kTexW, kTexH, pixels.data());
+    R2D_TEST_CHECK(context_, wrote);
+    if (!wrote) {
+        return {};
+    }
+
+    const auto texture = registry_.loadTexture("scene", kTexturePath);
+    const auto material = registry_.registerMaterial("opaque");
+    R2D_TEST_CHECK(context_, Registry::valid(texture));
+    R2D_TEST_CHECK(context_, Registry::valid(material));
+
+    // The decode round-tripped the real PNG (right dimensions).
+    const DecodedImage* image = registry_.image(texture);
+    R2D_TEST_CHECK(context_, image != nullptr);
+    if (image != nullptr) {
+        R2D_TEST_CHECK_EQ(context_, image->width, kTexW);
+        R2D_TEST_CHECK_EQ(context_, image->height, kTexH);
+    }
+    return {.texture = texture, .material = material};
+}
+
+// Author the NDC scene into the MiniEcs, with every sprite referencing the loaded
+// asset handles (so a host-style author-it-yourself scene drives the frame).
+void buildScene(SceneEcs& ecs_, const Registry& registry_, const SceneAssets& assets_)
+{
+    ecs_.reserve(kEntityCount);
     const LocalBounds local_bounds{.source_id = 0U, .bounds = R2D::makeAabb2(-0.5F, -0.5F, 0.5F, 0.5F)};
-    const auto sprite_for = [](R2D::U32 source_id_, R2D::U32 color_rgba8_) noexcept {
-        return Sprite{
-            .source_id = source_id_,
-            .texture_id = kSharedTextureId,
-            .texture_generation = 1U,
-            .texture_region_id = 0U,
-            .texture_region_generation = 0U,
-            .material_id = kSharedMaterialId,
-            .material_generation = 1U,
-            .color_rgba8 = color_rgba8_,
-            .layer = 0U,
-            .flags = 0U,
-        };
-    };
 
     for (R2D::U32 index = 0U; index < kEntityCount; ++index) {
         Transform transform{
@@ -203,10 +229,9 @@ void buildHostScene(HostEntityTable& table_)
             .scale_y = kVisibleScale,
         };
         R2D::U32 mask = kVisibleMask;
-        R2D::U32 color = 0xFF808080U;
+        R2D::U32 color = 0xFF808080U; // neutral; only the visible sprites' colours show
 
         if (index < kVisibleSpriteCount) {
-            // Visible: an NDC quadrant, distinct colour.
             transform.position_x = kVisibleX[index];
             transform.position_y = kVisibleY[index];
             color = kVisibleColors[index];
@@ -217,13 +242,17 @@ void buildHostScene(HostEntityTable& table_)
             transform.scale_x = 1.0F;
             transform.scale_y = 1.0F;
         } else {
-            // Mask-culled: inside the box but layer mask is zero.
+            // Mask-culled: inside the box but the layer mask is zero.
             transform.position_x = 0.1F * static_cast<float>(index);
             transform.position_y = -0.1F * static_cast<float>(index);
             mask = kHiddenMask;
         }
 
-        table_.pushEntity(transform, local_bounds, VisibilityMask{.mask = mask}, sprite_for(index, color));
+        const MiniEntity entity = ecs_.create();
+        ecs_.add<Transform>(entity, transform);
+        ecs_.add<LocalBounds>(entity, local_bounds);
+        ecs_.add<VisibilityMask>(entity, VisibilityMask{.mask = mask});
+        ecs_.add<Sprite>(entity, registry_.makeSprite(assets_.texture, assets_.material, index, color, 0U));
     }
 }
 
@@ -233,18 +262,17 @@ struct ChainCounts {
     R2D::U32 batch_count;
 };
 
-// Run the production CPU front-end + sprite chain, fed entirely through the host
-// table's spans, into the host frame arena. Identical to the 23A adapter chain,
-// here producing the SpriteInstance[] that the GPU will draw.
-[[nodiscard]] ChainCounts runHostChain(const HostEntityTable& table_, HostFrameArena& arena_)
+// The production CPU front-end + sprite chain, fed entirely through spans, into the
+// frame arena. Produces the SpriteInstance[] the GPU will draw.
+[[nodiscard]] ChainCounts runChain(const Columns& columns_, Arena& arena_)
 {
-    arena_.resizeForEntities(table_.size());
+    arena_.resizeForEntities(columns_.size());
 
     auto result = SpatialCull::run(
         kCamera,
-        table_.transforms(),
-        table_.localBounds(),
-        table_.visibilityMasks(),
+        columns_.transformSpan(),
+        columns_.localBoundsSpan(),
+        columns_.visibilityMaskSpan(),
         arena_.worldTransforms(),
         arena_.visibleItems());
     if (result.code != R2D::SystemStatusCode::Ok) {
@@ -254,7 +282,7 @@ struct ChainCounts {
 
     result = CommandBuild::run(
         std::span<const VisibleItem>{arena_.visibleItems().data(), visible_count},
-        table_.sprites(),
+        columns_.spriteSpan(),
         arena_.drawCommands());
     if (result.code != R2D::SystemStatusCode::Ok) {
         return {.code = result.code, .visible_count = visible_count, .batch_count = 0U};
@@ -263,7 +291,7 @@ struct ChainCounts {
     result = SpriteInstanceBuild::run(
         std::span<const DrawCommand>{arena_.drawCommands().data(), visible_count},
         arena_.worldTransforms(),
-        table_.sprites(),
+        columns_.spriteSpan(),
         arena_.spriteInstances());
     if (result.code != R2D::SystemStatusCode::Ok) {
         return {.code = result.code, .visible_count = visible_count, .batch_count = 0U};
@@ -279,11 +307,11 @@ struct ChainCounts {
     return {.code = R2D::SystemStatusCode::Ok, .visible_count = visible_count, .batch_count = result.write_count};
 }
 
-// Record the capture frame: render the host-built sprite instances into the
-// offscreen image, then (via the harness capture tail) copy it to the baseline
-// buffer, onto the swapchain image, read the swapchain back to the capture buffer,
-// and leave it in PRESENT_SRC. Returns false on a resolve/record failure.
-[[nodiscard]] bool recordSpriteCaptureFrame(
+// Record the scene frame: render the host-built sprite instances into the offscreen
+// image, then (via the harness capture tail) copy onto the swapchain image, read
+// both back, and leave the swapchain image in PRESENT_SRC. Returns false on a
+// resolve/record failure.
+[[nodiscard]] bool recordSceneFrame(
     R2DT::TestContext& context_,
     const NativeCommandBufferRef& command_ref_,
     const ImageRef& offscreen_image_,
@@ -329,7 +357,7 @@ struct ChainCounts {
 
     // Render the host-built sprite instances into the offscreen image. The
     // color-only sprite path binds no descriptor sets (empty slice span); each
-    // instance carries its own affine + colour from the host scene.
+    // instance carries its own affine + colour from the authored scene.
     R2D_TEST_CHECK_EQ(
         context_,
         SpriteRenderEncoder::record(
@@ -347,6 +375,7 @@ struct ChainCounts {
             .code,
         R2D::NativeStatusCode::Ok);
 
+    // Offscreen -> baseline, onto the swapchain, swapchain -> capture, -> PRESENT_SRC.
     const bool tail = Render2DTest::recordOffscreenToSwapchainCapture(
         context_,
         command_buffer,
@@ -364,15 +393,17 @@ struct ChainCounts {
     return tail && context_.ok();
 }
 
-// Bring up the GPU runtimes, build the sprite pipeline, present one frame of the
-// host scene, and assert the swapchain readback equals the offscreen baseline.
-// Runtimes are locals so their destructors tear down Vulkan objects while the
-// harness device is alive (the harness is destroyed by the caller after this).
-void runHostPresentFrame(
+// Bring up the GPU runtimes, build the color-only sprite pipeline, present one
+// frame of the authored scene, and assert the swapchain capture == the offscreen
+// baseline. Runtimes are locals here so their destructors tear down Vulkan objects
+// while the harness device is still alive (the harness is destroyed by the caller
+// after this returns).
+void runWindowScene(
     R2DT::TestContext& context_,
     Render2DTest::WindowTestHarness& harness_,
     R2D::U32 instance_count_,
-    std::span<const SpriteInstance> instances_)
+    std::span<const SpriteInstance> instances_,
+    bool visible_)
 {
     const VkDevice device = harness_.device();
     const VkPhysicalDevice physical_device = harness_.physicalDevice();
@@ -478,7 +509,6 @@ void runHostPresentFrame(
     const auto vertex_byte_count = static_cast<R2D::U64>(sizeof(kQuadVertices));
     const auto instance_byte_count = static_cast<R2D::U64>(instance_count_) * sizeof(SpriteInstance);
 
-    // Offscreen render target, in the swapchain's exact format (byte-exact copy).
     ImageRef offscreen_image{};
     R2D_TEST_CHECK_EQ(
         context_,
@@ -504,7 +534,7 @@ void runHostPresentFrame(
         resource_runtime.writeBuffer(vertex_buffer, kQuadVertices.data(), vertex_byte_count, 0U).code,
         R2D::NativeStatusCode::Ok);
 
-    // The instance buffer IS the host-built SpriteInstance[] -- the data path.
+    // The instance buffer IS the authored SpriteInstance[] -- the data path.
     BufferRef instance_buffer{};
     R2D_TEST_CHECK_EQ(
         context_,
@@ -579,7 +609,7 @@ void runHostPresentFrame(
         return;
     }
 
-    if (recordSpriteCaptureFrame(
+    if (recordSceneFrame(
             context_,
             command_ref,
             offscreen_image,
@@ -611,8 +641,83 @@ void runHostPresentFrame(
             R2D_TEST_CHECK(context_, comparison.varies);
             R2D_TEST_CHECK(context_, comparison.identical);
             std::cout << kLogPrefix << ": " << active.extent.width << "x" << active.extent.height
-                      << " host scene -> " << instance_count_ << " sprite instances presented; swapchain "
+                      << " authored scene -> " << instance_count_ << " sprite instances presented; swapchain "
                       << (comparison.identical ? "==" : "!=") << " offscreen baseline (" << byte_count << " bytes)\n";
+        }
+    }
+
+    // Visible mode: keep the window on screen, re-presenting the authored scene
+    // each vsync until the user closes it (or the safety cap). The single frame
+    // above already validated the present path by readback; this exists only so
+    // the scene can actually be *seen*. It reuses the same runtimes / buffers /
+    // pipeline / offscreen image -- the resource runtime tracks the offscreen
+    // image's layout, so re-rendering it each frame transitions correctly -- and
+    // simply overwrites (and ignores) the readback buffers. The window is not
+    // resizable, so a non-Ok acquire (e.g. minimize -> OUT_OF_DATE) just ends the
+    // demo cleanly. Same fence/pool discipline as present_loop_smoke (Stage 22C).
+    if (visible_ && context_.ok()) {
+        std::cout << kLogPrefix << ": window is visible -- close it (the X, or Esc) to exit\n" << std::flush;
+        for (R2D::U32 frame = 0U; frame < kMaxVisibleFrames; ++frame) {
+            if (harness_.host().pollShouldClose()) {
+                break;
+            }
+
+            AcquiredImage loop_acquired{};
+            VkImage loop_swapchain_image = VK_NULL_HANDLE;
+            if (Render2DTest::acquireSwapchainImage(
+                    context_,
+                    kLogPrefix,
+                    present_runtime,
+                    swapchain_runtime,
+                    sync_runtime,
+                    active,
+                    frame_sync,
+                    kAcquireTimeoutNs,
+                    loop_acquired,
+                    loop_swapchain_image) != Render2DTest::WindowFrameStatus::Ok) {
+                break;
+            }
+
+            // Reset the fence only now that a successful acquire guarantees a
+            // submit will re-signal it, then reset the pool so the one command
+            // buffer can be re-recorded for this frame.
+            R2D_TEST_CHECK_EQ(context_, sync_runtime.resetFence(frame_sync).code, R2D::NativeStatusCode::Ok);
+            R2D_TEST_CHECK_EQ(context_, command_runtime.resetCommandPool(0U).code, R2D::NativeStatusCode::Ok);
+            if (!context_.ok()) {
+                break;
+            }
+
+            if (!recordSceneFrame(
+                    context_,
+                    command_ref,
+                    offscreen_image,
+                    pipeline_ref,
+                    vertex_buffer,
+                    instance_buffer,
+                    baseline_buffer,
+                    capture_buffer,
+                    instance_count_,
+                    loop_swapchain_image,
+                    active.extent,
+                    command_runtime,
+                    resource_runtime,
+                    pipeline_runtime,
+                    descriptor_runtime)) {
+                break;
+            }
+            if (!Render2DTest::submitPresentWaitFence(
+                    context_,
+                    command_ref,
+                    frame_sync,
+                    loop_acquired,
+                    submit_runtime,
+                    present_runtime,
+                    command_runtime,
+                    swapchain_runtime,
+                    sync_runtime,
+                    kFenceTimeoutNs)) {
+                break;
+            }
         }
     }
 
@@ -631,20 +736,27 @@ void runHostPresentFrame(
     R2D_TEST_CHECK_EQ(context_, sync_runtime.releaseFrameSync(frame_sync).code, R2D::NativeStatusCode::Ok);
 }
 
-[[nodiscard]] int runTest()
+[[nodiscard]] int runTest(bool visible_)
 {
     R2DT::TestContext context{};
 
-    // --- CPU: host-shaped ECS data -> the span-only chain -> SpriteInstance[] ---
-    // This part needs no device; it is the merge contract (#1) being exercised.
-    HostEntityTable host_table{};
-    buildHostScene(host_table);
+    // --- CPU: MiniEcs + AssetRegistry scene -> the span-only chain -> instances --
+    Registry registry{};
+    const SceneAssets assets = authorAssets(context, registry);
+    if (!Registry::valid(assets.texture) || !Registry::valid(assets.material)) {
+        return context.result();
+    }
 
-    HostFrameArena arena{};
-    const ChainCounts counts = runHostChain(host_table, arena);
+    SceneEcs ecs{};
+    buildScene(ecs, registry, assets);
+
+    Columns columns{};
+    R2DT::gatherRenderInputs(ecs, columns);
+    R2D_TEST_CHECK_EQ(context, columns.size(), static_cast<R2D::Usize>(kEntityCount));
+
+    Arena arena{};
+    const ChainCounts counts = runChain(columns, arena);
     R2D_TEST_CHECK_EQ(context, static_cast<int>(counts.code), static_cast<int>(R2D::SystemStatusCode::Ok));
-    // Culling is non-vacuous (some visible, some culled) and batching merged the
-    // shared-key visible draws.
     R2D_TEST_CHECK_EQ(context, counts.visible_count, kVisibleSpriteCount);
     R2D_TEST_CHECK(context, counts.visible_count < kEntityCount);
     R2D_TEST_CHECK(context, counts.batch_count > 0U);
@@ -653,35 +765,51 @@ void runHostPresentFrame(
         return context.result();
     }
 
+    std::fprintf(
+        stdout,
+        "window-scene: %u entities -> %u visible, %u batches (assets loaded from PNG)\n",
+        kEntityCount,
+        counts.visible_count,
+        counts.batch_count);
+
     const std::span<const SpriteInstance> instances{arena.spriteInstances().data(), counts.visible_count};
 
-    // --- GPU: present the host scene to a real window via the harness -----------
+    // --- GPU: present the authored scene to a real window via the harness --------
     Render2DTest::WindowTestHarness harness{};
-    if (harness.initialize({.window_title = "Render2D Host Present Frame 23D",
+    if (harness.initialize({.window_title = "Render2D Window Scene (close to exit)",
                             .log_prefix = kLogPrefix,
                             .width = 640,
                             .height = 480,
-                            .require_dynamic_rendering = true}) != Render2DTest::WindowTestHarness::Status::Ready) {
+                            .require_dynamic_rendering = true,
+                            .visible = visible_}) != Render2DTest::WindowTestHarness::Status::Ready) {
         return context.result();
     }
 
-    runHostPresentFrame(context, harness, counts.visible_count, instances);
+    runWindowScene(context, harness, counts.visible_count, instances, visible_);
     return context.result();
 }
 
 } // namespace
 
-int main() noexcept
+int main(int argc, char** argv) noexcept
 {
+    // Default (e.g. under ctest, with no args): hidden window, validated by
+    // readback. Pass --visible for a manual run that actually shows the window.
+    bool visible = false;
+    for (int index = 1; index < argc; ++index) {
+        if (std::string_view(argv[index]) == "--visible") {
+            visible = true;
+        }
+    }
     try {
-        return runTest();
+        return runTest(visible);
     } catch (const std::exception& exception) {
-        std::fputs("host_present_frame_smoke exception: ", stderr);
+        std::fputs("window_scene_present_test exception: ", stderr);
         std::fputs(exception.what(), stderr);
         std::fputc('\n', stderr);
         return 1;
     } catch (...) {
-        std::fputs("host_present_frame_smoke unknown exception\n", stderr);
+        std::fputs("window_scene_present_test unknown exception\n", stderr);
         return 1;
     }
 }

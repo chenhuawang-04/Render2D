@@ -220,6 +220,30 @@ public:
         return true;
     }
 
+    // Drain the window's pending OS events and report whether the user asked to
+    // close it (clicked the X / sent a quit, or pressed Escape). A visible present
+    // loop must call this every frame so the window stays responsive -- an
+    // un-pumped window is flagged "not responding" by the OS -- and so it can be
+    // closed. Harmless on a hidden window (no events arrive). SDL event handling
+    // lives here, like every other SDL call: callers never touch SDL directly.
+    [[nodiscard]] bool pollShouldClose() noexcept
+    {
+        bool should_close = false;
+        SDL_Event event{};
+        while (SDL_PollEvent(&event))
+        {
+            const bool close_requested =
+                event.type == SDL_EVENT_QUIT ||
+                event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED ||
+                (event.type == SDL_EVENT_KEY_DOWN && event.key.scancode == SDL_SCANCODE_ESCAPE);
+            if (close_requested)
+            {
+                should_close = true;
+            }
+        }
+        return should_close;
+    }
+
     // Tear down the surface (if live), the window, and the SDL video subsystem,
     // in that order. Safe to call repeatedly.
     void shutdown() noexcept
