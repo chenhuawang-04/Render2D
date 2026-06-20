@@ -189,6 +189,13 @@ if(RENDER2D_BUILD_PRESENT_HOST)
     set(SDL_NOTIFICATION OFF CACHE BOOL "" FORCE)
     set(SDL_OPENGL OFF CACHE BOOL "" FORCE)
     set(SDL_OPENGLES OFF CACHE BOOL "" FORCE)
+    # Linux video backends: X11 only (lean + portable). Wayland and KMSDRM would
+    # pull in libwayland/libdecor/libdrm/libgbm dev libraries we do not need just
+    # to open a window + create a VkSurfaceKHR; X11's dev libs suffice. No-ops on
+    # Windows (which uses its own video backend). The host owns its real surface
+    # at merge, so this only affects the in-repo present-host demo/tests.
+    set(SDL_WAYLAND OFF CACHE BOOL "" FORCE)
+    set(SDL_KMSDRM OFF CACHE BOOL "" FORCE)
 
     add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/third_party/sdl" "${CMAKE_CURRENT_BINARY_DIR}/_deps/sdl")
 
