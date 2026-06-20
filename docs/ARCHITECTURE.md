@@ -272,11 +272,22 @@ Implemented:
 - Stage 15C sprite instance UV region propagation through `SpriteInstanceBuildSystem::runWithTextureRegions`
 - Stage 16A atlas-region textured sprite smoke: one atlas image, one descriptor, one packet, two region-backed instances, and red/green readback verification
 
-Not implemented yet:
+Stages 17–25 (reinforcement roadmap — see `ReinforcementPlan.md` and `docs/PROJECT_INDEX.md` for the file-level inventory):
 
-- ThreadCenter-backed text pipeline work and parallel batch/sort tail stages
+- Stage 17 build portability + CI: three-tier engine-dependency resolution (`cmake/Render2DDependencies.cmake`), CMake presets, and the `.github/workflows/ci.yml` portable/full tiers
+- Stage 18 atlas image runtime: `VulkanTextureAtlasRuntime` and the atlas image/region contracts
+- Stage 19 font/text runtime: real UTF-8 decoding, SheenBidi itemization, HarfBuzz-over-FreeType shaping + glyph rasterization (`FontShapeRuntime`), glyph atlas residency/packing (`GlyphAtlasRuntime`), and an end-to-end Vulkan glyph-coverage text draw (`tests/vulkan_glyph_text_render_test.cpp`)
+- Stage 20 bindless: descriptor-indexing mechanism for the sprite/material path (the production indexing *policy* stays the host's)
+- Stage 21 parallel tail: ThreadCenter-backed `ThreadedTextCpuPipelineRuntime` (glyph-instance build), `ThreadedDrawSortRuntime` (radix sort), and `ThreadedBatchRuntime` — each byte-identical to its single-thread reference
+- Stage 22 present-host: optional, isolated SDL3 window + `VkSurfaceKHR` provider (`RENDER2D_BUILD_PRESENT_HOST`), on-screen present loop, visible-capture == offscreen baseline, and RenderDoc frame capture
+- Stage 23 host-merge readiness: the `tests/support/HostLikeEcs.hpp` byte-identical adapter, the end-to-end `host_present_frame` capstone, and `docs/MERGE_GUIDE.md`
+- Stage 24 CPU refinement: the fused `SpatialCullSystem` front-end and the AVX2/FMA build option (`RENDER2D_ENABLE_AVX2`)
+- Stage 25 consumability/packaging: `find_package(Render2D)` install/export and the downstream-consumer smokes
+- Stage 26 reproducibility/release closeout: engine deps made public + pinned to exact commits, the `full-build` CI auto-gate, and the tagged `v0.1.0` release (see `CHANGELOG.md`)
+
+Not implemented yet (host-engine or production-policy responsibilities — deliberately out of scope, see *Scope and non-goals*):
+
 - host-engine window-visible capture automation (the in-repo, optional Stage 22 SDL3 present-host demonstrates it — 22C present-loop, 22D visible-capture == offscreen baseline; the host still owns window/surface and its own automation at merge, `RENDER2D_BUILD_PRESENT_HOST=OFF`; the present tests + a `MiniEcs`/`AssetRegistry` scene→window demo share the test-only `tests/support/WindowTestHarness.hpp`)
-- real UTF-8 decoding, font shaping, glyph rasterization, and atlas packing
-- production atlas runtime ownership, raster-data ingestion, advanced bin packing, complex material graph, and bindless/descriptor-indexing policy
-- Vulkan text draw integration
-- RenderDoc automation (Stage 22E adds programmatic `.rdc` capture of a real present frame via the optional present-host's `RenderDocCapture`; the offscreen Vulkan smoke executable is still a capture target, and a host supplies its own automation at merge)
+- production atlas runtime ownership, raster-data ingestion, advanced bin packing, complex material graph, and the production bindless/descriptor-indexing policy (Stage 20 provides the mechanism; the host owns the policy)
+- production GPU text draw integration into the host's render graph (the in-repo Stage 19F text draw proves the path; the host owns its own pass wiring)
+- RenderDoc / frame-capture automation in the host's pipeline (Stage 22E adds programmatic `.rdc` capture of a real present frame via the optional present-host's `RenderDocCapture`; a host supplies its own automation at merge)

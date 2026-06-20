@@ -32,6 +32,21 @@
         "RENDER2D_REQUIRE_VULKAN": "ON",
         "RENDER2D_ENABLE_AVX2": "ON"
       }
+    },
+    {
+      "name": "clang-ninja-host-min",
+      "displayName": "Clang Ninja Host-Minimal (present-host OFF)",
+      "description": "Host-integration-shaped config: the SDL3 present-host is OFF (the host owns the window/surface, per docs/MERGE_GUIDE.md), mirroring the merge-time build. Debug + tests, no benchmarks.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build_host_min",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "RENDER2D_BUILD_TESTS": "ON",
+        "RENDER2D_BUILD_BENCHMARKS": "OFF",
+        "RENDER2D_REQUIRE_VULKAN": "ON",
+        "RENDER2D_BUILD_PRESENT_HOST": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -42,6 +57,10 @@
     {
       "name": "clang-ninja-perf",
       "configurePreset": "clang-ninja-perf"
+    },
+    {
+      "name": "clang-ninja-host-min",
+      "configurePreset": "clang-ninja-host-min"
     }
   ],
   "testPresets": [
@@ -55,6 +74,13 @@
     {
       "name": "clang-ninja-perf",
       "configurePreset": "clang-ninja-perf",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "clang-ninja-host-min",
+      "configurePreset": "clang-ninja-host-min",
       "output": {
         "outputOnFailure": true
       }

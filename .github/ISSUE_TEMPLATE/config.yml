@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Architecture & scope
+    url: https://github.com/chenhuawang-04/Render2D/blob/master/docs/ARCHITECTURE.md
+    about: Read the pipeline, the runtime inventory, and "Scope and non-goals" first.
+  - name: Host-engine merge guide
+    url: https://github.com/chenhuawang-04/Render2D/blob/master/docs/MERGE_GUIDE.md
+    about: How Render2D is consumed/merged, and what stays the host's responsibility.

@@ -2,6 +2,8 @@
 
 本文件是 `Plan.md` 的延续。`Plan.md` 覆盖到 Stage 16(已完成),本规划从 **Stage 17** 起,定义把 Render2D 从"离屏验证的库"推进到"可嵌入宿主引擎的生产渲染后端"所需的补强路线。
 
+> **当前状态(2026-06-20 收尾更新)**:补强路线 **Stage 17–25 全部 CLOSED 并已推送至 `origin/master`**;随后的 **Stage 26 收尾**(可复现性 + CI 门禁 + 发布治理)亦已落地。下文各阶段记述里的"本地未推 / HOLD / ahead N / 待用户确认推送"等字样均为**当时的时点笔记**,现已被本横幅取代,不代表当前仓库状态。四个引擎依赖仓库现均为**公有**,fetch 层默认引用已**钉到精确 commit**(见 `cmake/Render2DDependencies.cmake`);`v0.1.0` 已打 tag 并发布。详见 `CHANGELOG.md` 与 `docs/adr/2026-06-20-stage26-reproducibility-ci-release-closeout.md`。
+
 阅读前置:`Plan.md`(总规划)、`docs/ARCHITECTURE.md`(管线与 runtime 清单)、`docs/ProjectMergeTODO.md`(39 条宿主合并约束)、`docs/architecture/BENCHMARK_BASELINE.md`(性能基线)。
 
 ---

@@ -21,8 +21,9 @@ For architecture, see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and the fil
 Render2D builds against four host-engine source trees and the Vulkan SDK. Each engine tree is resolved
 in three tiers, **downloading only as a last resort**: (1) reuse it if the enclosing CMake project
 already defines its target; (2) `add_subdirectory` a local checkout if one is present; (3) otherwise
-fetch it from git. Two of the four repos are private (`MemoryCenter`, `Vector`), so a fetch on a clean
-or CI machine needs git credentials with read access to them.
+fetch it from git. All four repos are **public**, so a fetch on a clean or CI machine needs **no
+credentials**. The fetch defaults are pinned to exact commits (see the table below), so a clean fetch is
+reproducible rather than tracking a moving branch.
 
 To build against local checkouts (no download), set **one** umbrella path and the four locations are
 derived from it:
@@ -42,13 +43,14 @@ individually (an individual override takes precedence over the umbrella default)
 | ThreadCenter           | `<root>/ThreadCenter`                     | `RENDER2D_THREAD_CENTER_SOURCE_DIR` | `CMakeLists.txt`                                |
 
 If neither an existing target nor a local tree is found, that dependency is **fetched from git**. The
-repository and ref are overridable per dependency, so CI can pin an exact commit instead of a branch:
+repository and ref are overridable per dependency; the default ref is a **pinned commit** (not a branch)
+so a clean fetch is reproducible:
 
 | Dependency              | Fetch repo (default)                            | Repo / ref override variables                         |
 | ----------------------- | ----------------------------------------------- | ----------------------------------------------------- |
-| MemoryCenterNew         | `chenhuawang-04/MelosyneMemoryCenter` (private) | `RENDER2D_MEMORY_CENTER_GIT_REPOSITORY` / `…_GIT_TAG` |
+| MemoryCenterNew         | `chenhuawang-04/MelosyneMemoryCenter` (public)  | `RENDER2D_MEMORY_CENTER_GIT_REPOSITORY` / `…_GIT_TAG` |
 | fast_math (`MMath`)     | `chenhuawang-04/Melosyne-Math`                  | `RENDER2D_FAST_MATH_GIT_REPOSITORY` / `…_GIT_TAG`     |
-| Vector_New (`McVector`) | `chenhuawang-04/Vector` (private)               | `RENDER2D_VECTOR_NEW_GIT_REPOSITORY` / `…_GIT_TAG`    |
+| Vector_New (`McVector`) | `chenhuawang-04/Vector` (public)                | `RENDER2D_VECTOR_NEW_GIT_REPOSITORY` / `…_GIT_TAG`    |
 | ThreadCenter            | `chenhuawang-04/Melosyne_ThreadCenter`          | `RENDER2D_THREAD_CENTER_GIT_REPOSITORY` / `…_GIT_TAG` |
 
 `RENDER2D_ENGINE_DEPS_ROOT` only seeds the per-dependency local defaults at first configure; to re-point
@@ -161,15 +163,16 @@ CI is a single workflow, `.github/workflows/ci.yml`, in two tiers:
   safety net.
 - **Full build** (`full-build`, hosted `ubuntu-latest`) runs configure → build → `ctest` (Debug + Perf) →
   clang-tidy → constraint scan → bench smoke. It installs clang + Ninja and the Vulkan loader/headers,
-  then lets CMake fetch the four engine deps from git. It is **manual** (`workflow_dispatch`) to control
-  cost. No GPU is present, so the `vulkan_*` smokes skip — the build is green but GPU paths are not
-  exercised here (see [No GPU required](#no-gpu-required)).
+  then lets CMake fetch the four (public) engine deps from git. It runs automatically on every push to
+  `main`/`master`, and on demand via `workflow_dispatch`. No GPU is present, so the `vulkan_*` smokes
+  skip — the build is green but GPU paths are not exercised here (see [No GPU required](#no-gpu-required)).
 
-To enable the full tier: the two private deps (`MemoryCenter`, `Vector`) are fetched over HTTPS, so add a
-repository secret **`ENGINE_DEPS_TOKEN`** — a personal access token with read access to them
-(*Settings → Secrets and variables → Actions*). Then start the **CI** workflow via *Run workflow*; leave
-`engine_deps_root` empty to fetch, or set it to a pre-staged local root to skip fetching. The font
-submodules are public and are checked out by the workflow.
+The full tier needs **no secret** — all four engine deps are public and fetched over HTTPS (the font and
+SDL submodules are public too and are checked out by the workflow). The pinned fetch refs (see
+*Dependencies*) keep a clean build reproducible. To run it on demand, start the **CI** workflow via *Run
+workflow*; leave `engine_deps_root` empty to fetch, or set it to a pre-staged local root to skip fetching.
+A real-GPU pass (forcing the `vulkan_*` / present tests to actually execute) is a local or
+self-hosted-runner follow-up — see [No GPU required](#no-gpu-required).
 
 ## No GPU required
 

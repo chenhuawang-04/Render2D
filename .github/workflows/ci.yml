@@ -41,17 +41,20 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # Full tier: configure -> build -> ctest (Debug + Perf) -> clang-tidy ->
-  # constraint scan -> bench smoke, on a HOSTED runner. Render2D's CMake now
-  # fetches the four engine deps from git (reuse/local/fetch tiers), so this job
-  # needs only a toolchain it can install: clang + Ninja, the Vulkan loader +
-  # headers, and -- for the two PRIVATE deps (MemoryCenter, Vector) -- a PAT in
-  # the ENGINE_DEPS_TOKEN secret with read access to them. No GPU is present, so
-  # the vulkan_* smokes skip: the build is green but GPU paths are NOT exercised
-  # on hosted. Manual (workflow_dispatch) to control cost; set the
-  # engine_deps_root input to use a pre-staged local checkout instead of fetching.
+  # constraint scan -> bench smoke, on a HOSTED runner. Render2D's CMake fetches
+  # the four engine deps from git (reuse/local/fetch tiers); all four repos are
+  # public, so this job needs only a toolchain it can install: clang + Ninja and
+  # the Vulkan loader + headers -- no secret. No GPU is present, so the vulkan_*
+  # smokes skip: the build is green but GPU paths are NOT exercised on hosted (a
+  # real-device pass is a local / self-hosted-runner follow-up). Runs on
+  # main/master pushes and on demand; set the engine_deps_root input to use a
+  # pre-staged local checkout instead of fetching.
   # ---------------------------------------------------------------------------
   full-build:
-    if: github.event_name == 'workflow_dispatch'
+    # Auto-gate on integration pushes (main/master) + on demand; skipped on PRs
+    # (portable-checks gates those) to bound hosted-runner cost. The four engine
+    # deps are public, so this needs no secret.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -77,22 +80,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libvulkan-dev vulkan-validationlayers
 
-      - name: Configure git credentials for the private engine deps
+      - name: Configure git credentials (optional; engine deps are public)
         env:
           ENGINE_DEPS_TOKEN: ${{ secrets.ENGINE_DEPS_TOKEN }}
         run: |
+          # All four engine deps are public, so no token is required. The optional
+          # rewrite is kept only so a fork that re-privatises a dep can still fetch.
           if [ -n "$ENGINE_DEPS_TOKEN" ]; then
             git config --global url."https://x-access-token:${ENGINE_DEPS_TOKEN}@github.com/".insteadOf "https://github.com/"
-            echo "credential rewrite configured for github.com (private deps fetchable)"
+            echo "optional credential rewrite configured for github.com"
           else
-            echo "::warning::ENGINE_DEPS_TOKEN not set -- private deps (MemoryCenter, Vector) will fail to fetch"
+            echo "no ENGINE_DEPS_TOKEN set -- fine, the four engine deps are public"
           fi
 
       - name: Cache fetched engine dependencies
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.deps-cache
-          key: engine-deps-${{ hashFiles('CMakeLists.txt') }}
+          key: engine-deps-${{ hashFiles('CMakeLists.txt', 'cmake/Render2DDependencies.cmake', '.gitmodules') }}
           restore-keys: engine-deps-
 
       - name: Resolve engine-deps root (local override vs fetch)

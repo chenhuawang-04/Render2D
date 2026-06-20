@@ -21,8 +21,9 @@
 #   2. Local  - if a local source tree exists (the umbrella / individual paths
 #               below), it is add_subdirectory()'d -- no download.
 #   3. Fetch  - otherwise FetchContent pulls it from git (see the *_GIT_*
-#               variables). Two of the four repos are private, so a fetch on a
-#               clean / CI machine needs git credentials with access to them.
+#               variables). All four repos are public, so a clean / CI fetch
+#               needs no credentials; the *_GIT_TAG defaults are pinned to exact
+#               commits for byte-reproducible fetches (override to bump).
 #
 # Point the build at a local checkout with ONE umbrella path:
 #     -DRENDER2D_ENGINE_DEPS_ROOT=/path/to/MelosyneTest
@@ -48,19 +49,22 @@ set(RENDER2D_THREAD_CENTER_SOURCE_DIR "${RENDER2D_ENGINE_DEPS_ROOT}/ThreadCenter
     "Path to ThreadCenter source tree.")
 
 # Git sources used by the fetch tier when no target or local tree is found.
-# Each repo/tag is overridable so CI can pin an exact commit instead of a branch.
+# All four repos are public (no fetch credentials needed). Each _GIT_TAG default
+# is pinned to an exact commit so a clean fetch is byte-reproducible instead of
+# tracking a moving branch; bump a pin by overriding the matching *_GIT_TAG cache
+# variable, or edit the default here (and widen the CI cache key accordingly).
 set(RENDER2D_MEMORY_CENTER_GIT_REPOSITORY "https://github.com/chenhuawang-04/MelosyneMemoryCenter.git" CACHE STRING
-    "Git URL fetched for MemoryCenterNew when no target/local tree is available (private repo).")
-set(RENDER2D_MEMORY_CENTER_GIT_TAG "master" CACHE STRING "Git ref fetched for MemoryCenterNew.")
+    "Git URL fetched for MemoryCenterNew when no target/local tree is available (public).")
+set(RENDER2D_MEMORY_CENTER_GIT_TAG "f3f9881aa6a2119a974b6f9d4be7c70ed6358aff" CACHE STRING "Git ref (pinned commit) fetched for MemoryCenterNew.")
 set(RENDER2D_FAST_MATH_GIT_REPOSITORY "https://github.com/chenhuawang-04/Melosyne-Math.git" CACHE STRING
-    "Git URL fetched for fast_math when no target/local tree is available.")
-set(RENDER2D_FAST_MATH_GIT_TAG "master" CACHE STRING "Git ref fetched for fast_math.")
+    "Git URL fetched for fast_math when no target/local tree is available (public).")
+set(RENDER2D_FAST_MATH_GIT_TAG "83b1977f0c6549512c308ea8295e7ff908bc1849" CACHE STRING "Git ref (pinned commit) fetched for fast_math.")
 set(RENDER2D_VECTOR_NEW_GIT_REPOSITORY "https://github.com/chenhuawang-04/Vector.git" CACHE STRING
-    "Git URL fetched for Vector_New (McVector) when no local include tree is available (private repo).")
-set(RENDER2D_VECTOR_NEW_GIT_TAG "master" CACHE STRING "Git ref fetched for Vector_New (McVector).")
+    "Git URL fetched for Vector_New (McVector) when no local include tree is available (public).")
+set(RENDER2D_VECTOR_NEW_GIT_TAG "21afc616f0b53df97085bf7fcf9b2d42f8e4c159" CACHE STRING "Git ref (pinned commit) fetched for Vector_New (McVector).")
 set(RENDER2D_THREAD_CENTER_GIT_REPOSITORY "https://github.com/chenhuawang-04/Melosyne_ThreadCenter.git" CACHE STRING
-    "Git URL fetched for ThreadCenter when no target/local tree is available.")
-set(RENDER2D_THREAD_CENTER_GIT_TAG "master" CACHE STRING "Git ref fetched for ThreadCenter.")
+    "Git URL fetched for ThreadCenter when no target/local tree is available (public).")
+set(RENDER2D_THREAD_CENTER_GIT_TAG "c2944cc87534e12b9790d09acf7f8c1f1e93ae4d" CACHE STRING "Git ref (pinned commit) fetched for ThreadCenter.")
 
 include(FetchContent)
 # Show clone/populate progress in CI logs (helps diagnose fetch failures).
