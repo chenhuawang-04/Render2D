@@ -162,8 +162,9 @@ CI is a single workflow, `.github/workflows/ci.yml`, in two tiers:
   scan, a merge-conflict-marker scan, and a `CMakePresets.json` validity check. This is the always-on
   safety net.
 - **Full build** (`full-build`, hosted `ubuntu-latest`) runs configure → build → `ctest` (Debug + Perf) →
-  clang-tidy → constraint scan → bench smoke. It installs clang + Ninja and the Vulkan loader/headers,
-  then lets CMake fetch the four (public) engine deps from git. It runs automatically on every push to
+  clang-tidy → constraint scan → bench smoke. It installs clang + Ninja, the Vulkan loader/headers, and
+  the X11 dev libraries SDL3 (the present-host) needs on Linux, then lets CMake fetch the four (public)
+  engine deps from git. It runs automatically on every push to
   `main`/`master`, and on demand via `workflow_dispatch`. No GPU is present, so the `vulkan_*` smokes
   skip — the build is green but GPU paths are not exercised here (see [No GPU required](#no-gpu-required)).
 

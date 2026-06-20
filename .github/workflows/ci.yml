@@ -75,10 +75,17 @@ jobs:
           # The steps below call the versioned clang-22 / clang++-22 / clang-tidy-22
           # binaries directly (ubuntu-latest's default clang is older).
 
-      - name: Install Vulkan loader + headers + validation layers
+      - name: Install Vulkan loader/headers + SDL3 present-host build deps
         run: |
           sudo apt-get update
-          sudo apt-get install -y libvulkan-dev vulkan-validationlayers
+          # libvulkan-dev + validation layers for the Vulkan paths; the X11 dev
+          # libraries are needed by SDL3 (the optional present-host submodule,
+          # built when RENDER2D_BUILD_PRESENT_HOST=ON -- the in-repo default) to
+          # configure on Linux. Installing them lets the full in-repo tree build;
+          # the present tests still graceful-skip at runtime (no display/GPU).
+          sudo apt-get install -y libvulkan-dev vulkan-validationlayers \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxkbcommon-dev
 
       - name: Configure git credentials (optional; engine deps are public)
         env:
